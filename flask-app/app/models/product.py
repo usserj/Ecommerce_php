@@ -34,6 +34,8 @@ class Producto(db.Model):
     finOferta = db.Column(db.DateTime)
     peso = db.Column(db.Float, default=0)
     entrega = db.Column(db.Float, default=0)
+    stock = db.Column(db.Integer, default=0)  # Stock disponible
+    stock_minimo = db.Column(db.Integer, default=5)  # Alerta de stock bajo
     fecha = db.Column(db.DateTime, default=datetime.utcnow)
 
     # Relationships
@@ -99,3 +101,38 @@ class Producto(db.Model):
     def is_virtual(self):
         """Check if product is virtual."""
         return self.tipo == 'virtual'
+
+    def tiene_stock(self, cantidad=1):
+        """Check if product has enough stock."""
+        if self.is_virtual():
+            return True  # Productos virtuales siempre disponibles
+        return self.stock >= cantidad
+
+    def decrementar_stock(self, cantidad):
+        """Decrement stock after purchase."""
+        if self.is_virtual():
+            return True  # Productos virtuales no decrementan stock
+
+        if self.tiene_stock(cantidad):
+            self.stock -= cantidad
+            db.session.commit()
+            return True
+        return False
+
+    def incrementar_stock(self, cantidad):
+        """Increment stock (for returns or inventory adjustment)."""
+        if not self.is_virtual():
+            self.stock += cantidad
+            db.session.commit()
+
+    def stock_bajo(self):
+        """Check if stock is below minimum threshold."""
+        if self.is_virtual():
+            return False
+        return self.stock <= self.stock_minimo
+
+    def agotado(self):
+        """Check if product is out of stock."""
+        if self.is_virtual():
+            return False
+        return self.stock == 0

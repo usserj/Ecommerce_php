@@ -42,6 +42,7 @@ Flask-Caching==2.1.0
 python-dotenv==1.0.0
 Pillow==10.1.0
 requests==2.31.0
+python-slugify==8.0.1
 
 # Security
 Flask-Talisman==1.1.0
