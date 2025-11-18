@@ -4,7 +4,7 @@ Integration tests for authentication routes
 
 import pytest
 from flask import url_for, session
-from app.models.user import Usuario
+from app.models.user import User
 
 
 # ===========================
@@ -35,7 +35,7 @@ class TestRegistrationRoutes:
         response = client.post('/auth/register', data=user_data, follow_redirects=True)
 
         # Check user was created
-        user = Usuario.query.filter_by(email='newuser@example.com').first()
+        user = User.query.filter_by(email='newuser@example.com').first()
         assert user is not None
         assert user.nombre == 'New User'
         assert user.verificado is False  # Should not be verified yet
@@ -222,7 +222,7 @@ class TestOAuthRoutes:
         response = client.get('/auth/login/google/callback', follow_redirects=True)
 
         # Should create or login user
-        user = Usuario.query.filter_by(email='user@gmail.com').first()
+        user = User.query.filter_by(email='user@gmail.com').first()
         if user:
             assert user.google_id == 'google-user-id-123'
 

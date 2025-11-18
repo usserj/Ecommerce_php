@@ -18,7 +18,7 @@ from sqlalchemy.orm import sessionmaker
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'app'))
 
 from app import create_app, db
-from app.models.user import Usuario
+from app.models.user import User
 from app.models.admin import Administrador
 from app.models.product import Producto
 from app.models.categoria import Categoria, Subcategoria
@@ -123,17 +123,15 @@ class DataMigration:
         for user_data in usuarios:
             try:
                 # Create user with legacy password
-                usuario = Usuario(
+                usuario = User(
                     id=user_data['id'],
                     nombre=user_data['nombre'],
                     email=user_data['email'],
                     password=user_data['password'],  # Keep legacy hash
-                    foto=user_data.get('foto'),
-                    fecha_registro=user_data.get('fecha_registro'),
-                    google_id=user_data.get('google_id'),
-                    facebook_id=user_data.get('facebook_id'),
-                    verificado=bool(user_data.get('verificado', 0)),
-                    activo=bool(user_data.get('activo', 1))
+                    foto=user_data.get('foto', ''),
+                    fecha=user_data.get('fecha_registro') or user_data.get('fecha'),
+                    modo='directo',  # Default mode
+                    verificacion=0 if user_data.get('verificado', 0) else 1  # 0=verified, 1=pending
                 )
 
                 self.session.add(usuario)
@@ -161,9 +159,9 @@ class DataMigration:
                     nombre=admin_data['nombre'],
                     email=admin_data['email'],
                     password=admin_data['password'],  # Keep legacy hash
-                    rol=admin_data.get('rol', 'admin'),
-                    fecha_registro=admin_data.get('fecha_registro'),
-                    activo=bool(admin_data.get('activo', 1))
+                    perfil=admin_data.get('perfil') or admin_data.get('rol', 'editor'),
+                    fecha=admin_data.get('fecha_registro') or admin_data.get('fecha'),
+                    estado=1 if admin_data.get('activo', 1) else 0
                 )
 
                 self.session.add(admin)
@@ -682,7 +680,7 @@ class DataMigration:
         print("\n🔍 Verificando integridad de datos...")
 
         verification = {
-            'usuarios': Usuario.query.count(),
+            'usuarios': User.query.count(),
             'administradores': Administrador.query.count(),
             'categorias': Categoria.query.count(),
             'subcategorias': Subcategoria.query.count(),
