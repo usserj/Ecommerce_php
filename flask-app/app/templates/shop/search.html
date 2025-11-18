@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Búsqueda: {{ query }} - Tienda Virtual{% endblock %}
+{% block content %}
+<h2 class="mb-4">Resultados para: "{{ query }}"</h2>
+<p class="text-muted">{{ productos.total }} productos encontrados</p>
+{% if productos.items %}
+<div class="row">
+    {% for producto in productos.items %}
+    <div class="col-md-3 mb-4">
+        {% include 'components/product_card.html' %}
+    </div>
+    {% endfor %}
+</div>
+{% if productos.pages > 1 %}
+<nav><ul class="pagination">
+    <li class="page-item {% if not productos.has_prev %}disabled{% endif %}">
+        <a class="page-link" href="{{ url_for('shop.search', q=query, page=productos.prev_num) }}">Anterior</a>
+    </li>
+    {% for page in productos.iter_pages() %}
+    <li class="page-item {% if page == productos.page %}active{% endif %}">
+        <a class="page-link" href="{{ url_for('shop.search', q=query, page=page) }}">{{ page }}</a>
+    </li>
+    {% endfor %}
+    <li class="page-item {% if not productos.has_next %}disabled{% endif %}">
+        <a class="page-link" href="{{ url_for('shop.search', q=query, page=productos.next_num) }}">Siguiente</a>
+    </li>
+</ul></nav>
+{% endif %}
+{% else %}
+<div class="alert alert-info"><i class="fas fa-info-circle"></i> No se encontraron productos</div>
+{% endif %}
+{% endblock %}

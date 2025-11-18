@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}{% if categoria_actual %}{{ categoria_actual.categoria }}{% else %}Productos{% endif %} - Tienda Virtual{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Sidebar -->
+    <div class="col-md-3">
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-filter"></i> Filtros</h5>
+            </div>
+            <div class="card-body">
+                <h6>Categorías</h6>
+                <ul class="list-unstyled">
+                    <li class="mb-2">
+                        <a href="{{ url_for('shop.index') }}" class="text-decoration-none {% if not categoria_actual %}fw-bold{% endif %}">
+                            Todas las categorías
+                        </a>
+                    </li>
+                    {% for cat in categorias %}
+                    <li class="mb-2">
+                        <a href="{{ url_for('shop.index', ruta=cat.ruta) }}"
+                           class="text-decoration-none {% if categoria_actual and cat.id == categoria_actual.id %}fw-bold text-primary{% endif %}">
+                            {{ cat.categoria }} ({{ cat.get_products_count() }})
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Products -->
+    <div class="col-md-9">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>{% if categoria_actual %}{{ categoria_actual.categoria }}{% else %}Todos los Productos{% endif %}</h2>
+            <span class="text-muted">{{ productos.total }} productos encontrados</span>
+        </div>
+
+        {% if productos.items %}
+        <div class="row">
+            {% for producto in productos.items %}
+            <div class="col-md-4 col-sm-6 mb-4">
+                {% include 'components/product_card.html' %}
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        {% if productos.pages > 1 %}
+        <nav>
+            <ul class="pagination justify-content-center">
+                <li class="page-item {% if not productos.has_prev %}disabled{% endif %}">
+                    <a class="page-link" href="{{ url_for('shop.index', ruta=categoria_actual.ruta if categoria_actual else None, page=productos.prev_num) }}">
+                        Anterior
+                    </a>
+                </li>
+
+                {% for page_num in productos.iter_pages() %}
+                    {% if page_num %}
+                    <li class="page-item {% if page_num == productos.page %}active{% endif %}">
+                        <a class="page-link" href="{{ url_for('shop.index', ruta=categoria_actual.ruta if categoria_actual else None, page=page_num) }}">
+                            {{ page_num }}
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                    {% endif %}
+                {% endfor %}
+
+                <li class="page-item {% if not productos.has_next %}disabled{% endif %}">
+                    <a class="page-link" href="{{ url_for('shop.index', ruta=categoria_actual.ruta if categoria_actual else None, page=productos.next_num) }}">
+                        Siguiente
+                    </a>
+                </li>
+            </ul>
+        </nav>
+        {% endif %}
+        {% else %}
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i> No hay productos en esta categoría
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

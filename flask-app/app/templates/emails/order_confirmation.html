@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Confirmación de Compra</title></head>
+<body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px">
+<div style="background:#28a745;color:white;padding:20px;text-align:center">
+    <h1>¡Compra Exitosa!</h1>
+</div>
+<div style="padding:30px;background:#f8f9fa">
+    <h2>Hola {{ user.nombre }},</h2>
+    <p>Gracias por tu compra. Hemos recibido tu pedido correctamente.</p>
+    <div style="background:white;padding:20px;margin:20px 0;border:1px solid #ddd">
+        <h3>Detalles del Pedido</h3>
+        <p><strong>Orden ID:</strong> #{{ order.id }}</p>
+        <p><strong>Producto:</strong> {{ order.producto.titulo }}</p>
+        <p><strong>Cantidad:</strong> {{ order.cantidad }}</p>
+        <p><strong>Total:</strong> ${{ order.pago }}</p>
+        <p><strong>Método de Pago:</strong> {{ order.metodo }}</p>
+    </div>
+    <p>Recibirás una notificación cuando tu pedido sea enviado.</p>
+</div>
+<div style="background:#212529;color:white;padding:15px;text-align:center;font-size:12px">
+    &copy; 2025 Tienda Virtual
+</div>
+</body></html>

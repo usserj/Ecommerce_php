@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Checkout - Tienda Virtual{% endblock %}
+{% block content %}
+<h2 class="mb-4"><i class="fas fa-credit-card"></i> Finalizar Compra</h2>
+<div class="row">
+    <div class="col-md-8">
+        <form method="POST" action="{{ url_for('checkout.process') }}">
+            {{ csrf_token() }}
+            <div class="card mb-3">
+                <div class="card-header"><h5 class="mb-0">Información de Envío</h5></div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">Dirección Completa *</label>
+                        <textarea class="form-control" name="direccion" required rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">País *</label>
+                        <select class="form-select" name="pais" required>
+                            <option value="Colombia">Colombia</option>
+                            <option value="México">México</option>
+                            <option value="Argentina">Argentina</option>
+                            <option value="Chile">Chile</option>
+                            <option value="Perú">Perú</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="card mb-3">
+                <div class="card-header"><h5 class="mb-0">Método de Pago</h5></div>
+                <div class="card-body">
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="radio" name="metodo_pago" value="paypal" id="paypal" required>
+                        <label class="form-check-label" for="paypal">
+                            <i class="fab fa-paypal fa-2x"></i> PayPal
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="metodo_pago" value="payu" id="payu">
+                        <label class="form-check-label" for="payu">
+                            PayU <span class="badge bg-warning">Próximamente</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-success btn-lg w-100">
+                <i class="fas fa-lock"></i> Pagar ${{"%.2f"|format(total) }}
+            </button>
+        </form>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header bg-dark text-white"><h5 class="mb-0">Resumen</h5></div>
+            <div class="card-body">
+                {% for item in products %}
+                <div class="d-flex justify-content-between mb-2">
+                    <small>{{ item.producto.titulo[:30] }}... ({{ item.cantidad }})</small>
+                    <small>${{ "%.2f"|format(item.total) }}</small>
+                </div>
+                {% endfor %}
+                <hr>
+                <div class="d-flex justify-content-between"><span>Subtotal:</span><span>${{ "%.2f"|format(subtotal) }}</span></div>
+                <div class="d-flex justify-content-between"><span>Impuestos:</span><span>${{ "%.2f"|format(tax) }}</span></div>
+                <div class="d-flex justify-content-between mb-2"><span>Envío:</span><span>${{ "%.2f"|format(shipping) }}</span></div>
+                <hr>
+                <div class="d-flex justify-content-between"><strong>Total:</strong><strong class="text-success">${{ "%.2f"|format(total) }}</strong></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

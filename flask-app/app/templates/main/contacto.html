@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}Contacto - Tienda Virtual{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <h2 class="mb-4">Contáctanos</h2>
+
+        {% if success %}
+        <div class="alert alert-success">{{ success }}</div>
+        {% endif %}
+
+        <div class="card shadow">
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('main.contacto') }}">
+                    {{ csrf_token() }}
+
+                    <div class="mb-3">
+                        <label for="nombre" class="form-label">Nombre Completo *</label>
+                        <input type="text" class="form-control" id="nombre" name="nombre" required
+                               pattern="[a-zA-ZñÑáéíóúÁÉÍÓÚ ]+" title="Solo se permiten letras">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email *</label>
+                        <input type="email" class="form-control" id="email" name="email" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="mensaje" class="form-label">Mensaje *</label>
+                        <textarea class="form-control" id="mensaje" name="mensaje" rows="5" required></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-paper-plane"></i> Enviar Mensaje
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="row mt-5">
+            <div class="col-md-4 text-center mb-3">
+                <i class="fas fa-map-marker-alt fa-3x text-primary mb-3"></i>
+                <h5>Dirección</h5>
+                <p class="text-muted">123 Calle Principal<br>Ciudad, País</p>
+            </div>
+
+            <div class="col-md-4 text-center mb-3">
+                <i class="fas fa-phone fa-3x text-primary mb-3"></i>
+                <h5>Teléfono</h5>
+                <p class="text-muted">+1 234 567 890</p>
+            </div>
+
+            <div class="col-md-4 text-center mb-3">
+                <i class="fas fa-envelope fa-3x text-primary mb-3"></i>
+                <h5>Email</h5>
+                <p class="text-muted">contacto@tiendavirtual.com</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Panel Administrativo{% endblock %}
+{% block content %}
+<h2 class="mb-4"><i class="fas fa-tachometer-alt"></i> Panel Administrativo</h2>
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body"><h6><i class="fas fa-users"></i> Usuarios</h6><h2>{{ total_users }}</h2></div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body"><h6><i class="fas fa-box"></i> Productos</h6><h2>{{ total_products }}</h2></div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body"><h6><i class="fas fa-shopping-cart"></i> Ventas</h6><h2>{{ total_orders }}</h2></div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body"><h6><i class="fas fa-eye"></i> Visitas</h6><h2>{{ total_visits }}</h2></div>
+        </div>
+    </div>
+</div>
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header"><h5 class="mb-0">Últimas Ventas</h5></div>
+            <div class="card-body">
+                <div class="list-group">
+                    {% for order in recent_orders %}
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between">
+                            <span>{{ order.producto.titulo }}</span>
+                            <span class="text-success">${{ order.pago }}</span>
+                        </div>
+                        <small class="text-muted">{{ order.fecha.strftime('%d/%m/%Y %H:%M') }}</small>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header"><h5 class="mb-0">Productos Más Vendidos</h5></div>
+            <div class="card-body">
+                <div class="list-group">
+                    {% for producto in top_products %}
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between">
+                            <span>{{ producto.titulo }}</span>
+                            <span class="badge bg-primary">{{ producto.ventas }} ventas</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

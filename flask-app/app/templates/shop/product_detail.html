@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block title %}{{ producto.titulo }} - Tienda Virtual{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-6">
+        <!-- Product Images -->
+        <div id="productCarousel" class="carousel slide" data-bs-ride="carousel">
+            <div class="carousel-inner">
+                {% set multimedia = producto.get_multimedia_list() %}
+                {% if multimedia %}
+                    {% for img in multimedia %}
+                    <div class="carousel-item {% if loop.first %}active{% endif %}">
+                        <img src="{{ url_for('static', filename=img.foto if img.foto else 'img/default-product.jpg') }}"
+                             class="d-block w-100" alt="{{ producto.titulo }}">
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="carousel-item active">
+                        <img src="{{ url_for('static', filename=producto.portada or 'img/default-product.jpg') }}"
+                             class="d-block w-100" alt="{{ producto.titulo }}">
+                    </div>
+                {% endif %}
+            </div>
+
+            {% if multimedia and multimedia|length > 1 %}
+            <button class="carousel-control-prev" type="button" data-bs-target="#productCarousel" data-bs-slide="prev">
+                <span class="carousel-control-prev-icon"></span>
+            </button>
+            <button class="carousel-control-next" type="button" data-bs-target="#productCarousel" data-bs-slide="next">
+                <span class="carousel-control-next-icon"></span>
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <h2>{{ producto.titulo }}</h2>
+
+        <div class="mb-3">
+            {% set rating = producto.get_average_rating() %}
+            {% for i in range(5) %}
+                {% if i < rating %}
+                <i class="fas fa-star text-warning"></i>
+                {% else %}
+                <i class="far fa-star text-warning"></i>
+                {% endif %}
+            {% endfor %}
+            <span class="text-muted">({{ producto.get_comments_count() }} reseñas)</span>
+        </div>
+
+        <div class="mb-4">
+            {% if producto.is_on_offer() %}
+            <h3 class="text-danger">
+                ${{ "%.2f"|format(producto.get_price()) }}
+                <span class="badge bg-danger">-{{ producto.get_discount_percentage() }}%</span>
+            </h3>
+            <p class="text-muted text-decoration-line-through">${{ "%.2f"|format(producto.precio) }}</p>
+            {% else %}
+            <h3 class="text-primary">${{ "%.2f"|format(producto.precio) }}</h3>
+            {% endif %}
+        </div>
+
+        <p class="lead">{{ producto.titular }}</p>
+
+        <div class="mb-4">
+            <h5>Descripción</h5>
+            <div>{{ producto.descripcion|safe }}</div>
+        </div>
+
+        <div class="mb-4">
+            <div class="input-group" style="max-width: 200px;">
+                <button class="btn btn-outline-secondary" type="button" id="decreaseQty">-</button>
+                <input type="number" class="form-control text-center" value="1" min="1" id="quantity">
+                <button class="btn btn-outline-secondary" type="button" id="increaseQty">+</button>
+            </div>
+        </div>
+
+        <div class="d-grid gap-2">
+            <button class="btn btn-primary btn-lg add-to-cart" data-product-id="{{ producto.id }}">
+                <i class="fas fa-cart-plus"></i> Agregar al Carrito
+            </button>
+
+            {% if current_user.is_authenticated %}
+            <button class="btn btn-outline-danger add-to-wishlist" data-product-id="{{ producto.id }}">
+                <i class="far fa-heart"></i> Agregar a Lista de Deseos
+            </button>
+            {% endif %}
+        </div>
+
+        <div class="mt-4">
+            <ul class="list-unstyled">
+                <li><i class="fas fa-check text-success"></i> Envío gratis en compras mayores a $50</li>
+                <li><i class="fas fa-check text-success"></i> Devoluciones gratis hasta 30 días</li>
+                <li><i class="fas fa-check text-success"></i> Garantía de satisfacción</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Related Products -->
+{% if relacionados %}
+<section class="mt-5">
+    <h3 class="mb-4">Productos Relacionados</h3>
+    <div class="row">
+        {% for producto in relacionados %}
+        <div class="col-md-3 col-sm-6 mb-4">
+            {% include 'components/product_card.html' %}
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<!-- Comments Section -->
+<section class="mt-5">
+    <h3 class="mb-4">Reseñas</h3>
+
+    {% if comentarios %}
+        {% for comentario in comentarios %}
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <h6>{{ comentario.usuario.nombre }}</h6>
+                    <div>
+                        {% for i in range(comentario.get_rating_stars()) %}
+                        <i class="fas fa-star text-warning"></i>
+                        {% endfor %}
+                    </div>
+                </div>
+                <p>{{ comentario.comentario }}</p>
+                <small class="text-muted">{{ comentario.fecha.strftime('%d/%m/%Y') }}</small>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+    <p class="text-muted">No hay reseñas aún. ¡Sé el primero en dejar una!</p>
+    {% endif %}
+</section>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Quantity controls
+document.getElementById('increaseQty').addEventListener('click', function() {
+    let qty = document.getElementById('quantity');
+    qty.value = parseInt(qty.value) + 1;
+});
+
+document.getElementById('decreaseQty').addEventListener('click', function() {
+    let qty = document.getElementById('quantity');
+    if (parseInt(qty.value) > 1) {
+        qty.value = parseInt(qty.value) - 1;
+    }
+});
+</script>
+{% endblock %}
