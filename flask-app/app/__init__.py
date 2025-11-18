@@ -49,6 +49,7 @@ def register_blueprints(app):
     from app.blueprints.checkout import checkout_bp
     from app.blueprints.profile import profile_bp
     from app.blueprints.admin import admin_bp
+    from app.blueprints.health import health_bp
 
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp, url_prefix='/auth')
@@ -57,6 +58,7 @@ def register_blueprints(app):
     app.register_blueprint(checkout_bp, url_prefix='/checkout')
     app.register_blueprint(profile_bp, url_prefix='/perfil')
     app.register_blueprint(admin_bp, url_prefix='/admin')
+    app.register_blueprint(health_bp)
 
 
 def register_error_handlers(app):

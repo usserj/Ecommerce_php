@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  # Flask Application (Development)
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ecommerce_flask_dev
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+      - DATABASE_URL=mysql+pymysql://root:root@db:3306/ecommerce_dev
+      - REDIS_URL=redis://redis:6379/0
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app
+      - /app/__pycache__
+      - /app/*.egg-info
+    depends_on:
+      - db
+      - redis
+    networks:
+      - ecommerce_dev_network
+    command: flask run --host=0.0.0.0 --port=5000 --reload
+
+  # MySQL Database (Development)
+  db:
+    image: mysql:8.0
+    container_name: ecommerce_mysql_dev
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: ecommerce_dev
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_dev_data:/var/lib/mysql
+    networks:
+      - ecommerce_dev_network
+    command: --default-authentication-plugin=mysql_native_password
+
+  # Redis (Development)
+  redis:
+    image: redis:7-alpine
+    container_name: ecommerce_redis_dev
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    networks:
+      - ecommerce_dev_network
+
+  # Mailhog (Email Testing)
+  mailhog:
+    image: mailhog/mailhog
+    container_name: ecommerce_mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025"  # SMTP
+      - "8025:8025"  # Web UI
+    networks:
+      - ecommerce_dev_network
+
+volumes:
+  mysql_dev_data:
+    driver: local
+
+networks:
+  ecommerce_dev_network:
+    driver: bridge
