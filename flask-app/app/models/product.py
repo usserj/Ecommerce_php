@@ -81,7 +81,8 @@ class Producto(db.Model):
     def get_average_rating(self):
         """Get average rating from comments."""
         from sqlalchemy import func
-        result = db.session.query(func.avg(self.comentarios.filter_by().calificacion)).scalar()
+        from app.models.comment import Comentario
+        result = db.session.query(func.avg(Comentario.calificacion)).filter_by(id_producto=self.id).scalar()
         return round(result, 1) if result else 0
 
     def get_comments_count(self):
