@@ -288,7 +288,7 @@ class EcommerceDemoSetup:
         db_url = self.app.config['SQLALCHEMY_DATABASE_URI']
         # mysql+pymysql://user:pass@host/dbname
         parts = db_url.split('/')
-        db_name = parts[-1].split('?')[0]  # ecommerce_ecuador
+        db_name = parts[-1].split('?')[0]  # Ecommerce_Ec
 
         # Conectar sin especificar base de datos
         connection_url = '/'.join(parts[:-1])

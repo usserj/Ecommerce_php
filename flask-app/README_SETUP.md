@@ -34,13 +34,13 @@ cp .env.example .env
 **Configuración por defecto** (MySQL con root sin contraseña):
 
 ```env
-DATABASE_URL=mysql+pymysql://root:@localhost/ecommerce_ecuador
+DATABASE_URL=mysql+pymysql://root:@localhost/Ecommerce_Ec
 ```
 
 **Si tu MySQL tiene contraseña**, edita `.env`:
 
 ```env
-DATABASE_URL=mysql+pymysql://root:TU_PASSWORD@localhost/ecommerce_ecuador
+DATABASE_URL=mysql+pymysql://root:TU_PASSWORD@localhost/Ecommerce_Ec
 ```
 
 ### Paso 3: Configurar Sistema Completo
@@ -52,7 +52,7 @@ python setup_demo.py
 ```
 
 Este script hará TODO automáticamente:
-- ✅ Crea la base de datos `ecommerce_ecuador`
+- ✅ Crea la base de datos `Ecommerce_Ec`
 - ✅ Crea todas las tablas necesarias
 - ✅ Pobla con datos de demostración (productos, categorías, usuarios)
 - ✅ Configura usuarios administradores y clientes
@@ -162,7 +162,7 @@ La configuración por defecto para Ecuador incluye:
 2. Confirma tu usuario y contraseña de MySQL
 3. Edita `.env` con tus credenciales correctas:
    ```env
-   DATABASE_URL=mysql+pymysql://TU_USUARIO:TU_PASSWORD@localhost/ecommerce_ecuador
+   DATABASE_URL=mysql+pymysql://TU_USUARIO:TU_PASSWORD@localhost/Ecommerce_Ec
    ```
 
 ### Error: "Can't connect to MySQL server"
@@ -198,7 +198,7 @@ mysql -u root -p
 
 Luego en el prompt de MySQL:
 ```sql
-CREATE DATABASE ecommerce_ecuador CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE Ecommerce_Ec CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 exit;
 ```
 

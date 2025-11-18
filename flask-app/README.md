@@ -63,7 +63,7 @@ Editar `.env` con tus credenciales:
 SECRET_KEY=tu-clave-secreta-aqui
 
 # Database
-DATABASE_URL=mysql+pymysql://root:@localhost/ecommerce_ecuador
+DATABASE_URL=mysql+pymysql://root:@localhost/Ecommerce_Ec
 
 # Email
 MAIL_USERNAME=tu-email@gmail.com

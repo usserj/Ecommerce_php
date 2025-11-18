@@ -43,7 +43,7 @@ Cuando ejecutas `python run.py` por primera vez:
 Si no existe, copia `.env.example` a `.env`
 
 ### 2️⃣ Crea la base de datos automáticamente
-Crea la base de datos `ecommerce_ecuador` en MySQL
+Crea la base de datos `Ecommerce_Ec` en MySQL
 
 ### 3️⃣ Crea todas las tablas automáticamente
 Genera el esquema completo de la base de datos
@@ -69,8 +69,8 @@ La aplicación estará disponible en: **http://localhost:5000**
 ============================================================
 🚀 INICIALIZACIÓN AUTOMÁTICA DE BASE DE DATOS
 ============================================================
-Creating database 'ecommerce_ecuador'...
-Database 'ecommerce_ecuador' created successfully!
+Creating database 'Ecommerce_Ec'...
+Database 'Ecommerce_Ec' created successfully!
 Creating database tables...
 Database tables created successfully!
 
@@ -156,13 +156,13 @@ Si tu MySQL tiene contraseña o configuración diferente, edita `.env`:
 
 ```env
 # Cambiar esta línea:
-DATABASE_URL=mysql+pymysql://root:@localhost/ecommerce_ecuador
+DATABASE_URL=mysql+pymysql://root:@localhost/Ecommerce_Ec
 
 # Por ejemplo, si tu root tiene password "mipassword":
-DATABASE_URL=mysql+pymysql://root:mipassword@localhost/ecommerce_ecuador
+DATABASE_URL=mysql+pymysql://root:mipassword@localhost/Ecommerce_Ec
 
 # O si usas otro usuario:
-DATABASE_URL=mysql+pymysql://miusuario:mipassword@localhost/ecommerce_ecuador
+DATABASE_URL=mysql+pymysql://miusuario:mipassword@localhost/Ecommerce_Ec
 ```
 
 Luego ejecuta nuevamente:
@@ -181,7 +181,7 @@ Si quieres empezar de nuevo con datos frescos:
 mysql -u root -p
 ```
 ```sql
-DROP DATABASE ecommerce_ecuador;
+DROP DATABASE Ecommerce_Ec;
 exit;
 ```
 
@@ -254,7 +254,7 @@ sudo service mysql start
 **Solución**: Edita `.env` con tus credenciales correctas de MySQL
 
 ```env
-DATABASE_URL=mysql+pymysql://TU_USUARIO:TU_PASSWORD@localhost/ecommerce_ecuador
+DATABASE_URL=mysql+pymysql://TU_USUARIO:TU_PASSWORD@localhost/Ecommerce_Ec
 ```
 
 ### Error: "ModuleNotFoundError"
