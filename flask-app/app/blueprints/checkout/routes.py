@@ -15,6 +15,9 @@ from app.services.payment_service import (
     process_bank_transfer_payment,
     process_transfer_voucher_payment
 )
+import os
+from werkzeug.utils import secure_filename
+from datetime import datetime
 
 
 @checkout_bp.route('/')
@@ -134,10 +137,6 @@ def cancel():
 @login_required
 def upload_voucher():
     """Handle voucher upload for bank transfer."""
-    import os
-    from werkzeug.utils import secure_filename
-    from datetime import datetime
-
     order_id = request.form.get('order_id')
     referencia = request.form.get('referencia', '')
 
@@ -152,11 +151,11 @@ def upload_voucher():
         return redirect(url_for('checkout.index'))
 
     # Validate file type
-    allowed_extensions = {'png', 'jpg', 'jpeg', 'pdf'}
+    allowed_extensions = {'png', 'jpg', 'jpeg', 'pdf', 'txt'}
     file_ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else ''
 
     if file_ext not in allowed_extensions:
-        flash('Tipo de archivo no permitido. Use PNG, JPG o PDF.', 'error')
+        flash('Tipo de archivo no permitido. Use PNG, JPG, PDF o TXT.', 'error')
         return redirect(url_for('checkout.index'))
 
     # Create uploads directory if it doesn't exist

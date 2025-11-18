@@ -706,11 +706,14 @@
         const updateQuantityInputs = document.querySelectorAll('.update-quantity');
         updateQuantityInputs.forEach(input => {
             input.addEventListener('change', function() {
-                const productId = this.getAttribute('data-product-id');
+                const productId = parseInt(this.getAttribute('data-product-id'));
                 const quantity = parseInt(this.value);
                 if (quantity > 0) {
                     updateCartQuantity(productId, quantity);
-                    location.reload(); // Reload to update totals
+                    // Reload after a short delay to show updated values
+                    setTimeout(() => {
+                        location.reload();
+                    }, 800);
                 }
             });
         });

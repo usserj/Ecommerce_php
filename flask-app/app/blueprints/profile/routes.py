@@ -1,9 +1,12 @@
 """User profile routes."""
-from flask import render_template, request, redirect, url_for, flash
+from flask import render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
 from app.blueprints.profile import profile_bp
 from app.models.user import User
-from app.extensions import db
+from app.models.product import Producto
+from app.models.order import Compra
+from app.models.wishlist import Deseo
+from app.extensions import db, csrf
 from werkzeug.utils import secure_filename
 import os
 
@@ -28,9 +31,9 @@ def dashboard():
 def orders():
     """User orders history."""
     page = request.args.get('page', 1, type=int)
-    orders = current_user.compras.order_by(current_user.compras.c.fecha.desc()).paginate(
-        page=page, per_page=10, error_out=False
-    )
+    orders = Compra.query.filter_by(id_usuario=current_user.id).order_by(
+        Compra.fecha.desc()
+    ).paginate(page=page, per_page=10, error_out=False)
 
     return render_template('profile/orders.html', orders=orders)
 
@@ -85,6 +88,66 @@ def edit():
         return redirect(url_for('profile.dashboard'))
 
     return render_template('profile/edit.html')
+
+
+@profile_bp.route('/wishlist/toggle', methods=['POST'])
+@login_required
+@csrf.exempt
+def toggle_wishlist():
+    """Toggle product in wishlist."""
+    try:
+        data = request.get_json()
+        producto_id = data.get('producto_id')
+
+        if not producto_id:
+            return jsonify({
+                'success': False,
+                'message': 'Producto inválido'
+            }), 400
+
+        producto = Producto.query.get(producto_id)
+        if not producto:
+            return jsonify({
+                'success': False,
+                'message': 'Producto no encontrado'
+            }), 404
+
+        # Check if already in wishlist
+        deseo = Deseo.query.filter_by(
+            id_usuario=current_user.id,
+            id_producto=producto_id
+        ).first()
+
+        if deseo:
+            # Remove from wishlist
+            db.session.delete(deseo)
+            db.session.commit()
+            return jsonify({
+                'success': True,
+                'added': False,
+                'message': 'Producto eliminado de favoritos'
+            })
+        else:
+            # Add to wishlist
+            from datetime import datetime
+            nuevo_deseo = Deseo(
+                id_usuario=current_user.id,
+                id_producto=producto_id,
+                fecha=datetime.now()
+            )
+            db.session.add(nuevo_deseo)
+            db.session.commit()
+            return jsonify({
+                'success': True,
+                'added': True,
+                'message': 'Producto agregado a favoritos'
+            })
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error: {str(e)}'
+        }), 500
 
 
 @profile_bp.route('/delete', methods=['POST'])

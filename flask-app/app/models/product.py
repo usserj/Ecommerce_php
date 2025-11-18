@@ -61,6 +61,11 @@ class Producto(db.Model):
             return self.descuentoOferta
         return 0
 
+    @property
+    def descuento(self):
+        """Alias para descuentoOferta para compatibilidad."""
+        return self.descuentoOferta if self.descuentoOferta else 0
+
     def is_on_offer(self):
         """Check if product is currently on offer."""
         if self.oferta == 1:

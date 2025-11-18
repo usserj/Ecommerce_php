@@ -36,15 +36,19 @@ def contacto():
     """Contact page."""
     if request.method == 'POST':
         from app.services.email_service import send_contact_email
+        from flask import flash
 
         nombre = request.form.get('nombre')
         email = request.form.get('email')
         mensaje = request.form.get('mensaje')
 
         if nombre and email and mensaje:
-            send_contact_email(nombre, email, mensaje)
-            return render_template('main/contacto.html',
-                                 success='Mensaje enviado correctamente')
+            success = send_contact_email(nombre, email, mensaje)
+            if success:
+                flash('Mensaje enviado correctamente. Le responderemos pronto.', 'success')
+            else:
+                flash('Gracias por su mensaje. Hemos guardado su consulta y le responderemos pronto.', 'info')
+            return render_template('main/contacto.html')
 
     return render_template('main/contacto.html')
 
