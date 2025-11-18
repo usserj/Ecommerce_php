@@ -420,7 +420,7 @@ class EcommerceDemoSetup:
             for i, subcat_nombre in enumerate(cat_data['subcategorias']):
                 subcategoria = Subcategoria(
                     subcategoria=subcat_nombre,
-                    ruta=slugify(subcat_nombre),
+                    ruta=slugify(f"{cat_nombre}-{subcat_nombre}"),
                     id_categoria=categoria.id,
                     estado=1
                 )
