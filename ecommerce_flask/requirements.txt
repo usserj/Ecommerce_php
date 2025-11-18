@@ -1,0 +1,42 @@
+# Flask Core
+Flask==3.0.0
+Flask-SQLAlchemy==3.1.1
+Flask-Migrate==4.0.5
+Flask-Login==0.6.3
+Flask-WTF==1.2.1
+Flask-Mail==0.9.1
+
+# Database
+PyMySQL==1.1.0
+cryptography==41.0.7
+
+# Image Processing
+Pillow==10.1.0
+
+# Password Hashing
+bcrypt==4.1.1
+passlib==1.7.4
+
+# Payment Gateways
+paypalrestsdk==1.13.1
+
+# HTTP Requests
+requests==2.31.0
+
+# Environment Variables
+python-dotenv==1.0.0
+
+# Forms & Validation
+email-validator==2.1.0
+WTForms==3.1.1
+
+# Production Server
+gunicorn==21.2.0
+
+# Development
+python-dateutil==2.8.2
+
+# Google OAuth
+google-auth==2.25.2
+google-auth-oauthlib==1.2.0
+google-auth-httplib2==0.2.0
