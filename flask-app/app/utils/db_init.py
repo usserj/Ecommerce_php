@@ -155,6 +155,85 @@ def check_and_seed_data(app):
         print("    Puedes ejecutar manualmente: python setup_demo.py")
 
 
+def migrate_payment_gateway_columns(database_url):
+    """
+    Add payment gateway columns to comercio table if they don't exist.
+
+    Args:
+        database_url: SQLAlchemy database URL
+
+    Returns:
+        bool: True if migration successful
+    """
+    try:
+        # Parse the database URL
+        parsed = urlparse(database_url)
+
+        # Extract connection details
+        username = parsed.username or 'root'
+        password = parsed.password or ''
+        host = parsed.hostname or 'localhost'
+        port = parsed.port or 3306
+        database = parsed.path.lstrip('/')
+
+        # Connect to database
+        connection = pymysql.connect(
+            host=host,
+            port=port,
+            user=username,
+            password=password,
+            database=database,
+            charset='utf8mb4'
+        )
+
+        try:
+            with connection.cursor() as cursor:
+                # List of columns to add: (name, definition)
+                columns = [
+                    ("modoPaymentez", "VARCHAR(20) DEFAULT 'test'"),
+                    ("appCodePaymentez", "TEXT"),
+                    ("appKeyPaymentez", "TEXT"),
+                    ("modoDatafast", "VARCHAR(20) DEFAULT 'test'"),
+                    ("midDatafast", "VARCHAR(100)"),
+                    ("tidDatafast", "VARCHAR(100)"),
+                    ("modoDeUna", "VARCHAR(20) DEFAULT 'test'"),
+                    ("apiKeyDeUna", "TEXT"),
+                    ("cuentasBancarias", "TEXT"),
+                ]
+
+                columns_added = 0
+
+                for column_name, column_def in columns:
+                    try:
+                        # Check if column exists
+                        cursor.execute(f"SHOW COLUMNS FROM comercio LIKE '{column_name}'")
+                        result = cursor.fetchone()
+
+                        if not result:
+                            # Add column
+                            sql = f"ALTER TABLE comercio ADD COLUMN {column_name} {column_def}"
+                            cursor.execute(sql)
+                            connection.commit()
+                            columns_added += 1
+
+                    except pymysql.err.OperationalError:
+                        # Column might already exist or other error
+                        connection.rollback()
+                        pass
+
+                if columns_added > 0:
+                    print(f"✅ Agregadas {columns_added} columnas de pasarelas de pago")
+
+            return True
+
+        finally:
+            connection.close()
+
+    except Exception as e:
+        print(f"⚠️  Error migrando columnas de pasarelas: {e}")
+        return False
+
+
 def auto_init_database(app):
     """
     Automatically initialize database on first run.
@@ -173,6 +252,9 @@ def auto_init_database(app):
         if ensure_database_exists(database_url):
             # Initialize tables
             initialize_tables(app)
+
+            # Migrate payment gateway columns
+            migrate_payment_gateway_columns(database_url)
 
             # Check and seed data if empty
             check_and_seed_data(app)
