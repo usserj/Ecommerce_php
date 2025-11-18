@@ -112,22 +112,13 @@
         .then(data => {
             hideLoading();
             if (data.success) {
-                // Remove item from DOM
-                const itemElement = document.querySelector(`[data-product-id="${productId}"]`);
-                if (itemElement) {
-                    itemElement.remove();
-                }
-
-                // Update cart summary
-                updateCartSummary(data.cart_summary);
+                showAlert('success', data.message || 'Producto eliminado del carrito');
                 updateCartBadge(data.cart_count);
 
-                showAlert('success', data.message || 'Producto eliminado del carrito');
-
-                // Show empty cart message if no items
-                if (data.cart_count === 0) {
+                // Reload page to update cart summary
+                setTimeout(() => {
                     location.reload();
-                }
+                }, 800);
             } else {
                 showAlert('danger', data.message || 'Error al eliminar el producto');
             }

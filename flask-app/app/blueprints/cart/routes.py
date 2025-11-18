@@ -110,28 +110,61 @@ def add_to_cart():
 @csrf.exempt
 def update_cart():
     """Update cart item quantity."""
-    data = request.get_json()
-    producto_id = data.get('producto_id')
-    cantidad = data.get('cantidad', 1)
+    try:
+        data = request.get_json()
+        producto_id = int(data.get('producto_id'))
+        cantidad = int(data.get('cantidad', 1))
 
-    cart = session.get('cart', [])
+        cart = session.get('cart', [])
 
-    for item in cart:
-        if item['id'] == producto_id:
-            if cantidad <= 0:
-                cart.remove(item)
-            else:
-                item['cantidad'] = cantidad
-            break
+        # Update or remove item
+        for item in cart:
+            if item['id'] == producto_id:
+                if cantidad <= 0:
+                    cart.remove(item)
+                else:
+                    item['cantidad'] = cantidad
+                break
 
-    session['cart'] = cart
-    session.modified = True
+        session['cart'] = cart
+        session.modified = True
 
-    return jsonify({
-        'success': True,
-        'cart_count': len(cart),
-        'message': 'Carrito actualizado'
-    })
+        # Calculate cart summary
+        subtotal = 0
+        item_total = 0
+        for item in cart:
+            producto = Producto.query.get(item['id'])
+            if producto:
+                precio = producto.get_price()
+                total = precio * item['cantidad']
+                subtotal += total
+                if item['id'] == producto_id:
+                    item_total = total
+
+        from app.models.comercio import Comercio
+        config = Comercio.get_config()
+        tax = config.calculate_tax(subtotal)
+        shipping = config.envioNacional if subtotal > 0 else 0
+        total = subtotal + tax + shipping
+
+        return jsonify({
+            'success': True,
+            'cart_count': len(cart),
+            'message': 'Carrito actualizado',
+            'item_total': item_total,
+            'cart_summary': {
+                'subtotal': subtotal,
+                'tax': tax,
+                'shipping': shipping,
+                'total': total
+            }
+        })
+    except Exception as e:
+        logger.error(f"Error updating cart: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'message': 'Error al actualizar el carrito'
+        }), 500
 
 
 @cart_bp.route('/remove/<int:producto_id>', methods=['POST'])
