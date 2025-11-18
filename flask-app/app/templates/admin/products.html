@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block title %}Gestión de Productos{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Admin Navigation -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-body py-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <a href="{{ url_for('admin.dashboard') }}" class="btn btn-sm btn-outline-primary me-2">
+                                <i class="fas fa-tachometer-alt"></i> Dashboard
+                            </a>
+                            <a href="{{ url_for('admin.users') }}" class="btn btn-sm btn-outline-primary me-2">
+                                <i class="fas fa-users"></i> Usuarios
+                            </a>
+                            <a href="{{ url_for('admin.products') }}" class="btn btn-sm btn-primary me-2">
+                                <i class="fas fa-box"></i> Productos
+                            </a>
+                            <a href="{{ url_for('admin.orders') }}" class="btn btn-sm btn-outline-primary me-2">
+                                <i class="fas fa-shopping-cart"></i> Pedidos
+                            </a>
+                            <a href="{{ url_for('admin.analytics') }}" class="btn btn-sm btn-outline-primary me-2">
+                                <i class="fas fa-chart-line"></i> Analíticas
+                            </a>
+                            <a href="{{ url_for('admin.settings') }}" class="btn btn-sm btn-outline-success me-2">
+                                <i class="fas fa-cog"></i> Configuración
+                            </a>
+                        </div>
+                        <div>
+                            <span class="me-3"><i class="fas fa-user-shield"></i> {{ session.admin_nombre }}</span>
+                            <a href="{{ url_for('admin.logout') }}" class="btn btn-sm btn-outline-danger">
+                                <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow">
+        <div class="card-header bg-success text-white">
+            <h4 class="mb-0"><i class="fas fa-box"></i> Gestión de Productos</h4>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Imagen</th>
+                            <th>Título</th>
+                            <th>Categoría</th>
+                            <th>Precio</th>
+                            <th>Descuento</th>
+                            <th>Stock</th>
+                            <th>Ventas</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for producto in products.items %}
+                        <tr>
+                            <td>{{ producto.id }}</td>
+                            <td>
+                                <img src="{{ producto.imagen or url_for('static', filename='placeholder.jpg') }}"
+                                     alt="{{ producto.titulo }}"
+                                     style="width: 50px; height: 50px; object-fit: cover;">
+                            </td>
+                            <td>{{ producto.titulo }}</td>
+                            <td>{{ producto.categoria.titulo if producto.categoria else 'N/A' }}</td>
+                            <td>${{ "%.2f"|format(producto.precio) }}</td>
+                            <td>
+                                {% if producto.descuento > 0 %}
+                                    <span class="badge bg-warning">{{ producto.descuento }}%</span>
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if producto.stock > 10 %}
+                                    <span class="badge bg-success">{{ producto.stock }}</span>
+                                {% elif producto.stock > 0 %}
+                                    <span class="badge bg-warning">{{ producto.stock }}</span>
+                                {% else %}
+                                    <span class="badge bg-danger">{{ producto.stock }}</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ producto.ventas }}</td>
+                            <td>
+                                {% if producto.estado == 1 %}
+                                    <span class="badge bg-success">Activo</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Inactivo</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if products.has_prev or products.has_next %}
+            <nav>
+                <ul class="pagination justify-content-center">
+                    {% if products.has_prev %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('admin.products', page=products.prev_num) }}">
+                                <i class="fas fa-chevron-left"></i> Anterior
+                            </a>
+                        </li>
+                    {% endif %}
+
+                    {% for page_num in products.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+                        {% if page_num %}
+                            <li class="page-item {% if page_num == products.page %}active{% endif %}">
+                                <a class="page-link" href="{{ url_for('admin.products', page=page_num) }}">{{ page_num }}</a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if products.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('admin.products', page=products.next_num) }}">
+                                Siguiente <i class="fas fa-chevron-right"></i>
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

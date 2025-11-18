@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+{% block title %}Configuración del Sistema{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-cog"></i> Configuración del Sistema
+                    </h4>
+                </div>
+                <div class="card-body">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+
+                    <form method="POST" action="{{ url_for('admin.settings') }}">
+                        {{ csrf_token() }}
+
+                        <!-- Store Settings -->
+                        <div class="card mb-4">
+                            <div class="card-header bg-secondary text-white">
+                                <h5 class="mb-0"><i class="fas fa-store"></i> Configuración General de la Tienda</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">País</label>
+                                        <input type="text" class="form-control" name="pais" value="{{ config.pais or 'Ecuador' }}">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Impuesto (%)</label>
+                                        <input type="number" step="0.01" class="form-control" name="impuesto" value="{{ config.impuesto or 0 }}">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Envío Nacional ($)</label>
+                                        <input type="number" step="0.01" class="form-control" name="envioNacional" value="{{ config.envioNacional or 0 }}">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Envío Internacional ($)</label>
+                                        <input type="number" step="0.01" class="form-control" name="envioInternacional" value="{{ config.envioInternacional or 0 }}">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- PayPal Settings -->
+                        <div class="card mb-4">
+                            <div class="card-header" style="background-color: #0070ba; color: white;">
+                                <h5 class="mb-0"><i class="fab fa-paypal"></i> PayPal (Internacional)</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-12 mb-3">
+                                        <label class="form-label">Modo</label>
+                                        <select class="form-select" name="modoPaypal">
+                                            <option value="sandbox" {% if config.modoPaypal == 'sandbox' %}selected{% endif %}>Sandbox (Pruebas)</option>
+                                            <option value="live" {% if config.modoPaypal == 'live' %}selected{% endif %}>Live (Producción)</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Client ID</label>
+                                        <input type="text" class="form-control" name="clienteIdPaypal" value="{{ config.clienteIdPaypal or '' }}">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Secret Key</label>
+                                        <input type="password" class="form-control" name="llaveSecretaPaypal" value="{{ config.llaveSecretaPaypal or '' }}">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Paymentez Settings -->
+                        <div class="card mb-4">
+                            <div class="card-header" style="background-color: #00a651; color: white;">
+                                <h5 class="mb-0"><i class="fas fa-credit-card"></i> Paymentez (Tarjetas - Ecuador)</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-12 mb-3">
+                                        <label class="form-label">Modo</label>
+                                        <select class="form-select" name="modoPaymentez">
+                                            <option value="test" {% if config.modoPaymentez == 'test' %}selected{% endif %}>Test (Pruebas)</option>
+                                            <option value="prod" {% if config.modoPaymentez == 'prod' %}selected{% endif %}>Producción</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">App Code</label>
+                                        <input type="text" class="form-control" name="appCodePaymentez" value="{{ config.appCodePaymentez or '' }}">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">App Key</label>
+                                        <input type="password" class="form-control" name="appKeyPaymentez" value="{{ config.appKeyPaymentez or '' }}">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Datafast Settings -->
+                        <div class="card mb-4">
+                            <div class="card-header" style="background-color: #003d7a; color: white;">
+                                <h5 class="mb-0"><i class="fas fa-credit-card"></i> Datafast (Tarjetas - Ecuador)</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-12 mb-3">
+                                        <label class="form-label">Modo</label>
+                                        <select class="form-select" name="modoDatafast">
+                                            <option value="test" {% if config.modoDatafast == 'test' %}selected{% endif %}>Test (Pruebas)</option>
+                                            <option value="prod" {% if config.modoDatafast == 'prod' %}selected{% endif %}>Producción</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">MID (Merchant ID)</label>
+                                        <input type="text" class="form-control" name="midDatafast" value="{{ config.midDatafast or '' }}">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">TID (Terminal ID)</label>
+                                        <input type="text" class="form-control" name="tidDatafast" value="{{ config.tidDatafast or '' }}">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- De Una Settings -->
+                        <div class="card mb-4">
+                            <div class="card-header" style="background-color: #ff6b35; color: white;">
+                                <h5 class="mb-0"><i class="fas fa-mobile-alt"></i> De Una (Pago Móvil - Ecuador)</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-12 mb-3">
+                                        <label class="form-label">Modo</label>
+                                        <select class="form-select" name="modoDeUna">
+                                            <option value="test" {% if config.modoDeUna == 'test' %}selected{% endif %}>Test (Pruebas)</option>
+                                            <option value="prod" {% if config.modoDeUna == 'prod' %}selected{% endif %}>Producción</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-12 mb-3">
+                                        <label class="form-label">API Key</label>
+                                        <input type="password" class="form-control" name="apiKeyDeUna" value="{{ config.apiKeyDeUna or '' }}">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Bank Accounts Settings -->
+                        <div class="card mb-4">
+                            <div class="card-header" style="background-color: #17a2b8; color: white;">
+                                <h5 class="mb-0"><i class="fas fa-university"></i> Cuentas Bancarias para Transferencias</h5>
+                            </div>
+                            <div class="card-body">
+                                <!-- Banco Pichincha -->
+                                <h6 class="text-primary mb-3">Banco Pichincha</h6>
+                                <div class="row mb-4">
+                                    <div class="col-md-3">
+                                        <label class="form-label">Nombre del Titular</label>
+                                        <input type="text" class="form-control" name="banco_pichincha_nombre" value="{{ bank_accounts.banco_pichincha.nombre or '' }}">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Número de Cuenta</label>
+                                        <input type="text" class="form-control" name="banco_pichincha_cuenta" value="{{ bank_accounts.banco_pichincha.cuenta or '' }}">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Tipo de Cuenta</label>
+                                        <select class="form-select" name="banco_pichincha_tipo">
+                                            <option value="Ahorros" {% if bank_accounts.banco_pichincha.tipo == 'Ahorros' %}selected{% endif %}>Ahorros</option>
+                                            <option value="Corriente" {% if bank_accounts.banco_pichincha.tipo == 'Corriente' %}selected{% endif %}>Corriente</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Cédula/RUC</label>
+                                        <input type="text" class="form-control" name="banco_pichincha_cedula" value="{{ bank_accounts.banco_pichincha.cedula or '' }}">
+                                    </div>
+                                </div>
+
+                                <!-- Banco Guayaquil -->
+                                <h6 class="text-primary mb-3">Banco Guayaquil</h6>
+                                <div class="row mb-4">
+                                    <div class="col-md-3">
+                                        <label class="form-label">Nombre del Titular</label>
+                                        <input type="text" class="form-control" name="banco_guayaquil_nombre" value="{{ bank_accounts.banco_guayaquil.nombre or '' }}">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Número de Cuenta</label>
+                                        <input type="text" class="form-control" name="banco_guayaquil_cuenta" value="{{ bank_accounts.banco_guayaquil.cuenta or '' }}">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Tipo de Cuenta</label>
+                                        <select class="form-select" name="banco_guayaquil_tipo">
+                                            <option value="Ahorros" {% if bank_accounts.banco_guayaquil.tipo == 'Ahorros' %}selected{% endif %}>Ahorros</option>
+                                            <option value="Corriente" {% if bank_accounts.banco_guayaquil.tipo == 'Corriente' %}selected{% endif %}>Corriente</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Cédula/RUC</label>
+                                        <input type="text" class="form-control" name="banco_guayaquil_cedula" value="{{ bank_accounts.banco_guayaquil.cedula or '' }}">
+                                    </div>
+                                </div>
+
+                                <!-- Banco Pacífico -->
+                                <h6 class="text-primary mb-3">Banco Pacífico</h6>
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <label class="form-label">Nombre del Titular</label>
+                                        <input type="text" class="form-control" name="banco_pacifico_nombre" value="{{ bank_accounts.banco_pacifico.nombre or '' }}">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Número de Cuenta</label>
+                                        <input type="text" class="form-control" name="banco_pacifico_cuenta" value="{{ bank_accounts.banco_pacifico.cuenta or '' }}">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Tipo de Cuenta</label>
+                                        <select class="form-select" name="banco_pacifico_tipo">
+                                            <option value="Ahorros" {% if bank_accounts.banco_pacifico.tipo == 'Ahorros' %}selected{% endif %}>Ahorros</option>
+                                            <option value="Corriente" {% if bank_accounts.banco_pacifico.tipo == 'Corriente' %}selected{% endif %}>Corriente</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Cédula/RUC</label>
+                                        <input type="text" class="form-control" name="banco_pacifico_cedula" value="{{ bank_accounts.banco_pacifico.cedula or '' }}">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="text-center">
+                            <button type="submit" class="btn btn-primary btn-lg px-5">
+                                <i class="fas fa-save"></i> Guardar Configuración
+                            </button>
+                            <a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary btn-lg px-5">
+                                <i class="fas fa-arrow-left"></i> Volver al Dashboard
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .card {
+        border-radius: 10px;
+    }
+    .card-header {
+        border-radius: 10px 10px 0 0 !important;
+    }
+    .form-label {
+        font-weight: 600;
+        color: #495057;
+    }
+</style>
+{% endblock %}
