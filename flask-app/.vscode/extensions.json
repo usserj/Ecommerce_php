@@ -1,0 +1,21 @@
+{
+    "recommendations": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-python.black-formatter",
+        "ms-python.flake8",
+        "ms-python.isort",
+        "littlefoxteam.vscode-python-test-adapter",
+        "njpwerner.autodocstring",
+        "wholroyd.jinja",
+        "batisteo.vscode-django",
+        "formulahendry.auto-close-tag",
+        "formulahendry.auto-rename-tag",
+        "christian-kohler.path-intellisense",
+        "eamodio.gitlens",
+        "github.copilot",
+        "redhat.vscode-yaml",
+        "tamasfe.even-better-toml",
+        "ms-azuretools.vscode-docker"
+    ]
+}
