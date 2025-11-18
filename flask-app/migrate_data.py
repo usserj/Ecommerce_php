@@ -853,7 +853,7 @@ def main():
     }
 
     # Target database (Flask)
-    default_target_url = 'mysql+pymysql://root:password@localhost/ecommerce_flask'
+    default_target_url = 'mysql+pymysql://root:@localhost/Ecommerce_Ec'
     target_db_url = input(f"URL BD destino (default: {default_target_url}): ").strip() or default_target_url
 
     # File directories
