@@ -90,13 +90,18 @@ flask init-db
 
 ### 6. (Opcional) Migrar datos desde PHP
 
-Si tienes datos en la base de datos PHP:
+Si tienes datos en la base de datos PHP original:
 
 ```bash
-# Editar DATABASE_URL en .env para apuntar a la BD antigua
-# Luego ejecutar:
-flask migrate-data
+python migrate_data.py
 ```
+
+El script te guiará paso a paso solicitando:
+- Credenciales de la BD origen (PHP MySQL)
+- URL de la BD destino (Flask)
+- Directorios de archivos
+
+Ver [MIGRATION_GUIDE.md](MIGRATION_GUIDE.md) para instrucciones detalladas.
 
 ### 7. Ejecutar la aplicación
 
@@ -150,10 +155,22 @@ flask-app/
 │   │   └── analytics_service.py
 │   │
 │   ├── templates/               # Templates Jinja2
-│   │   └── (pendiente)
+│   │   ├── base.html
+│   │   ├── main/                # Home, contacto
+│   │   ├── auth/                # Login, registro
+│   │   ├── shop/                # Productos, detalle
+│   │   ├── cart/                # Carrito
+│   │   ├── checkout/            # Checkout
+│   │   ├── profile/             # Perfil usuario
+│   │   ├── admin/               # Dashboard admin
+│   │   ├── emails/              # Templates email
+│   │   ├── errors/              # 404, 500
+│   │   └── components/          # Componentes reusables
 │   │
 │   └── static/                  # Archivos estáticos
-│       └── (pendiente)
+│       ├── css/                 # Estilos custom
+│       ├── js/                  # JavaScript (AJAX)
+│       └── uploads/             # Archivos subidos
 │
 ├── migrations/                  # Migraciones Alembic
 ├── tests/                       # Tests
@@ -168,20 +185,20 @@ flask-app/
 ## Comandos CLI
 
 ```bash
-# Inicializar base de datos
-flask init-db
-
-# Migrar datos desde PHP
-flask migrate-data
+# Crear base de datos y tablas
+flask db upgrade
 
 # Crear migraciones
 flask db migrate -m "Descripción"
 
-# Aplicar migraciones
-flask db upgrade
-
 # Revertir migración
 flask db downgrade
+
+# Migrar datos desde PHP (ver MIGRATION_GUIDE.md)
+python migrate_data.py
+
+# Shell interactivo con contexto de app
+flask shell
 ```
 
 ## Desarrollo
@@ -274,15 +291,53 @@ Este proyecto es una migración del sistema PHP original.
 
 Para reportar bugs o solicitar features, crear un issue en GitHub.
 
-## TODO
+## Estado del Proyecto
 
-- [ ] Completar templates Jinja2
+### ✅ Completado (Fase 1 - Backend)
+- ✅ Estructura de la aplicación Flask con factory pattern
+- ✅ 16 modelos SQLAlchemy (todas las tablas)
+- ✅ 7 blueprints (main, auth, shop, cart, checkout, profile, admin)
+- ✅ Autenticación con OAuth (Google, Facebook)
+- ✅ Sistema de passwords con compatibilidad PHP legacy
+- ✅ Servicios (email, payment, analytics)
+- ✅ Formularios con validación
+
+### ✅ Completado (Fase 2 - Frontend)
+- ✅ Templates Jinja2 completos (25+ archivos)
+- ✅ Bootstrap 5 con diseño responsive
+- ✅ JavaScript con AJAX para carrito y wishlist
+- ✅ CSS personalizado con animaciones
+- ✅ Componentes reusables
+
+### ✅ Completado (Fase 3 - Migración de Datos)
+- ✅ Script de migración completo (migrate_data.py)
+- ✅ Guía de migración detallada (MIGRATION_GUIDE.md)
+- ✅ Migración de 16 tablas
+- ✅ Copia de archivos e imágenes
+- ✅ Preservación de contraseñas legacy
+- ✅ Verificación de integridad
+
+### 🔄 Pendiente (Fase 4 - Testing)
+- [ ] Tests unitarios para modelos
+- [ ] Tests de integración para blueprints
+- [ ] Tests end-to-end
+- [ ] Configuración de CI/CD
+
+### 🔄 Pendiente (Fase 5 - Deployment)
+- [ ] Dockerfile y docker-compose
+- [ ] Configuración de producción
+- [ ] Monitoreo y logs
+- [ ] Backup automatizado
+
+### 🎯 Mejoras Futuras
 - [ ] Implementar PayU completamente
-- [ ] Agregar más tests
-- [ ] Documentar API REST
-- [ ] Agregar internacionalización (i18n)
-- [ ] Implementar Celery para tareas asíncronas
-- [ ] Agregar panel de administración avanzado (Flask-Admin)
+- [ ] API REST con documentación Swagger
+- [ ] Internacionalización (i18n)
+- [ ] Celery para tareas asíncronas (emails, reportes)
+- [ ] Panel admin avanzado con Flask-Admin
+- [ ] PWA (Progressive Web App)
+- [ ] Chat en vivo
+- [ ] Notificaciones push
 
 ## Autor
 
