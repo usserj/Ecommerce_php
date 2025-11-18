@@ -12,7 +12,7 @@
         <p><strong>Orden ID:</strong> #{{ order.id }}</p>
         <p><strong>Producto:</strong> {{ order.producto.titulo }}</p>
         <p><strong>Cantidad:</strong> {{ order.cantidad }}</p>
-        <p><strong>Total:</strong> ${{ order.pago }}</p>
+        <p><strong>Total:</strong> ${{ "%.2f"|format(order.pago|float) }}</p>
         <p><strong>Método de Pago:</strong> {{ order.metodo }}</p>
     </div>
     <p>Recibirás una notificación cuando tu pedido sea enviado.</p>

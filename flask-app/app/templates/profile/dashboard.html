@@ -51,7 +51,7 @@
                         <tr>
                             <td>{{ order.producto.titulo }}</td>
                             <td>{{ order.fecha.strftime('%d/%m/%Y') }}</td>
-                            <td>${{ order.pago }}</td>
+                            <td>${{ "%.2f"|format(order.pago|float) }}</td>
                             <td><span class="badge bg-info">{{ order.metodo }}</span></td>
                         </tr>
                         {% endfor %}

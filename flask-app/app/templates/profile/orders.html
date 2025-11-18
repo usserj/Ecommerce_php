@@ -12,7 +12,7 @@
             <td>#{{ order.id }}</td>
             <td>{{ order.producto.titulo }}</td>
             <td>{{ order.cantidad }}</td>
-            <td>${{ order.pago }}</td>
+            <td>${{ "%.2f"|format(order.pago|float) }}</td>
             <td><span class="badge bg-info">{{ order.metodo }}</span></td>
             <td>{{ order.fecha.strftime('%d/%m/%Y %H:%M') }}</td>
             <td><span class="badge bg-success">Completado</span></td>

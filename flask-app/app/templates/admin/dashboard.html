@@ -75,7 +75,7 @@
                     <div class="list-group-item">
                         <div class="d-flex justify-content-between">
                             <span>{{ order.producto.titulo }}</span>
-                            <span class="text-success">${{ order.pago }}</span>
+                            <span class="text-success">${{ "%.2f"|format(order.pago|float) }}</span>
                         </div>
                         <small class="text-muted">{{ order.fecha.strftime('%d/%m/%Y %H:%M') }}</small>
                     </div>

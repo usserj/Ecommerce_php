@@ -67,7 +67,7 @@
                             <td>{{ order.usuario.nombre if order.usuario else 'N/A' }}</td>
                             <td>{{ order.producto.titulo if order.producto else 'N/A' }}</td>
                             <td>{{ order.cantidad }}</td>
-                            <td>${{ "%.2f"|format(order.pago) }}</td>
+                            <td>${{ "%.2f"|format(order.pago|float) }}</td>
                             <td>
                                 {% if order.metodo_pago == 'paypal' %}
                                     <i class="fab fa-paypal text-primary"></i> PayPal
