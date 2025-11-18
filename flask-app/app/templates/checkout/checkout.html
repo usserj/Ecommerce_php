@@ -1,70 +1,221 @@
 {% extends "base.html" %}
 {% block title %}Checkout - Tienda Virtual{% endblock %}
+
 {% block content %}
-<h2 class="mb-4"><i class="fas fa-credit-card"></i> Finalizar Compra</h2>
-<div class="row">
-    <div class="col-md-8">
-        <form method="POST" action="{{ url_for('checkout.process') }}">
-            {{ csrf_token() }}
-            <div class="card mb-3">
-                <div class="card-header"><h5 class="mb-0">Información de Envío</h5></div>
+<div class="container my-5">
+    <h2 class="mb-4"><i class="fas fa-credit-card"></i> Finalizar Compra</h2>
+
+    <div class="row">
+        <div class="col-md-8">
+            <form method="POST" action="{{ url_for('checkout.process') }}" id="checkoutForm">
+                {{ csrf_token() }}
+
+                <!-- Información de Envío -->
+                <div class="card mb-3">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0"><i class="fas fa-shipping-fast"></i> Información de Envío</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <label class="form-label">Dirección Completa *</label>
+                                <textarea class="form-control" name="direccion" required rows="3" placeholder="Calle, número, ciudad, provincia"></textarea>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">País *</label>
+                                <select class="form-select" name="pais" required>
+                                    <option value="Ecuador" selected>Ecuador</option>
+                                    <option value="Colombia">Colombia</option>
+                                    <option value="Perú">Perú</option>
+                                    <option value="Chile">Chile</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Teléfono</label>
+                                <input type="tel" class="form-control" name="telefono" placeholder="0999999999">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Cédula/RUC</label>
+                                <input type="text" class="form-control" name="cedula" placeholder="1234567890">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Métodos de Pago -->
+                <div class="card mb-3">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0"><i class="fas fa-money-bill-wave"></i> Método de Pago</h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Tarjeta - Paymentez/Datafast -->
+                        <div class="payment-option mb-3 p-3 border rounded">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="metodo_pago" value="paymentez" id="paymentez" required>
+                                <label class="form-check-label d-flex align-items-center justify-content-between w-100" for="paymentez">
+                                    <div>
+                                        <i class="fas fa-credit-card fa-2x text-primary me-2"></i>
+                                        <strong>Tarjeta de Crédito/Débito</strong>
+                                        <br>
+                                        <small class="text-muted">Visa, Mastercard, Diners - Seguro con Paymentez</small>
+                                    </div>
+                                    <span class="badge bg-success">Recomendado</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Transferencia Bancaria -->
+                        <div class="payment-option mb-3 p-3 border rounded">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="metodo_pago" value="transferencia" id="transferencia">
+                                <label class="form-check-label d-flex align-items-center justify-content-between w-100" for="transferencia">
+                                    <div>
+                                        <i class="fas fa-university fa-2x text-info me-2"></i>
+                                        <strong>Transferencia Bancaria</strong>
+                                        <br>
+                                        <small class="text-muted">Pichincha, Guayaquil, Pacífico - Sin costo adicional</small>
+                                    </div>
+                                    <span class="badge bg-info">Popular</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- De Una -->
+                        <div class="payment-option mb-3 p-3 border rounded">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="metodo_pago" value="deuna" id="deuna">
+                                <label class="form-check-label d-flex align-items-center justify-content-between w-100" for="deuna">
+                                    <div>
+                                        <i class="fas fa-mobile-alt fa-2x text-warning me-2"></i>
+                                        <strong>De Una</strong>
+                                        <br>
+                                        <small class="text-muted">Pago móvil - Rápido y seguro</small>
+                                    </div>
+                                    <span class="badge bg-warning">Móvil</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Transferencia con Comprobante -->
+                        <div class="payment-option mb-3 p-3 border rounded">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="metodo_pago" value="transferencia_comprobante" id="transferencia_comprobante">
+                                <label class="form-check-label d-flex align-items-center justify-content-between w-100" for="transferencia_comprobante">
+                                    <div>
+                                        <i class="fas fa-file-upload fa-2x text-secondary me-2"></i>
+                                        <strong>Transferencia con Comprobante</strong>
+                                        <br>
+                                        <small class="text-muted">Sube tu comprobante de pago</small>
+                                    </div>
+                                    <span class="badge bg-secondary">Manual</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- PayPal -->
+                        <div class="payment-option mb-3 p-3 border rounded">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="metodo_pago" value="paypal" id="paypal">
+                                <label class="form-check-label d-flex align-items-center justify-content-between w-100" for="paypal">
+                                    <div>
+                                        <i class="fab fa-paypal fa-2x text-primary me-2"></i>
+                                        <strong>PayPal</strong>
+                                        <br>
+                                        <small class="text-muted">Pago internacional seguro</small>
+                                    </div>
+                                    <span class="badge bg-primary">Internacional</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-success btn-lg w-100 mb-3">
+                    <i class="fas fa-lock"></i> Proceder al Pago - ${{ "%.2f"|format(total) }}
+                </button>
+
+                <div class="text-center">
+                    <small class="text-muted">
+                        <i class="fas fa-shield-alt"></i> Transacción 100% segura y encriptada
+                    </small>
+                </div>
+            </form>
+        </div>
+
+        <!-- Resumen del Pedido -->
+        <div class="col-md-4">
+            <div class="card sticky-top" style="top: 20px;">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0"><i class="fas fa-shopping-cart"></i> Resumen del Pedido</h5>
+                </div>
                 <div class="card-body">
-                    <div class="mb-3">
-                        <label class="form-label">Dirección Completa *</label>
-                        <textarea class="form-control" name="direccion" required rows="3"></textarea>
+                    {% for item in products %}
+                    <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+                        <div class="flex-grow-1">
+                            <small class="d-block">{{ item.producto.titulo }}</small>
+                            <small class="text-muted">Cantidad: {{ item.cantidad }}</small>
+                        </div>
+                        <strong class="ms-2">${{ "%.2f"|format(item.total) }}</strong>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">País *</label>
-                        <select class="form-select" name="pais" required>
-                            <option value="Colombia">Colombia</option>
-                            <option value="México">México</option>
-                            <option value="Argentina">Argentina</option>
-                            <option value="Chile">Chile</option>
-                            <option value="Perú">Perú</option>
-                        </select>
+                    {% endfor %}
+
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Subtotal:</span>
+                        <span>${{ "%.2f"|format(subtotal) }}</span>
                     </div>
-                </div>
-            </div>
-            <div class="card mb-3">
-                <div class="card-header"><h5 class="mb-0">Método de Pago</h5></div>
-                <div class="card-body">
-                    <div class="form-check mb-2">
-                        <input class="form-check-input" type="radio" name="metodo_pago" value="paypal" id="paypal" required>
-                        <label class="form-check-label" for="paypal">
-                            <i class="fab fa-paypal fa-2x"></i> PayPal
-                        </label>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>IVA ({{ "%.0f"|format((tax/subtotal*100) if subtotal > 0 else 0) }}%):</span>
+                        <span>${{ "%.2f"|format(tax) }}</span>
                     </div>
-                    <div class="form-check">
-                        <input class="form-check-input" type="radio" name="metodo_pago" value="payu" id="payu">
-                        <label class="form-check-label" for="payu">
-                            PayU <span class="badge bg-warning">Próximamente</span>
-                        </label>
+                    <div class="d-flex justify-content-between mb-3">
+                        <span>Envío:</span>
+                        <span>${{ "%.2f"|format(shipping) }}</span>
+                    </div>
+
+                    <hr class="my-3">
+
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Total:</h5>
+                        <h4 class="mb-0 text-success">${{ "%.2f"|format(total) }}</h4>
                     </div>
                 </div>
-            </div>
-            <button type="submit" class="btn btn-success btn-lg w-100">
-                <i class="fas fa-lock"></i> Pagar ${{"%.2f"|format(total) }}
-            </button>
-        </form>
-    </div>
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-header bg-dark text-white"><h5 class="mb-0">Resumen</h5></div>
-            <div class="card-body">
-                {% for item in products %}
-                <div class="d-flex justify-content-between mb-2">
-                    <small>{{ item.producto.titulo[:30] }}... ({{ item.cantidad }})</small>
-                    <small>${{ "%.2f"|format(item.total) }}</small>
-                </div>
-                {% endfor %}
-                <hr>
-                <div class="d-flex justify-content-between"><span>Subtotal:</span><span>${{ "%.2f"|format(subtotal) }}</span></div>
-                <div class="d-flex justify-content-between"><span>Impuestos:</span><span>${{ "%.2f"|format(tax) }}</span></div>
-                <div class="d-flex justify-content-between mb-2"><span>Envío:</span><span>${{ "%.2f"|format(shipping) }}</span></div>
-                <hr>
-                <div class="d-flex justify-content-between"><strong>Total:</strong><strong class="text-success">${{ "%.2f"|format(total) }}</strong></div>
             </div>
         </div>
     </div>
 </div>
+
+<style>
+.payment-option {
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.payment-option:hover {
+    background-color: #f8f9fa;
+    box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
+}
+
+.payment-option input[type="radio"]:checked + label {
+    font-weight: bold;
+}
+
+.payment-option:has(input[type="radio"]:checked) {
+    border-color: #198754 !important;
+    background-color: #f0f9ff;
+}
+</style>
+
+<script>
+// Make entire payment option clickable
+document.querySelectorAll('.payment-option').forEach(option => {
+    option.addEventListener('click', function(e) {
+        if (e.target.type !== 'radio') {
+            const radio = this.querySelector('input[type="radio"]');
+            if (radio) {
+                radio.checked = true;
+            }
+        }
+    });
+});
+</script>
 {% endblock %}

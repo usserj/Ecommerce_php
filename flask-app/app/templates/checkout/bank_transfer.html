@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Transferencia Bancaria{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h4 class="mb-0"><i class="fas fa-university"></i> Transferencia Bancaria</h4>
+                </div>
+                <div class="card-body">
+                    <h5 class="mb-3">Orden: <strong>{{ order_id }}</strong></h5>
+                    <h3 class="text-success mb-4">Total a Transferir: <strong>${{ "%.2f"|format(total) }}</strong></h3>
+
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>Importante:</strong> Su pedido quedará en estado PENDIENTE hasta que confirmemos la transferencia.
+                    </div>
+
+                    <h5 class="mb-3"><i class="fas fa-bank"></i> Cuentas Bancarias Disponibles:</h5>
+
+                    <div class="row">
+                        {% for bank_key, account in bank_accounts.items() %}
+                        {% if account.cuenta %}
+                        <div class="col-md-6 mb-3">
+                            <div class="card border-primary">
+                                <div class="card-body">
+                                    <h5 class="card-title text-primary">{{ bank_key.replace('_', ' ').title() }}</h5>
+                                    <p class="mb-1"><strong>Titular:</strong> {{ account.nombre }}</p>
+                                    <p class="mb-1"><strong>Cuenta:</strong> <code>{{ account.cuenta }}</code></p>
+                                    <p class="mb-1"><strong>Tipo:</strong> {{ account.tipo }}</p>
+                                    <p class="mb-0"><strong>Cédula/RUC:</strong> {{ account.cedula }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+
+                    <div class="alert alert-info mt-4">
+                        <h6><i class="fas fa-info-circle"></i> Instrucciones:</h6>
+                        <ol>
+                            <li>Realice la transferencia por el monto exacto de <strong>${{ "%.2f"|format(total) }}</strong></li>
+                            <li>Use como referencia: <strong>{{ order_id }}</strong></li>
+                            <li>Envíe el comprobante al email de contacto o WhatsApp</li>
+                            <li>Su pedido será procesado en 24-48 horas</li>
+                        </ol>
+                    </div>
+
+                    <div class="text-center mt-4">
+                        <a href="{{ url_for('checkout.success') }}" class="btn btn-success btn-lg">
+                            <i class="fas fa-check"></i> He Realizado la Transferencia
+                        </a>
+                        <a href="{{ url_for('main.index') }}" class="btn btn-secondary">
+                            Volver al Inicio
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

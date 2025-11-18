@@ -1,6 +1,12 @@
-"""Payment service for PayPal and PayU."""
-from flask import current_app, url_for, redirect, flash
+"""Payment service for multiple payment gateways."""
+from flask import current_app, url_for, redirect, flash, render_template
 import paypalrestsdk
+import requests
+import hashlib
+import hmac
+import base64
+import json
+from datetime import datetime
 from app.models.comercio import Comercio
 from app.models.product import Producto
 from app.models.order import Compra
@@ -95,8 +101,11 @@ def process_payu_payment(order_data):
     return redirect(url_for('checkout.index'))
 
 
-def create_order_from_cart(user_id, cart_items, direccion, pais, metodo, payment_id):
+def create_order_from_cart(user_id, cart_items, direccion, pais, metodo, payment_id, estado='pendiente'):
     """Create order records from cart."""
+    from app.models.user import User
+    user = User.query.get(user_id)
+
     for item in cart_items:
         producto = Producto.query.get(item['id'])
         if producto:
@@ -105,19 +114,240 @@ def create_order_from_cart(user_id, cart_items, direccion, pais, metodo, payment
                 id_producto=producto.id,
                 envio=0,  # TODO: Calculate shipping
                 metodo=metodo,
-                email=Producto.query.get(user_id).email,
+                email=user.email,
                 direccion=direccion,
                 pais=pais,
                 cantidad=item['cantidad'],
                 detalle=payment_id,
-                pago=str(producto.get_price() * item['cantidad'])
+                pago=str(producto.get_price() * item['cantidad']),
+                estado=estado
             )
             db.session.add(compra)
 
-            # Update product sales
-            producto.increment_sales()
+            # Update product sales only if paid
+            if estado == 'procesando':
+                producto.increment_sales()
 
     # Update notifications
-    Notificacion.increment_new_sales()
+    if estado == 'procesando':
+        Notificacion.increment_new_sales()
 
     db.session.commit()
+
+
+# ===========================
+# Paymentez/Datafast (Ecuador)
+# ===========================
+
+def process_paymentez_payment(order_data):
+    """Process Paymentez payment (Ecuador)."""
+    config = Comercio.get_config()
+    paymentez_config = config.get_paymentez_config()
+
+    if not paymentez_config.get('app_code') or not paymentez_config.get('app_key'):
+        flash('Paymentez no está configurado. Contacte al administrador.', 'error')
+        return redirect(url_for('checkout.index'))
+
+    cart_items = order_data['cart_items']
+    subtotal = calculate_cart_total(cart_items)
+
+    # Calculate totals
+    tax = config.calculate_tax(subtotal)
+    shipping = config.calculate_shipping(order_data['pais'])
+    total = subtotal + tax + shipping
+
+    # Create order with pending status
+    order_id = f"ORDER-{order_data['user_id']}-{int(datetime.now().timestamp())}"
+    create_order_from_cart(
+        order_data['user_id'],
+        cart_items,
+        order_data['direccion'],
+        order_data['pais'],
+        'paymentez',
+        order_id,
+        estado='pendiente'
+    )
+
+    # Return payment page with Paymentez checkout
+    return render_template('checkout/paymentez.html',
+                         order_id=order_id,
+                         total=total,
+                         paymentez_config=paymentez_config)
+
+
+def process_datafast_payment(order_data):
+    """Process Datafast payment (Ecuador)."""
+    config = Comercio.get_config()
+    datafast_config = config.get_datafast_config()
+
+    if not datafast_config.get('mid') or not datafast_config.get('tid'):
+        flash('Datafast no está configurado. Contacte al administrador.', 'error')
+        return redirect(url_for('checkout.index'))
+
+    cart_items = order_data['cart_items']
+    subtotal = calculate_cart_total(cart_items)
+
+    # Calculate totals
+    tax = config.calculate_tax(subtotal)
+    shipping = config.calculate_shipping(order_data['pais'])
+    total = subtotal + tax + shipping
+
+    # Create order with pending status
+    order_id = f"ORDER-{order_data['user_id']}-{int(datetime.now().timestamp())}"
+    create_order_from_cart(
+        order_data['user_id'],
+        cart_items,
+        order_data['direccion'],
+        order_data['pais'],
+        'datafast',
+        order_id,
+        estado='pendiente'
+    )
+
+    # Return payment page with Datafast form
+    return render_template('checkout/datafast.html',
+                         order_id=order_id,
+                         total=total,
+                         datafast_config=datafast_config)
+
+
+# ===========================
+# De Una (Ecuador - Pago móvil)
+# ===========================
+
+def process_deuna_payment(order_data):
+    """Process De Una payment (Ecuador)."""
+    config = Comercio.get_config()
+    deuna_config = config.get_deuna_config()
+
+    if not deuna_config.get('api_key'):
+        flash('De Una no está configurado. Contacte al administrador.', 'error')
+        return redirect(url_for('checkout.index'))
+
+    cart_items = order_data['cart_items']
+    subtotal = calculate_cart_total(cart_items)
+
+    # Calculate totals
+    tax = config.calculate_tax(subtotal)
+    shipping = config.calculate_shipping(order_data['pais'])
+    total = subtotal + tax + shipping
+
+    # Create order with pending status
+    order_id = f"ORDER-{order_data['user_id']}-{int(datetime.now().timestamp())}"
+    create_order_from_cart(
+        order_data['user_id'],
+        cart_items,
+        order_data['direccion'],
+        order_data['pais'],
+        'deuna',
+        order_id,
+        estado='pendiente'
+    )
+
+    # Return payment page with De Una instructions
+    return render_template('checkout/deuna.html',
+                         order_id=order_id,
+                         total=total,
+                         deuna_config=deuna_config)
+
+
+# ===========================
+# Transferencia Bancaria
+# ===========================
+
+def process_bank_transfer_payment(order_data):
+    """Process bank transfer payment."""
+    config = Comercio.get_config()
+    bank_accounts = config.get_bank_accounts()
+
+    # If no bank accounts from DB, use config defaults
+    if not bank_accounts:
+        bank_accounts = current_app.config.get('BANK_ACCOUNTS', {})
+
+    if not bank_accounts:
+        flash('No hay cuentas bancarias configuradas. Contacte al administrador.', 'error')
+        return redirect(url_for('checkout.index'))
+
+    cart_items = order_data['cart_items']
+    subtotal = calculate_cart_total(cart_items)
+
+    # Calculate totals
+    tax = config.calculate_tax(subtotal)
+    shipping = config.calculate_shipping(order_data['pais'])
+    total = subtotal + tax + shipping
+
+    # Create order with pending status
+    order_id = f"ORDER-{order_data['user_id']}-{int(datetime.now().timestamp())}"
+    create_order_from_cart(
+        order_data['user_id'],
+        cart_items,
+        order_data['direccion'],
+        order_data['pais'],
+        'transferencia',
+        order_id,
+        estado='pendiente'
+    )
+
+    # Return page with bank account details
+    return render_template('checkout/bank_transfer.html',
+                         order_id=order_id,
+                         total=total,
+                         bank_accounts=bank_accounts)
+
+
+# ===========================
+# Transferencia con Comprobante
+# ===========================
+
+def process_transfer_voucher_payment(order_data):
+    """Process transfer with voucher upload."""
+    config = Comercio.get_config()
+    bank_accounts = config.get_bank_accounts()
+
+    # If no bank accounts from DB, use config defaults
+    if not bank_accounts:
+        bank_accounts = current_app.config.get('BANK_ACCOUNTS', {})
+
+    if not bank_accounts:
+        flash('No hay cuentas bancarias configuradas. Contacte al administrador.', 'error')
+        return redirect(url_for('checkout.index'))
+
+    cart_items = order_data['cart_items']
+    subtotal = calculate_cart_total(cart_items)
+
+    # Calculate totals
+    tax = config.calculate_tax(subtotal)
+    shipping = config.calculate_shipping(order_data['pais'])
+    total = subtotal + tax + shipping
+
+    # Create order with pending status
+    order_id = f"ORDER-{order_data['user_id']}-{int(datetime.now().timestamp())}"
+    create_order_from_cart(
+        order_data['user_id'],
+        cart_items,
+        order_data['direccion'],
+        order_data['pais'],
+        'transferencia_comprobante',
+        order_id,
+        estado='pendiente'
+    )
+
+    # Return page with voucher upload form
+    return render_template('checkout/transfer_voucher.html',
+                         order_id=order_id,
+                         total=total,
+                         bank_accounts=bank_accounts)
+
+
+# ===========================
+# Utility Functions
+# ===========================
+
+def calculate_cart_total(cart_items):
+    """Calculate cart subtotal."""
+    subtotal = 0
+    for item in cart_items:
+        producto = Producto.query.get(item['id'])
+        if producto:
+            subtotal += producto.get_price() * item['cantidad']
+    return subtotal

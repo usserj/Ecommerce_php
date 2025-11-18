@@ -6,7 +6,15 @@ from app.models.product import Producto
 from app.models.order import Compra
 from app.models.notification import Notificacion
 from app.extensions import db
-from app.services.payment_service import process_paypal_payment, process_payu_payment
+from app.services.payment_service import (
+    process_paypal_payment,
+    process_payu_payment,
+    process_paymentez_payment,
+    process_datafast_payment,
+    process_deuna_payment,
+    process_bank_transfer_payment,
+    process_transfer_voucher_payment
+)
 
 
 @checkout_bp.route('/')
@@ -56,9 +64,11 @@ def index():
 @login_required
 def process():
     """Process checkout."""
-    metodo_pago = request.form.get('metodo_pago')  # paypal, payu
+    metodo_pago = request.form.get('metodo_pago')
     direccion = request.form.get('direccion')
-    pais = request.form.get('pais', 'Colombia')
+    pais = request.form.get('pais', 'Ecuador')
+    telefono = request.form.get('telefono', '')
+    cedula = request.form.get('cedula', '')
 
     if not direccion or not metodo_pago:
         flash('Complete todos los campos requeridos.', 'error')
@@ -76,14 +86,25 @@ def process():
         'cart_items': cart_items,
         'direccion': direccion,
         'pais': pais,
+        'telefono': telefono,
+        'cedula': cedula,
         'metodo': metodo_pago
     }
 
     # Process payment based on method
-    if metodo_pago == 'paypal':
-        return process_paypal_payment(order_data)
-    elif metodo_pago == 'payu':
-        return process_payu_payment(order_data)
+    payment_methods = {
+        'paypal': process_paypal_payment,
+        'payu': process_payu_payment,
+        'paymentez': process_paymentez_payment,
+        'datafast': process_datafast_payment,
+        'deuna': process_deuna_payment,
+        'transferencia': process_bank_transfer_payment,
+        'transferencia_comprobante': process_transfer_voucher_payment
+    }
+
+    payment_handler = payment_methods.get(metodo_pago)
+    if payment_handler:
+        return payment_handler(order_data)
     else:
         flash('Método de pago no válido.', 'error')
         return redirect(url_for('checkout.index'))

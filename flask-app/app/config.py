@@ -35,6 +35,46 @@ class Config:
     PAYU_ACCOUNT_ID = os.environ.get('PAYU_ACCOUNT_ID')
     PAYU_API_KEY = os.environ.get('PAYU_API_KEY')
 
+    # Paymentez Configuration (Ecuador)
+    PAYMENTEZ_MODE = os.environ.get('PAYMENTEZ_MODE', 'test')  # test or production
+    PAYMENTEZ_APP_CODE = os.environ.get('PAYMENTEZ_APP_CODE')
+    PAYMENTEZ_APP_KEY = os.environ.get('PAYMENTEZ_APP_KEY')
+    PAYMENTEZ_SERVER_APP_CODE = os.environ.get('PAYMENTEZ_SERVER_APP_CODE')
+    PAYMENTEZ_SERVER_APP_KEY = os.environ.get('PAYMENTEZ_SERVER_APP_KEY')
+
+    # Datafast Configuration (Ecuador)
+    DATAFAST_MODE = os.environ.get('DATAFAST_MODE', 'test')
+    DATAFAST_MID = os.environ.get('DATAFAST_MID')  # Merchant ID
+    DATAFAST_TID = os.environ.get('DATAFAST_TID')  # Terminal ID
+    DATAFAST_ACQUIRER_ID = os.environ.get('DATAFAST_ACQUIRER_ID')
+
+    # De Una Configuration (Ecuador - Pago móvil)
+    DEUNA_MODE = os.environ.get('DEUNA_MODE', 'test')
+    DEUNA_API_KEY = os.environ.get('DEUNA_API_KEY')
+    DEUNA_PUBLIC_KEY = os.environ.get('DEUNA_PUBLIC_KEY')
+
+    # Bank Transfer Configuration (Ecuador)
+    BANK_ACCOUNTS = {
+        'banco_pichincha': {
+            'nombre': os.environ.get('BANCO_PICHINCHA_NOMBRE', 'Tienda Virtual'),
+            'cuenta': os.environ.get('BANCO_PICHINCHA_CUENTA', ''),
+            'tipo': os.environ.get('BANCO_PICHINCHA_TIPO', 'Ahorros'),
+            'cedula': os.environ.get('BANCO_PICHINCHA_CEDULA', '')
+        },
+        'banco_guayaquil': {
+            'nombre': os.environ.get('BANCO_GUAYAQUIL_NOMBRE', 'Tienda Virtual'),
+            'cuenta': os.environ.get('BANCO_GUAYAQUIL_CUENTA', ''),
+            'tipo': os.environ.get('BANCO_GUAYAQUIL_TIPO', 'Ahorros'),
+            'cedula': os.environ.get('BANCO_GUAYAQUIL_CEDULA', '')
+        },
+        'banco_pacifico': {
+            'nombre': os.environ.get('BANCO_PACIFICO_NOMBRE', 'Tienda Virtual'),
+            'cuenta': os.environ.get('BANCO_PACIFICO_CUENTA', ''),
+            'tipo': os.environ.get('BANCO_PACIFICO_TIPO', 'Ahorros'),
+            'cedula': os.environ.get('BANCO_PACIFICO_CEDULA', '')
+        }
+    }
+
     # OAuth Configuration
     GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID')
     GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET')
