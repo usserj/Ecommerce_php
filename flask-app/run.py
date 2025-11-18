@@ -1,8 +1,14 @@
 """Application entry point."""
 import os
 import shutil
+import logging
 from dotenv import load_dotenv
 from app import create_app
+
+# Configure logging to only show errors
+logging.basicConfig(level=logging.ERROR)
+logging.getLogger('werkzeug').setLevel(logging.ERROR)
+logging.getLogger('sqlalchemy').setLevel(logging.ERROR)
 
 # Create .env from .env.example if it doesn't exist
 if not os.path.exists('.env') and os.path.exists('.env.example'):

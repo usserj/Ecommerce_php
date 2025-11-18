@@ -1,7 +1,10 @@
 """Shopping cart routes."""
+import logging
 from flask import render_template, request, jsonify, session, redirect, url_for
 from app.blueprints.cart import cart_bp
 from app.models.product import Producto
+
+logger = logging.getLogger(__name__)
 
 
 @cart_bp.route('/')
@@ -44,43 +47,61 @@ def index():
 @cart_bp.route('/add', methods=['POST'])
 def add_to_cart():
     """Add product to cart (AJAX)."""
-    data = request.get_json()
-    producto_id = data.get('producto_id')
-    cantidad = data.get('cantidad', 1)
+    try:
+        data = request.get_json()
+        if not data:
+            logger.error(f"No JSON data received. Content-Type: {request.content_type}, Data: {request.data}")
+            return jsonify({'success': False, 'message': 'Datos inválidos'}), 400
 
-    if not producto_id:
-        return jsonify({'success': False, 'message': 'Producto inválido'}), 400
+        producto_id = data.get('producto_id')
+        cantidad = data.get('cantidad', 1)
 
-    # Verify product exists
-    producto = Producto.query.get(producto_id)
-    if not producto or producto.estado != 1:
-        return jsonify({'success': False, 'message': 'Producto no disponible'}), 404
+        if not producto_id:
+            logger.error(f"Missing producto_id in request data: {data}")
+            return jsonify({'success': False, 'message': 'Producto inválido'}), 400
 
-    # Get or create cart
-    cart = session.get('cart', [])
+        # Convert to int
+        try:
+            producto_id = int(producto_id)
+            cantidad = int(cantidad)
+        except (ValueError, TypeError) as e:
+            logger.error(f"Invalid data types: producto_id={producto_id}, cantidad={cantidad}, error={e}")
+            return jsonify({'success': False, 'message': 'Datos inválidos'}), 400
 
-    # Check if product already in cart
-    found = False
-    for item in cart:
-        if item['id'] == producto_id:
-            item['cantidad'] += cantidad
-            found = True
-            break
+        # Verify product exists
+        producto = Producto.query.get(producto_id)
+        if not producto or producto.estado != 1:
+            logger.error(f"Product not found or inactive: producto_id={producto_id}")
+            return jsonify({'success': False, 'message': 'Producto no disponible'}), 404
 
-    if not found:
-        cart.append({
-            'id': producto_id,
-            'cantidad': cantidad
+        # Get or create cart
+        cart = session.get('cart', [])
+
+        # Check if product already in cart
+        found = False
+        for item in cart:
+            if item['id'] == producto_id:
+                item['cantidad'] += cantidad
+                found = True
+                break
+
+        if not found:
+            cart.append({
+                'id': producto_id,
+                'cantidad': cantidad
+            })
+
+        session['cart'] = cart
+        session.modified = True
+
+        return jsonify({
+            'success': True,
+            'cart_count': len(cart),
+            'message': 'Producto añadido al carrito'
         })
-
-    session['cart'] = cart
-    session.modified = True
-
-    return jsonify({
-        'success': True,
-        'cart_count': len(cart),
-        'message': 'Producto añadido al carrito'
-    })
+    except Exception as e:
+        logger.error(f"Unexpected error in add_to_cart: {e}", exc_info=True)
+        return jsonify({'success': False, 'message': 'Error interno del servidor'}), 500
 
 
 @cart_bp.route('/update', methods=['POST'])

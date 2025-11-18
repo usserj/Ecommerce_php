@@ -8,6 +8,7 @@ from flask_wtf.csrf import CSRFProtect
 from flask_caching import Cache
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from flask_limiter.storage import MemoryStorage
 from authlib.integrations.flask_client import OAuth
 
 # Initialize extensions
@@ -20,7 +21,8 @@ csrf = CSRFProtect()
 cache = Cache()
 limiter = Limiter(
     key_func=get_remote_address,
-    default_limits=["200 per day", "50 per hour"]
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://"
 )
 oauth = OAuth()
 
