@@ -3,7 +3,7 @@ Health check endpoints for monitoring
 """
 
 from flask import Blueprint, jsonify
-from app import db
+from app.extensions import db
 from datetime import datetime
 import os
 
