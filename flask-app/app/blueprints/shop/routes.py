@@ -3,6 +3,7 @@ from flask import render_template, request, abort
 from app.blueprints.shop import shop_bp
 from app.models.product import Producto
 from app.models.categoria import Categoria, Subcategoria
+from app.models.comment import Comentario
 from sqlalchemy import or_
 
 
@@ -50,7 +51,7 @@ def product_detail(ruta):
     ).limit(4).all()
 
     # Get comments
-    comentarios = producto.comentarios.order_by(producto.comentarios.c.fecha.desc()).all()
+    comentarios = producto.comentarios.order_by(Comentario.fecha.desc()).all()
 
     return render_template('shop/product_detail.html',
                          producto=producto,

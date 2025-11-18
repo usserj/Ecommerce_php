@@ -266,19 +266,19 @@
     }
 
     /**
-     * Add to cart from product detail page
+     * Add to cart buttons (product listing and detail pages)
      */
     function initAddToCartButton() {
-        const addToCartBtn = document.getElementById('addToCartBtn');
-        if (addToCartBtn) {
-            addToCartBtn.addEventListener('click', function() {
+        const addToCartButtons = document.querySelectorAll('.add-to-cart');
+        addToCartButtons.forEach(button => {
+            button.addEventListener('click', function() {
                 const productId = this.dataset.productId;
                 const qtyInput = document.getElementById('quantity');
                 const quantity = qtyInput ? parseInt(qtyInput.value) : 1;
 
                 addToCart(productId, quantity);
             });
-        }
+        });
     }
 
     // ===========================
