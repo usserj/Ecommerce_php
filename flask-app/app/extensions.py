@@ -8,7 +8,6 @@ from flask_wtf.csrf import CSRFProtect
 from flask_caching import Cache
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from flask_limiter.storage import MemoryStorage
 from authlib.integrations.flask_client import OAuth
 
 # Initialize extensions
