@@ -23,7 +23,8 @@ from slugify import slugify
 # Add app to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from app import create_app, db
+from app import create_app
+from app.extensions import db
 from app.models import (
     User, Administrador, Producto, Categoria, Subcategoria,
     Compra, Comentario, Deseo, Comercio, Plantilla
