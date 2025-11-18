@@ -103,7 +103,11 @@ def update_cart():
     session['cart'] = cart
     session.modified = True
 
-    return jsonify({'success': True})
+    return jsonify({
+        'success': True,
+        'cart_count': len(cart),
+        'message': 'Carrito actualizado'
+    })
 
 
 @cart_bp.route('/remove/<int:producto_id>', methods=['POST'])
@@ -115,7 +119,11 @@ def remove_from_cart(producto_id):
     session['cart'] = cart
     session.modified = True
 
-    return jsonify({'success': True})
+    return jsonify({
+        'success': True,
+        'cart_count': len(cart),
+        'message': 'Producto eliminado del carrito'
+    })
 
 
 @cart_bp.route('/clear', methods=['POST'])
@@ -124,4 +132,8 @@ def clear_cart():
     session['cart'] = []
     session.modified = True
 
-    return jsonify({'success': True})
+    return jsonify({
+        'success': True,
+        'cart_count': 0,
+        'message': 'Carrito vaciado'
+    })

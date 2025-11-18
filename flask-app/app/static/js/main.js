@@ -711,6 +711,28 @@
             }, 500));
         });
 
+        // Cart page - update quantity inputs
+        const updateQuantityInputs = document.querySelectorAll('.update-quantity');
+        updateQuantityInputs.forEach(input => {
+            input.addEventListener('change', function() {
+                const productId = this.getAttribute('data-product-id');
+                const quantity = parseInt(this.value);
+                if (quantity > 0) {
+                    updateCartQuantity(productId, quantity);
+                    location.reload(); // Reload to update totals
+                }
+            });
+        });
+
+        // Cart page - remove from cart buttons
+        const removeButtons = document.querySelectorAll('.remove-from-cart');
+        removeButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const productId = this.getAttribute('data-product-id');
+                removeFromCart(productId);
+            });
+        });
+
         // Smooth scroll for anchor links
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
             anchor.addEventListener('click', function(e) {
