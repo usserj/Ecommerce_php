@@ -407,10 +407,9 @@ class EcommerceDemoSetup:
         for cat_nombre, cat_data in self.categorias_data.items():
             # Crear categoría
             categoria = Categoria(
-                nombre=cat_nombre,
+                categoria=cat_nombre,
                 ruta=slugify(cat_nombre),
-                icono='fas fa-tag',
-                orden=cat_count
+                estado=1
             )
             db.session.add(categoria)
             db.session.flush()
@@ -420,10 +419,10 @@ class EcommerceDemoSetup:
             subcategorias = []
             for i, subcat_nombre in enumerate(cat_data['subcategorias']):
                 subcategoria = Subcategoria(
-                    nombre=subcat_nombre,
+                    subcategoria=subcat_nombre,
                     ruta=slugify(subcat_nombre),
                     id_categoria=categoria.id,
-                    orden=i
+                    estado=1
                 )
                 db.session.add(subcategoria)
                 subcategorias.append(subcategoria)
@@ -438,24 +437,30 @@ class EcommerceDemoSetup:
 
                 # Calcular precio de oferta
                 precio_oferta = None
+                oferta = 0
+                descuento_oferta = 0
+
                 if prod_data.get('oferta'):
-                    descuento = prod_data.get('descuento', 0)
-                    precio_oferta = round(prod_data['precio'] * (1 - descuento / 100), 2)
+                    oferta = 1
+                    descuento_oferta = prod_data.get('descuento', 0)
+                    precio_oferta = round(prod_data['precio'] * (1 - descuento_oferta / 100), 2)
 
                 producto = Producto(
                     titulo=prod_data['titulo'],
                     titular=prod_data['titular'],
                     descripcion=prod_data['descripcion'],
                     precio=prod_data['precio'],
-                    precioOferta=precio_oferta,
-                    foto='placeholder.jpg',
-                    galeria='',
-                    video='',
-                    detalles=str(prod_data.get('detalles', {})),
+                    oferta=oferta,
+                    precioOferta=precio_oferta or 0,
+                    descuentoOferta=descuento_oferta,
+                    portada='placeholder.jpg',
+                    multimedia=[],
+                    detalles=prod_data.get('detalles', {}),
                     vistas=random.randint(50, 500),
                     ventas=random.randint(5, 100),
                     stock=prod_data.get('stock', 10),
                     stock_minimo=5,
+                    estado=1,
                     id_categoria=categoria.id,
                     id_subcategoria=subcategoria.id,
                     ruta=slugify(prod_data['titulo']),
