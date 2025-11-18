@@ -24,7 +24,7 @@
                     {% endwith %}
 
                     <form method="POST" action="{{ url_for('admin.settings') }}">
-                        {{ csrf_token() }}
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
 
                         <!-- Store Settings -->
                         <div class="card mb-4">

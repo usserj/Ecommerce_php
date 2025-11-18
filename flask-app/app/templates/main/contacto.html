@@ -14,7 +14,7 @@
         <div class="card shadow">
             <div class="card-body">
                 <form method="POST" action="{{ url_for('main.contacto') }}">
-                    {{ csrf_token() }}
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
 
                     <div class="mb-3">
                         <label for="nombre" class="form-label">Nombre Completo *</label>
