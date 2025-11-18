@@ -310,7 +310,9 @@ class DemoDataSeeder:
                     descuentoOferta=descuento,
                     finOferta=fin_oferta,
                     peso=random.uniform(0.2, 2.0),
-                    entrega=random.uniform(5.0, 15.0)
+                    entrega=random.uniform(5.0, 15.0),
+                    stock=random.randint(10, 100),  # Stock inicial
+                    stock_minimo=5  # Alerta cuando stock <= 5
                 )
 
                 db.session.add(producto)
@@ -329,13 +331,16 @@ class DemoDataSeeder:
 
         usuarios = []
 
-        # Usuarios de ejemplo
+        # Usuarios de ejemplo (Ecuador)
         usuarios_data = [
-            {'nombre': 'María García', 'email': 'maria@demo.com'},
-            {'nombre': 'Juan Martínez', 'email': 'juan@demo.com'},
-            {'nombre': 'Ana López', 'email': 'ana@demo.com'},
-            {'nombre': 'Carlos Rodríguez', 'email': 'carlos@demo.com'},
-            {'nombre': 'Laura Fernández', 'email': 'laura@demo.com'},
+            {'nombre': 'María Guzmán', 'email': 'maria@demo.com'},
+            {'nombre': 'Juan Morales', 'email': 'juan@demo.com'},
+            {'nombre': 'Ana Chávez', 'email': 'ana@demo.com'},
+            {'nombre': 'Carlos Vega', 'email': 'carlos@demo.com'},
+            {'nombre': 'Laura Torres', 'email': 'laura@demo.com'},
+            {'nombre': 'Diego Ruiz', 'email': 'diego@demo.com'},
+            {'nombre': 'Sofía Paredes', 'email': 'sofia@demo.com'},
+            {'nombre': 'Andrés Mendoza', 'email': 'andres@demo.com'},
         ]
 
         for user_data in usuarios_data:
@@ -395,12 +400,19 @@ class DemoDataSeeder:
         print("\n📦 Creando pedidos...")
 
         pedidos = []
-        paises = ['España', 'México', 'Argentina', 'Colombia', 'Chile']
+        paises = ['Ecuador', 'Colombia', 'Perú', 'Venezuela', 'México']
+        ciudades = {
+            'Ecuador': ['Quito', 'Guayaquil', 'Cuenca', 'Ambato', 'Machala'],
+            'Colombia': ['Bogotá', 'Medellín', 'Cali', 'Barranquilla'],
+            'Perú': ['Lima', 'Arequipa', 'Cusco', 'Trujillo'],
+            'Venezuela': ['Caracas', 'Maracaibo', 'Valencia'],
+            'México': ['Ciudad de México', 'Guadalajara', 'Monterrey']
+        }
         metodos = ['paypal', 'tarjeta', 'transferencia']
 
         # Crear varios pedidos por usuario
-        for usuario in usuarios[:3]:  # Solo primeros 3 usuarios
-            num_pedidos = random.randint(2, 5)
+        for usuario in usuarios[:4]:  # Primeros 4 usuarios
+            num_pedidos = random.randint(3, 7)
 
             for _ in range(num_pedidos):
                 producto = random.choice(productos)
@@ -412,19 +424,44 @@ class DemoDataSeeder:
                 envio = producto.entrega
                 total = subtotal + envio
 
+                # Seleccionar país y ciudad
+                pais = random.choice(paises)
+                ciudad = random.choice(ciudades[pais])
+
+                # Seleccionar estado del pedido (más peso a pendiente y procesando)
+                estados_posibles = [
+                    Compra.ESTADO_PENDIENTE,
+                    Compra.ESTADO_PENDIENTE,  # Más probabilidad
+                    Compra.ESTADO_PROCESANDO,
+                    Compra.ESTADO_PROCESANDO,  # Más probabilidad
+                    Compra.ESTADO_ENVIADO,
+                    Compra.ESTADO_ENTREGADO,
+                    Compra.ESTADO_CANCELADO
+                ]
+                estado = random.choice(estados_posibles)
+
+                # Tracking para pedidos enviados/entregados
+                tracking = None
+                if estado in [Compra.ESTADO_ENVIADO, Compra.ESTADO_ENTREGADO]:
+                    tracking = f"EC{random.randint(100000, 999999)}"
+
                 # Crear pedido
+                dias_atras = random.randint(1, 90)
                 pedido = Compra(
                     id_usuario=usuario.id,
                     id_producto=producto.id,
                     envio=int(envio),
                     metodo=random.choice(metodos),
                     email=usuario.email,
-                    direccion=f"Calle Demo {random.randint(1, 100)}, Piso {random.randint(1, 5)}",
-                    pais=random.choice(paises),
+                    direccion=f"{ciudad}, Calle {random.randint(1, 50)} #{random.randint(1, 200)}-{random.randint(1, 99)}",
+                    pais=pais,
                     cantidad=cantidad,
                     detalle=f"Pedido de {producto.titulo}",
                     pago=str(round(total, 2)),
-                    fecha=datetime.utcnow() - timedelta(days=random.randint(1, 90))
+                    estado=estado,
+                    tracking=tracking,
+                    fecha=datetime.utcnow() - timedelta(days=dias_atras),
+                    fecha_estado=datetime.utcnow() - timedelta(days=max(0, dias_atras - random.randint(1, 5)))
                 )
 
                 db.session.add(pedido)
@@ -509,12 +546,12 @@ class DemoDataSeeder:
 
         # Comercio
         comercio = Comercio(
-            impuesto=21.0,  # IVA 21%
-            envioNacional=5.99,
-            envioInternacional=15.99,
-            tasaMinimaNal=50.0,
-            tasaMinimaInt=100.0,
-            pais='España',
+            impuesto=12.0,  # IVA Ecuador 12%
+            envioNacional=4.99,
+            envioInternacional=19.99,
+            tasaMinimaNal=30.0,  # Envío gratis en compras > $30
+            tasaMinimaInt=80.0,
+            pais='Ecuador',
             modoPaypal='sandbox',
             modoPayu='test'
         )
@@ -529,8 +566,8 @@ class DemoDataSeeder:
         }
 
         plantilla = Plantilla(
-            barraSuperior='Envío gratis en pedidos superiores a 50€',
-            textoSuperior='¡Bienvenido a MiTienda Fashion!',
+            barraSuperior='Envío gratis en compras superiores a $30',
+            textoSuperior='¡Bienvenido a TuTienda Ecuador!',
             colorFondo='#ffffff',
             colorTexto='#000000',
             redesSociales=redesSociales
