@@ -34,9 +34,18 @@ class User(UserMixin, db.Model):
     fecha = db.Column(db.DateTime, default=datetime.utcnow)
 
     # Relationships
-    compras = db.relationship('Compra', backref='usuario', lazy='dynamic', cascade='all, delete-orphan')
-    comentarios = db.relationship('Comentario', backref='usuario', lazy='dynamic', cascade='all, delete-orphan')
-    deseos = db.relationship('Deseo', backref='usuario', lazy='dynamic', cascade='all, delete-orphan')
+    compras = db.relationship(
+        'Compra', backref='usuario', lazy='dynamic',
+        cascade='all, delete-orphan'
+    )
+    comentarios = db.relationship(
+        'Comentario', backref='usuario', lazy='dynamic',
+        cascade='all, delete-orphan'
+    )
+    deseos = db.relationship(
+        'Deseo', backref='usuario', lazy='dynamic',
+        cascade='all, delete-orphan'
+    )
 
     def __repr__(self):
         return f'<User {self.email}>'

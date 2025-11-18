@@ -66,7 +66,8 @@ class Banner(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     ruta = db.Column(db.String(255), nullable=False)
-    tipo = db.Column(db.String(50), nullable=False)  # categorias, subcategorias, etc.
+    # categorias, subcategorias, etc.
+    tipo = db.Column(db.String(50), nullable=False)
     img = db.Column(db.String(255), nullable=False)
     estado = db.Column(db.Integer, default=1)
     fecha = db.Column(db.DateTime, default=datetime.utcnow)
