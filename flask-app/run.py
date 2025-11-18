@@ -1,7 +1,14 @@
 """Application entry point."""
 import os
+import shutil
 from dotenv import load_dotenv
 from app import create_app
+
+# Create .env from .env.example if it doesn't exist
+if not os.path.exists('.env') and os.path.exists('.env.example'):
+    print("📝 Creando archivo .env desde .env.example...")
+    shutil.copy('.env.example', '.env')
+    print("✅ Archivo .env creado. Puedes editarlo con tus credenciales.\n")
 
 # Load environment variables
 load_dotenv()

@@ -91,6 +91,70 @@ def initialize_tables(app):
         print(f"Error initializing tables: {e}")
 
 
+def check_and_seed_data(app):
+    """
+    Check if database is empty and seed with demo data if needed.
+
+    Args:
+        app: Flask application instance
+    """
+    from app.extensions import db
+    from app.models import User, Administrador, Producto, Categoria
+
+    try:
+        with app.app_context():
+            # Check if there are any categories (good indicator of seeded data)
+            categoria_count = Categoria.query.count()
+            producto_count = Producto.query.count()
+            admin_count = Administrador.query.count()
+
+            if categoria_count == 0 or producto_count == 0 or admin_count == 0:
+                print("\n" + "🌱 Base de datos vacía detectada. Poblando con datos demo...")
+                print("="*60)
+
+                # Import and run setup
+                from setup_demo import EcommerceDemoSetup
+
+                setup = EcommerceDemoSetup()
+
+                # Clear any existing data
+                setup.clear_data()
+
+                # Create all demo data
+                setup.create_admin_users()
+                setup.create_regular_users()
+                productos = setup.create_categories_and_products()
+                setup.create_store_settings()
+
+                # Get users for creating additional data
+                usuarios = User.query.all()
+
+                # Create sample data
+                setup.create_sample_orders(usuarios, productos)
+                setup.create_reviews(usuarios, productos)
+                setup.create_wishlists(usuarios, productos)
+
+                print("\n" + "✅ DATOS DEMO CREADOS EXITOSAMENTE")
+                print("="*60)
+                print("\n📋 CREDENCIALES DE ACCESO:\n")
+                print("🔐 ADMIN:")
+                print("   Email:    admin@ecommerce.ec")
+                print("   Password: admin123")
+                print("   URL:      http://localhost:5000/admin/login")
+                print("\n👤 CLIENTES (password: demo123):")
+                print("   - carlos.mendoza@email.com")
+                print("   - maria.gonzalez@email.com")
+                print("   - luis.torres@email.com")
+                print("   URL:      http://localhost:5000/login")
+                print("\n" + "="*60 + "\n")
+            else:
+                print(f"✅ Base de datos ya contiene datos ({categoria_count} categorías, {producto_count} productos)")
+
+    except Exception as e:
+        print(f"⚠️  Error verificando/creando datos demo: {e}")
+        print("    Puedes ejecutar manualmente: python setup_demo.py")
+
+
 def auto_init_database(app):
     """
     Automatically initialize database on first run.
@@ -102,12 +166,15 @@ def auto_init_database(app):
 
     if database_url and 'mysql' in database_url:
         print("\n" + "="*60)
-        print("DATABASE INITIALIZATION")
+        print("🚀 INICIALIZACIÓN AUTOMÁTICA DE BASE DE DATOS")
         print("="*60)
 
         # Ensure database exists
         if ensure_database_exists(database_url):
             # Initialize tables
             initialize_tables(app)
+
+            # Check and seed data if empty
+            check_and_seed_data(app)
 
         print("="*60 + "\n")
