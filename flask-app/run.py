@@ -5,9 +5,12 @@ import logging
 from dotenv import load_dotenv
 from app import create_app
 
-# Configure logging to only show errors
-logging.basicConfig(level=logging.ERROR)
-logging.getLogger('werkzeug').setLevel(logging.ERROR)
+# Configure logging - Show warnings and errors, hide verbose SQL
+logging.basicConfig(
+    level=logging.WARNING,
+    format='%(levelname)s: %(message)s'
+)
+logging.getLogger('werkzeug').setLevel(logging.WARNING)
 logging.getLogger('sqlalchemy').setLevel(logging.ERROR)
 
 # Create .env from .env.example if it doesn't exist

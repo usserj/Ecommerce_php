@@ -3,6 +3,7 @@ import logging
 from flask import render_template, request, jsonify, session, redirect, url_for
 from app.blueprints.cart import cart_bp
 from app.models.product import Producto
+from app.extensions import csrf
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +46,7 @@ def index():
 
 
 @cart_bp.route('/add', methods=['POST'])
+@csrf.exempt
 def add_to_cart():
     """Add product to cart (AJAX)."""
     try:
@@ -105,6 +107,7 @@ def add_to_cart():
 
 
 @cart_bp.route('/update', methods=['POST'])
+@csrf.exempt
 def update_cart():
     """Update cart item quantity."""
     data = request.get_json()
@@ -132,6 +135,7 @@ def update_cart():
 
 
 @cart_bp.route('/remove/<int:producto_id>', methods=['POST'])
+@csrf.exempt
 def remove_from_cart(producto_id):
     """Remove product from cart."""
     cart = session.get('cart', [])
@@ -148,6 +152,7 @@ def remove_from_cart(producto_id):
 
 
 @cart_bp.route('/clear', methods=['POST'])
+@csrf.exempt
 def clear_cart():
     """Clear all cart."""
     session['cart'] = []
