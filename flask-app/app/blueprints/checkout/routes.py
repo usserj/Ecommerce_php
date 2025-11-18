@@ -128,3 +128,104 @@ def cancel():
     """Payment cancelled page."""
     flash('Pago cancelado.', 'warning')
     return redirect(url_for('cart.index'))
+
+
+@checkout_bp.route('/upload_voucher', methods=['POST'])
+@login_required
+def upload_voucher():
+    """Handle voucher upload for bank transfer."""
+    import os
+    from werkzeug.utils import secure_filename
+    from datetime import datetime
+
+    order_id = request.form.get('order_id')
+    referencia = request.form.get('referencia', '')
+
+    if 'comprobante' not in request.files:
+        flash('No se seleccionó ningún archivo.', 'error')
+        return redirect(url_for('checkout.index'))
+
+    file = request.files['comprobante']
+
+    if file.filename == '':
+        flash('No se seleccionó ningún archivo.', 'error')
+        return redirect(url_for('checkout.index'))
+
+    # Validate file type
+    allowed_extensions = {'png', 'jpg', 'jpeg', 'pdf'}
+    file_ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else ''
+
+    if file_ext not in allowed_extensions:
+        flash('Tipo de archivo no permitido. Use PNG, JPG o PDF.', 'error')
+        return redirect(url_for('checkout.index'))
+
+    # Create uploads directory if it doesn't exist
+    upload_folder = os.path.join('app', 'static', 'uploads', 'vouchers')
+    os.makedirs(upload_folder, exist_ok=True)
+
+    # Generate unique filename
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    filename = secure_filename(f"{current_user.id}_{timestamp}_{file.filename}")
+    filepath = os.path.join(upload_folder, filename)
+
+    try:
+        # Save file
+        file.save(filepath)
+
+        # Create order with pending status
+        cart_items = session.get('cart', [])
+
+        if cart_items:
+            from app.services.payment_service import create_order_from_cart
+            from app.models.comercio import Comercio
+
+            # Calculate total
+            subtotal = 0
+            for item in cart_items:
+                producto = Producto.query.get(item['id'])
+                if producto:
+                    subtotal += producto.get_price() * item['cantidad']
+
+            config = Comercio.get_config()
+            tax = config.calculate_tax(subtotal)
+            shipping = config.envioNacional
+            total = subtotal + tax + shipping
+
+            # Get user address from session or form
+            direccion = request.form.get('direccion', current_user.direccion or 'Pendiente')
+            pais = request.form.get('pais', current_user.pais or 'Ecuador')
+
+            # Create order
+            order = create_order_from_cart(
+                current_user.id,
+                cart_items,
+                direccion,
+                pais,
+                'transferencia_comprobante',
+                order_id or f"ORD-{current_user.id}-{int(datetime.now().timestamp())}",
+                estado='pendiente'
+            )
+
+            # Store voucher info (you might want to add a field to the order model)
+            # For now, we'll add it as a notification
+            notif = Notificacion(
+                tipo='comprobante_subido',
+                contenido=f'Usuario {current_user.nombre} subió comprobante. Orden: {order_id}, Referencia: {referencia}, Archivo: {filename}',
+                fecha=datetime.now()
+            )
+            db.session.add(notif)
+            db.session.commit()
+
+            # Clear cart
+            session['cart'] = []
+            session.modified = True
+
+            flash('Comprobante subido exitosamente. Su pedido será procesado en 24-48 horas.', 'success')
+            return redirect(url_for('checkout.success'))
+        else:
+            flash('Carrito vacío.', 'error')
+            return redirect(url_for('shop.index'))
+
+    except Exception as e:
+        flash(f'Error al subir el comprobante: {str(e)}', 'error')
+        return redirect(url_for('checkout.index'))
