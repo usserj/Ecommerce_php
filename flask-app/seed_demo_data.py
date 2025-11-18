@@ -546,7 +546,7 @@ class DemoDataSeeder:
 
         # Comercio
         comercio = Comercio(
-            impuesto=12.0,  # IVA Ecuador 12%
+            impuesto=15.0,  # IVA Ecuador 15% (actualizado 2025)
             envioNacional=4.99,
             envioInternacional=19.99,
             tasaMinimaNal=30.0,  # Envío gratis en compras > $30

@@ -171,11 +171,12 @@ Para probar el panel de administración:
 
 ### 5️⃣ Pedidos (Variable)
 
-- Cada uno de los primeros 3 usuarios tiene entre 2-5 pedidos
-- **Total aproximado**: 10-15 pedidos
-- Estados variados de entrega
+- Cada uno de los primeros 4 usuarios tiene entre 3-7 pedidos
+- **Total aproximado**: 12-28 pedidos
+- Estados: Pendiente, Procesando, Enviado, Entregado, Cancelado
 - Métodos de pago: PayPal, Tarjeta, Transferencia
-- Países: España, México, Argentina, Colombia, Chile
+- Países: Ecuador, Colombia, Perú, Venezuela, México
+- Ciudades ecuatorianas: Quito, Guayaquil, Cuenca, Ambato, Machala
 
 ### 6️⃣ Reseñas y Calificaciones
 
@@ -201,18 +202,18 @@ Para probar el panel de administración:
 
 **Comercio:**
 ```
-Nombre: MiTienda Fashion
-Email: contacto@mitienda.com
-IVA: 21%
-Envío Nacional: 5.99€ (gratis > 50€)
-Envío Internacional: 15.99€ (gratis > 100€)
-País: España
-Ciudad: Madrid
+Nombre: TuTienda Ecuador
+Email: contacto@tutienda.ec
+IVA: 15% (Ecuador - actualizado 2025)
+Envío Nacional: $4.99 (gratis > $30)
+Envío Internacional: $19.99 (gratis > $80)
+País: Ecuador
+Ciudad: Quito
 ```
 
 **Plantilla:**
 ```
-Barra Superior: "Envío gratis en pedidos superiores a 50€"
+Barra Superior: "Envío gratis en compras superiores a $30"
 Redes Sociales: Facebook, Instagram, Twitter, YouTube
 ```
 
