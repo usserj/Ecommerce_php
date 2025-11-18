@@ -11,7 +11,7 @@ class Config:
 
     # Database
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
-        'mysql+pymysql://ferrete5_juanu:password@localhost/ferrete5_ecommerce'
+        'mysql+pymysql://root:@localhost/ferrete5_ecommerce'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ECHO = False
 
