@@ -19,7 +19,7 @@
         // Show loading state
         showLoading();
 
-        fetch('/cart/add', {
+        fetch('/carrito/add', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -62,7 +62,7 @@
             return;
         }
 
-        fetch('/cart/update', {
+        fetch('/carrito/update', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -101,15 +101,12 @@
 
         showLoading();
 
-        fetch('/cart/remove', {
+        fetch(`/carrito/remove/${productId}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': getCSRFToken()
-            },
-            body: JSON.stringify({
-                producto_id: productId
-            })
+            }
         })
         .then(response => response.json())
         .then(data => {
@@ -152,7 +149,7 @@
 
         showLoading();
 
-        fetch('/cart/clear', {
+        fetch('/carrito/clear', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
