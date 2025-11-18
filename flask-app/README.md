@@ -1,6 +1,8 @@
-# E-commerce Flask - Migración desde PHP
+# 🛒 E-commerce Ecuador - Flask Application
 
-Aplicación de e-commerce desarrollada en Flask, migrada desde el sistema PHP original.
+Plataforma de comercio electrónico completa desarrollada en Flask para Ecuador.
+
+> **🚀 Inicio Rápido**: Ver `README_SETUP.md` para configuración en 3 pasos
 
 ## Características
 
@@ -61,7 +63,7 @@ Editar `.env` con tus credenciales:
 SECRET_KEY=tu-clave-secreta-aqui
 
 # Database
-DATABASE_URL=mysql+pymysql://usuario:password@localhost/ecommerce
+DATABASE_URL=mysql+pymysql://root:@localhost/ecommerce_ecuador
 
 # Email
 MAIL_USERNAME=tu-email@gmail.com
@@ -76,34 +78,37 @@ GOOGLE_CLIENT_ID=tu-google-client-id
 GOOGLE_CLIENT_SECRET=tu-google-client-secret
 ```
 
-### 5. Inicializar base de datos
+### 5. Configurar Base de Datos con Datos Demo
+
+**Opción Rápida (Recomendada)** - Setup automático con datos de demostración:
 
 ```bash
-# Crear migraciones iniciales
-flask db init
-flask db migrate -m "Initial migration"
-flask db upgrade
-
-# O usar el comando personalizado
-flask init-db
+python setup_demo.py
 ```
 
-### 6. (Opcional) Migrar datos desde PHP
+Este script:
+- ✅ Crea la base de datos automáticamente
+- ✅ Crea todas las tablas
+- ✅ Pobla con productos, usuarios y datos de ejemplo
+- ✅ Configura credenciales de administrador
 
-Si tienes datos en la base de datos PHP original:
+Ver `README_SETUP.md` para más detalles.
+
+**Opción Manual** - Solo crear tablas sin datos:
+
+```bash
+flask db upgrade
+```
+
+**Opción Avanzada** - Migrar desde base de datos PHP existente:
 
 ```bash
 python migrate_data.py
 ```
 
-El script te guiará paso a paso solicitando:
-- Credenciales de la BD origen (PHP MySQL)
-- URL de la BD destino (Flask)
-- Directorios de archivos
+Ver `MIGRATION_GUIDE.md` para detalles de migración desde PHP.
 
-Ver [MIGRATION_GUIDE.md](MIGRATION_GUIDE.md) para instrucciones detalladas.
-
-### 7. Ejecutar la aplicación
+### 6. Ejecutar la aplicación
 
 ```bash
 # Modo desarrollo
