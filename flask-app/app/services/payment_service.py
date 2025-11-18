@@ -119,7 +119,7 @@ def create_order_from_cart(user_id, cart_items, direccion, pais, metodo, payment
                 pais=pais,
                 cantidad=item['cantidad'],
                 detalle=payment_id,
-                pago=str(producto.get_price() * item['cantidad']),
+                pago=float(producto.get_price() * item['cantidad']),
                 estado=estado
             )
             db.session.add(compra)
