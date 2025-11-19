@@ -129,6 +129,7 @@
             </div>
             <div class="modal-footer">
                 <form id="deleteForm" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                     <button type="submit" class="btn btn-danger">Eliminar</button>
                 </form>
@@ -140,11 +141,22 @@
 
 {% block extra_js %}
 <script>
+// Get CSRF token
+function getCsrfToken() {
+    return document.querySelector('input[name="csrf_token"]')?.value || '{{ csrf_token() }}';
+}
+
 // Toggle category status
 document.querySelectorAll('.toggle-category').forEach(toggle => {
     toggle.addEventListener('change', function() {
         const categoryId = this.getAttribute('data-id');
-        fetch(`/admin/categories/toggle/${categoryId}`, {method: 'POST'})
+        fetch(`/admin/categories/toggle/${categoryId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            }
+        })
         .then(r => r.json())
         .then(d => {
             if (!d.success) {

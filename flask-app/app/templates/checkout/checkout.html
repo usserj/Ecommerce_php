@@ -167,17 +167,42 @@
                         <span>IVA ({{ "%.0f"|format((tax/subtotal*100) if subtotal > 0 else 0) }}%):</span>
                         <span>${{ "%.2f"|format(tax) }}</span>
                     </div>
-                    <div class="d-flex justify-content-between mb-3">
+                    <div class="d-flex justify-content-between mb-2">
                         <span>Envío:</span>
-                        <span>${{ "%.2f"|format(shipping) }}</span>
+                        <span id="shipping-amount">${{ "%.2f"|format(shipping) }}</span>
+                    </div>
+
+                    <!-- Cupón de Descuento -->
+                    <div class="border-top pt-3 mb-3">
+                        <label class="form-label fw-bold small"><i class="fas fa-ticket-alt"></i> ¿Tienes un cupón?</label>
+                        <div class="input-group mb-2">
+                            <input type="text" class="form-control form-control-sm" id="coupon-code" placeholder="Código de cupón" style="text-transform: uppercase;" maxlength="50">
+                            <button class="btn btn-outline-primary btn-sm" type="button" id="apply-coupon">
+                                <span id="coupon-btn-text">Aplicar</span>
+                                <span id="coupon-spinner" class="spinner-border spinner-border-sm d-none" role="status"></span>
+                            </button>
+                        </div>
+                        <div id="coupon-message" class="small"></div>
+                    </div>
+
+                    <div id="discount-row" class="d-flex justify-content-between mb-2 text-success fw-bold" style="display: none !important;">
+                        <span><i class="fas fa-tag"></i> Descuento (<span id="coupon-code-display"></span>):</span>
+                        <span id="discount-amount">-$0.00</span>
                     </div>
 
                     <hr class="my-3">
 
                     <div class="d-flex justify-content-between align-items-center">
                         <h5 class="mb-0">Total:</h5>
-                        <h4 class="mb-0 text-success">${{ "%.2f"|format(total) }}</h4>
+                        <h4 class="mb-0 text-success" id="final-total">${{ "%.2f"|format(total) }}</h4>
                     </div>
+
+                    <!-- Hidden fields for coupon and calculations -->
+                    <input type="hidden" id="coupon-code-applied" value="">
+                    <input type="hidden" id="discount-value" value="0">
+                    <input type="hidden" id="original-total" value="{{ total }}">
+                    <input type="hidden" id="original-subtotal" value="{{ subtotal }}">
+                    <input type="hidden" id="original-tax" value="{{ tax }}">
                 </div>
             </div>
         </div>
@@ -216,6 +241,150 @@ document.querySelectorAll('.payment-option').forEach(option => {
             }
         }
     });
+});
+
+// Coupon validation
+const couponInput = document.getElementById('coupon-code');
+const applyBtn = document.getElementById('apply-coupon');
+const couponMessage = document.getElementById('coupon-message');
+const discountRow = document.getElementById('discount-row');
+const discountAmount = document.getElementById('discount-amount');
+const finalTotal = document.getElementById('final-total');
+const couponCodeApplied = document.getElementById('coupon-code-applied');
+const discountValue = document.getElementById('discount-value');
+const couponCodeDisplay = document.getElementById('coupon-code-display');
+const couponBtnText = document.getElementById('coupon-btn-text');
+const couponSpinner = document.getElementById('coupon-spinner');
+
+// Get CSRF token
+function getCsrfToken() {
+    return document.querySelector('input[name="csrf_token"]').value;
+}
+
+applyBtn.addEventListener('click', async function() {
+    const code = couponInput.value.trim().toUpperCase();
+
+    if (!code) {
+        showCouponMessage('Por favor ingrese un código de cupón', 'warning');
+        return;
+    }
+
+    // Show loading state
+    couponBtnText.classList.add('d-none');
+    couponSpinner.classList.remove('d-none');
+    applyBtn.disabled = true;
+
+    try {
+        const subtotal = parseFloat(document.getElementById('original-subtotal').value);
+
+        const response = await fetch('/checkout/validate-coupon', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({
+                codigo: code,
+                monto: subtotal
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            // Apply discount
+            const discount = parseFloat(data.descuento);
+            const originalTotal = parseFloat(document.getElementById('original-total').value);
+            const newTotal = Math.max(0, originalTotal - discount);
+
+            // Update UI
+            discountAmount.textContent = `-$${discount.toFixed(2)}`;
+            finalTotal.textContent = `$${newTotal.toFixed(2)}`;
+            couponCodeDisplay.textContent = code;
+            discountRow.style.display = 'flex';
+
+            // Store coupon data
+            couponCodeApplied.value = code;
+            discountValue.value = discount.toFixed(2);
+
+            // Disable input and change button
+            couponInput.disabled = true;
+            couponBtnText.textContent = 'Remover';
+            showCouponMessage(data.message, 'success');
+
+            // Change button to remove coupon
+            applyBtn.onclick = removeCoupon;
+
+        } else {
+            showCouponMessage(data.message, 'danger');
+        }
+
+    } catch (error) {
+        console.error('Error validating coupon:', error);
+        showCouponMessage('Error al validar el cupón. Intente nuevamente.', 'danger');
+    } finally {
+        // Reset loading state
+        couponBtnText.classList.remove('d-none');
+        couponSpinner.classList.add('d-none');
+        applyBtn.disabled = false;
+    }
+});
+
+function removeCoupon() {
+    const originalTotal = parseFloat(document.getElementById('original-total').value);
+
+    // Reset UI
+    finalTotal.textContent = `$${originalTotal.toFixed(2)}`;
+    discountRow.style.display = 'none';
+    couponInput.value = '';
+    couponInput.disabled = false;
+    couponCodeApplied.value = '';
+    discountValue.value = '0';
+    couponMessage.innerHTML = '';
+
+    // Reset button
+    couponBtnText.textContent = 'Aplicar';
+    applyBtn.onclick = null;
+    applyBtn.click = applyBtn.addEventListener('click', arguments.callee);
+}
+
+function showCouponMessage(message, type) {
+    const alertClass = {
+        'success': 'alert-success',
+        'danger': 'alert-danger',
+        'warning': 'alert-warning',
+        'info': 'alert-info'
+    }[type] || 'alert-info';
+
+    couponMessage.innerHTML = `<div class="alert ${alertClass} py-1 px-2 mb-0">${message}</div>`;
+
+    // Auto-hide after 5 seconds for non-success messages
+    if (type !== 'success') {
+        setTimeout(() => {
+            couponMessage.innerHTML = '';
+        }, 5000);
+    }
+}
+
+// Allow Enter key to apply coupon
+couponInput.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        applyBtn.click();
+    }
+});
+
+// Add coupon to form submission
+document.getElementById('checkoutForm').addEventListener('submit', function(e) {
+    const appliedCoupon = couponCodeApplied.value;
+    if (appliedCoupon) {
+        // Add hidden field to form
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'coupon_code';
+        input.value = appliedCoupon;
+        this.appendChild(input);
+    }
 });
 </script>
 {% endblock %}

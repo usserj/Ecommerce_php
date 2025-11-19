@@ -52,13 +52,13 @@ def send_verification_email(email, token):
     )
 
 
-def send_password_reset_email(email, new_password):
-    """Send password reset email."""
+def send_password_reset_email(email, reset_url):
+    """Send password reset email with secure link."""
     send_email(
-        subject='Nueva Contraseña - Tienda Virtual',
+        subject='Recuperar Contraseña - Tienda Virtual',
         recipient=email,
         template='reset_password',
-        new_password=new_password
+        reset_url=reset_url
     )
 
 

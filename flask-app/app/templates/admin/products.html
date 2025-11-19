@@ -209,6 +209,7 @@
             </div>
             <div class="modal-footer">
                 <form id="deleteForm" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                     <button type="submit" class="btn btn-danger">Eliminar</button>
                 </form>
@@ -220,6 +221,11 @@
 
 {% block extra_js %}
 <script>
+// Get CSRF token
+function getCsrfToken() {
+    return document.querySelector('input[name="csrf_token"]')?.value || '{{ csrf_token() }}';
+}
+
 // Toggle product status
 document.querySelectorAll('.toggle-product').forEach(toggle => {
     toggle.addEventListener('change', function() {
@@ -229,22 +235,23 @@ document.querySelectorAll('.toggle-product').forEach(toggle => {
         fetch(`/admin/products/toggle/${productId}`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
             }
         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
                 const message = data.estado == 1 ? 'Producto activado' : 'Producto desactivado';
-                showAlert(message, 'success');
+                console.log(message);
             } else {
                 this.checked = !isActive;
-                showAlert('Error al cambiar estado', 'error');
+                alert('Error al cambiar estado');
             }
         })
         .catch(error => {
             this.checked = !isActive;
-            showAlert('Error de conexión', 'error');
+            alert('Error de conexión');
         });
     });
 });

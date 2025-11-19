@@ -393,5 +393,40 @@ document.querySelectorAll('.delete-comment').forEach(btn => {
         new bootstrap.Modal(document.getElementById('deleteCommentModal')).show();
     });
 });
+
+// NOTE: Wishlist functionality is now handled by /static/js/wishlist.js (global script)
+// This provides event delegation and works on all pages
+
+// Add to cart
+document.querySelectorAll('.add-to-cart').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const productId = this.getAttribute('data-product-id');
+        const quantity = document.getElementById('quantity') ? parseInt(document.getElementById('quantity').value) : 1;
+
+        fetch('/carrito/agregar', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                producto_id: productId,
+                cantidad: quantity
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Producto agregado al carrito');
+                location.reload();
+            } else {
+                alert(data.message || 'Error al agregar al carrito');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error de conexión');
+        });
+    });
+});
 </script>
 {% endblock %}

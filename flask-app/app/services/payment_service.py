@@ -1,6 +1,5 @@
 """Payment service for multiple payment gateways."""
-from flask import current_app, url_for, redirect, flash, render_template
-import paypalrestsdk
+from flask import current_app, url_for, redirect, flash, render_template, session
 import requests
 import hashlib
 import hmac
@@ -13,9 +12,25 @@ from app.models.order import Compra
 from app.models.notification import Notificacion
 from app.extensions import db
 
+# PayPal SDK - opcional
+try:
+    import paypalrestsdk
+    PAYPAL_AVAILABLE = True
+except ImportError:
+    PAYPAL_AVAILABLE = False
+    current_app.logger.warning("PayPal SDK no está instalado. La funcionalidad de PayPal no estará disponible.") if current_app else None
+
+
+def get_coupon_from_session():
+    """Get coupon info from session if available."""
+    return session.get('applied_coupon', None)
+
 
 def configure_paypal():
     """Configure PayPal SDK."""
+    if not PAYPAL_AVAILABLE:
+        raise ImportError("PayPal SDK no está instalado")
+
     config = Comercio.get_config()
     paypal_config = config.get_paypal_config()
 
@@ -28,6 +43,10 @@ def configure_paypal():
 
 def process_paypal_payment(order_data):
     """Process PayPal payment."""
+    if not PAYPAL_AVAILABLE:
+        flash('PayPal no está disponible en este momento. Use otro método de pago.', 'error')
+        return redirect(url_for('checkout.index'))
+
     configure_paypal()
 
     cart_items = order_data['cart_items']
@@ -101,38 +120,143 @@ def process_payu_payment(order_data):
     return redirect(url_for('checkout.index'))
 
 
-def create_order_from_cart(user_id, cart_items, direccion, pais, metodo, payment_id, estado='pendiente'):
-    """Create order records from cart."""
+def create_order_from_cart(user_id, cart_items, direccion, pais, metodo, payment_id, estado='pendiente', cupon_info=None):
+    """Create order records from cart.
+
+    Args:
+        user_id: User ID
+        cart_items: List of cart items
+        direccion: Shipping address
+        pais: Country
+        metodo: Payment method
+        payment_id: Payment transaction ID
+        estado: Order status
+        cupon_info: Dictionary with coupon info {'id': int, 'codigo': str, 'descuento': float}
+
+    Returns:
+        tuple: (success: bool, message: str, orders: list or None)
+    """
     from app.models.user import User
+    from app.models.coupon import Cupon
     user = User.query.get(user_id)
 
-    for item in cart_items:
-        producto = Producto.query.get(item['id'])
-        if producto:
-            compra = Compra(
-                id_usuario=user_id,
-                id_producto=producto.id,
-                envio=0,  # TODO: Calculate shipping
-                metodo=metodo,
-                email=user.email,
-                direccion=direccion,
-                pais=pais,
-                cantidad=item['cantidad'],
-                detalle=payment_id,
-                pago=float(producto.get_price() * item['cantidad']),
-                estado=estado
-            )
-            db.session.add(compra)
+    if not user:
+        return False, "Usuario no encontrado", None
 
-            # Update product sales only if paid
-            if estado == 'procesando':
-                producto.increment_sales()
+    created_orders = []
+    cupon_aplicado = None
 
-    # Update notifications
-    if estado == 'procesando':
-        Notificacion.increment_new_sales()
+    try:
+        # Validate and lock coupon if provided
+        if cupon_info and cupon_info.get('id'):
+            cupon_aplicado = Cupon.query.with_for_update().get(cupon_info['id'])
+            if not cupon_aplicado:
+                db.session.rollback()
+                return False, "El cupón seleccionado ya no está disponible", None
 
-    db.session.commit()
+            # Re-validate coupon
+            subtotal = sum(Producto.query.get(item['id']).get_price() * item['cantidad']
+                          for item in cart_items if Producto.query.get(item['id']))
+            is_valid, message = cupon_aplicado.is_valid(subtotal)
+            if not is_valid:
+                db.session.rollback()
+                return False, f"El cupón ya no es válido: {message}", None
+
+        # First pass: Validate all stock availability with database locking
+        for item in cart_items:
+            # Use SELECT FOR UPDATE to prevent race conditions
+            producto = Producto.query.with_for_update().get(item['id'])
+
+            if not producto:
+                db.session.rollback()
+                return False, f"Producto con ID {item['id']} no encontrado", None
+
+            if producto.estado != 1:
+                db.session.rollback()
+                return False, f"El producto '{producto.titulo}' no está disponible", None
+
+            # Validate stock availability
+            if not producto.tiene_stock(item['cantidad']):
+                db.session.rollback()
+                stock_msg = "sin stock" if producto.agotado() else f"solo quedan {producto.stock} unidades"
+                return False, f"El producto '{producto.titulo}' no tiene stock suficiente ({stock_msg})", None
+
+        # Calculate total and apply discount
+        subtotal_orders = 0
+        for item in cart_items:
+            producto = Producto.query.get(item['id'])
+            if producto:
+                subtotal_orders += producto.get_price() * item['cantidad']
+
+        descuento_total = 0
+        if cupon_aplicado:
+            descuento_total = cupon_aplicado.calculate_discount(subtotal_orders)
+
+        # Second pass: Create orders and decrement stock
+        for item in cart_items:
+            producto = Producto.query.with_for_update().get(item['id'])
+
+            if producto:
+                # Decrement stock immediately (reserve inventory)
+                if not producto.decrementar_stock(item['cantidad']):
+                    db.session.rollback()
+                    return False, f"Error al decrementar stock del producto '{producto.titulo}'", None
+
+                # Calculate item price and proportional discount
+                item_total = float(producto.get_price() * item['cantidad'])
+                item_discount = 0
+                if descuento_total > 0 and subtotal_orders > 0:
+                    # Apply discount proportionally to this item
+                    item_discount = (item_total / subtotal_orders) * descuento_total
+
+                final_price = max(0, item_total - item_discount)
+
+                # Prepare detalle with payment_id and coupon info
+                detalle_data = {
+                    'payment_id': payment_id,
+                }
+                if cupon_aplicado:
+                    detalle_data['cupon'] = {
+                        'codigo': cupon_aplicado.codigo,
+                        'descuento': round(item_discount, 2)
+                    }
+
+                # Create order record
+                compra = Compra(
+                    id_usuario=user_id,
+                    id_producto=producto.id,
+                    envio=0,  # TODO: Calculate shipping
+                    metodo=metodo,
+                    email=user.email,
+                    direccion=direccion,
+                    pais=pais,
+                    cantidad=item['cantidad'],
+                    detalle=json.dumps(detalle_data),
+                    pago=round(final_price, 2),
+                    estado=estado
+                )
+                db.session.add(compra)
+                created_orders.append(compra)
+
+                # Update product sales counter only if paid
+                if estado == 'procesando':
+                    producto.increment_sales()
+
+        # Increment coupon usage if applied and payment is processing
+        if cupon_aplicado and estado == 'procesando':
+            cupon_aplicado.increment_usage()
+
+        # Update notifications
+        if estado == 'procesando':
+            Notificacion.increment_new_sales()
+
+        db.session.commit()
+        return True, "Órdenes creadas exitosamente", created_orders
+
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error creating orders: {e}")
+        return False, f"Error al crear las órdenes: {str(e)}", None
 
 
 # ===========================
@@ -158,15 +282,25 @@ def process_paymentez_payment(order_data):
 
     # Create order with pending status
     order_id = f"ORDER-{order_data['user_id']}-{int(datetime.now().timestamp())}"
-    create_order_from_cart(
+    cupon_info = get_coupon_from_session()
+
+    success, message, orders = create_order_from_cart(
         order_data['user_id'],
         cart_items,
         order_data['direccion'],
         order_data['pais'],
         'paymentez',
         order_id,
-        estado='pendiente'
+        estado='pendiente',
+        cupon_info=cupon_info
     )
+
+    if not success:
+        flash(f'Error al procesar la orden: {message}', 'error')
+        return redirect(url_for('checkout.index'))
+
+    # Clear coupon from session after creating order
+    session.pop('applied_coupon', None)
 
     # Return payment page with Paymentez checkout
     return render_template('checkout/paymentez.html',
@@ -194,15 +328,25 @@ def process_datafast_payment(order_data):
 
     # Create order with pending status
     order_id = f"ORDER-{order_data['user_id']}-{int(datetime.now().timestamp())}"
-    create_order_from_cart(
+    cupon_info = get_coupon_from_session()
+
+    success, message, orders = create_order_from_cart(
         order_data['user_id'],
         cart_items,
         order_data['direccion'],
         order_data['pais'],
         'datafast',
         order_id,
-        estado='pendiente'
+        estado='pendiente',
+        cupon_info=cupon_info
     )
+
+    if not success:
+        flash(f'Error al procesar la orden: {message}', 'error')
+        return redirect(url_for('checkout.index'))
+
+    # Clear coupon from session
+    session.pop('applied_coupon', None)
 
     # Return payment page with Datafast form
     return render_template('checkout/datafast.html',
@@ -234,15 +378,25 @@ def process_deuna_payment(order_data):
 
     # Create order with pending status
     order_id = f"ORDER-{order_data['user_id']}-{int(datetime.now().timestamp())}"
-    create_order_from_cart(
+    cupon_info = get_coupon_from_session()
+
+    success, message, orders = create_order_from_cart(
         order_data['user_id'],
         cart_items,
         order_data['direccion'],
         order_data['pais'],
         'deuna',
         order_id,
-        estado='pendiente'
+        estado='pendiente',
+        cupon_info=cupon_info
     )
+
+    if not success:
+        flash(f'Error al procesar la orden: {message}', 'error')
+        return redirect(url_for('checkout.index'))
+
+    # Clear coupon from session
+    session.pop('applied_coupon', None)
 
     # Return payment page with De Una instructions
     return render_template('checkout/deuna.html',
@@ -278,15 +432,25 @@ def process_bank_transfer_payment(order_data):
 
     # Create order with pending status
     order_id = f"ORDER-{order_data['user_id']}-{int(datetime.now().timestamp())}"
-    create_order_from_cart(
+    cupon_info = get_coupon_from_session()
+
+    success, message, orders = create_order_from_cart(
         order_data['user_id'],
         cart_items,
         order_data['direccion'],
         order_data['pais'],
         'transferencia',
         order_id,
-        estado='pendiente'
+        estado='pendiente',
+        cupon_info=cupon_info
     )
+
+    if not success:
+        flash(f'Error al procesar la orden: {message}', 'error')
+        return redirect(url_for('checkout.index'))
+
+    # Clear coupon from session
+    session.pop('applied_coupon', None)
 
     # Return page with bank account details
     return render_template('checkout/bank_transfer.html',
@@ -322,15 +486,25 @@ def process_transfer_voucher_payment(order_data):
 
     # Create order with pending status
     order_id = f"ORDER-{order_data['user_id']}-{int(datetime.now().timestamp())}"
-    create_order_from_cart(
+    cupon_info = get_coupon_from_session()
+
+    success, message, orders = create_order_from_cart(
         order_data['user_id'],
         cart_items,
         order_data['direccion'],
         order_data['pais'],
         'transferencia_comprobante',
         order_id,
-        estado='pendiente'
+        estado='pendiente',
+        cupon_info=cupon_info
     )
+
+    if not success:
+        flash(f'Error al procesar la orden: {message}', 'error')
+        return redirect(url_for('checkout.index'))
+
+    # Clear coupon from session
+    session.pop('applied_coupon', None)
 
     # Return page with voucher upload form
     return render_template('checkout/transfer_voucher.html',

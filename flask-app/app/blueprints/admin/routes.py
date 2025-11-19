@@ -11,6 +11,8 @@ from app.models.visit import VisitaPais, VisitaPersona
 from app.models.categoria import Categoria, Subcategoria
 from app.models.setting import Slide, Banner
 from app.models.comercio import Comercio
+from app.models.comment import Comentario
+from app.models.coupon import Cupon
 from app.extensions import db, bcrypt
 from werkzeug.utils import secure_filename
 from functools import wraps
@@ -176,6 +178,58 @@ def user_orders(id):
     )
 
     return render_template('admin/user_orders.html', user=user, orders=orders)
+
+
+@admin_bp.route('/users/<int:id>/detail')
+@admin_required
+def user_detail(id):
+    """View user details."""
+    from sqlalchemy import func
+    user = User.query.get_or_404(id)
+
+    # Get user statistics
+    total_orders = Compra.query.filter_by(id_usuario=id).count()
+    total_spent = db.session.query(func.sum(Compra.pago)).filter_by(id_usuario=id).scalar() or 0
+    total_comments = Comentario.query.filter_by(id_usuario=id).count()
+    total_wishlist = Deseo.query.filter_by(id_usuario=id).count()
+
+    # Get recent orders
+    recent_orders = Compra.query.filter_by(id_usuario=id).order_by(Compra.fecha.desc()).limit(5).all()
+
+    return render_template('admin/user_detail.html',
+                         user=user,
+                         total_orders=total_orders,
+                         total_spent=total_spent,
+                         total_comments=total_comments,
+                         total_wishlist=total_wishlist,
+                         recent_orders=recent_orders)
+
+
+@admin_bp.route('/users/delete/<int:id>', methods=['POST'])
+@admin_required
+def delete_user(id):
+    """Delete user."""
+    try:
+        user = User.query.get_or_404(id)
+
+        # Check if user has orders
+        orders_count = Compra.query.filter_by(id_usuario=id).count()
+        if orders_count > 0:
+            flash(f'No se puede eliminar al usuario "{user.nombre}" porque tiene {orders_count} compra(s) asociada(s). Se recomienda desactivar la cuenta en su lugar.', 'error')
+            return redirect(url_for('admin.users'))
+
+        # Delete user (wishlist and comments will be deleted by cascade)
+        db.session.delete(user)
+        db.session.commit()
+
+        flash(f'Usuario "{user.nombre}" eliminado exitosamente.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al eliminar usuario: {e}', 'error')
+
+    return redirect(url_for('admin.users'))
+
+
 @admin_bp.route('/products')
 @admin_required
 def products():
@@ -332,9 +386,26 @@ def delete_product(id):
     """Delete product."""
     try:
         producto = Producto.query.get_or_404(id)
+
+        # Check if product has orders
+        if producto.compras.count() > 0:
+            flash(f'No se puede eliminar "{producto.titulo}" porque tiene {producto.compras.count()} compra(s) asociada(s). Desactívelo en su lugar.', 'error')
+            return redirect(url_for('admin.products'))
+
+        # Check if product has comments
+        if producto.comentarios.count() > 0:
+            flash(f'No se puede eliminar "{producto.titulo}" porque tiene {producto.comentarios.count()} comentario(s). Desactívelo en su lugar.', 'error')
+            return redirect(url_for('admin.products'))
+
+        # Check if product is in wishlists
+        if producto.deseos.count() > 0:
+            flash(f'No se puede eliminar "{producto.titulo}" porque está en {producto.deseos.count()} lista(s) de deseos. Desactívelo en su lugar.', 'error')
+            return redirect(url_for('admin.products'))
+
+        # Safe to delete
         db.session.delete(producto)
         db.session.commit()
-        flash('Producto eliminado exitosamente!', 'success')
+        flash(f'Producto "{producto.titulo}" eliminado exitosamente!', 'success')
     except Exception as e:
         db.session.rollback()
         flash(f'Error al eliminar producto: {e}', 'error')
@@ -417,6 +488,25 @@ def settings():
     from app.models.comercio import Comercio
     import json
 
+    # Auto-migrate: Add SMTP columns if they don't exist
+    try:
+        migrations = [
+            "ALTER TABLE comercio ADD COLUMN IF NOT EXISTS mailServer VARCHAR(100) DEFAULT 'smtp.gmail.com'",
+            "ALTER TABLE comercio ADD COLUMN IF NOT EXISTS mailPort INT DEFAULT 587",
+            "ALTER TABLE comercio ADD COLUMN IF NOT EXISTS mailUseTLS BOOLEAN DEFAULT TRUE",
+            "ALTER TABLE comercio ADD COLUMN IF NOT EXISTS mailUsername VARCHAR(255)",
+            "ALTER TABLE comercio ADD COLUMN IF NOT EXISTS mailPassword TEXT",
+            "ALTER TABLE comercio ADD COLUMN IF NOT EXISTS mailDefaultSender VARCHAR(255)"
+        ]
+        for migration in migrations:
+            try:
+                db.session.execute(db.text(migration))
+            except Exception:
+                pass  # Column already exists
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+
     config = Comercio.get_config()
 
     if request.method == 'POST':
@@ -445,6 +535,14 @@ def settings():
             # De Una settings
             config.modoDeUna = request.form.get('modoDeUna', 'test')
             config.apiKeyDeUna = request.form.get('apiKeyDeUna', '')
+
+            # SMTP Email settings
+            config.mailServer = request.form.get('mailServer', 'smtp.gmail.com')
+            config.mailPort = int(request.form.get('mailPort', 587))
+            config.mailUseTLS = request.form.get('mailUseTLS') == 'true'
+            config.mailUsername = request.form.get('mailUsername', '')
+            config.mailPassword = request.form.get('mailPassword', '')
+            config.mailDefaultSender = request.form.get('mailDefaultSender', '')
 
             # Bank accounts (save as JSON)
             bank_accounts = {}
@@ -1200,3 +1298,143 @@ def toggle_coupon(id):
     db.session.commit()
 
     return jsonify({'success': True, 'estado': cupon.estado})
+
+
+# ===========================
+# Comments Management
+# ===========================
+
+@admin_bp.route('/comments')
+@admin_required
+def comments():
+    """Comments management page."""
+    # Get filter parameters
+    estado_filter = request.args.get('estado', '')
+    calificacion_filter = request.args.get('calificacion', '')
+    producto_filter = request.args.get('producto', '')
+    search_query = request.args.get('search', '')
+
+    # Base query with relationships
+    query = Comentario.query
+
+    # Apply filters
+    if estado_filter:
+        query = query.filter_by(estado=estado_filter)
+
+    if calificacion_filter:
+        query = query.filter(Comentario.calificacion >= float(calificacion_filter))
+
+    if producto_filter:
+        query = query.filter_by(id_producto=int(producto_filter))
+
+    if search_query:
+        query = query.join(Comentario.usuario).filter(
+            db.or_(
+                Comentario.comentario.ilike(f'%{search_query}%'),
+                User.nombre.ilike(f'%{search_query}%')
+            )
+        )
+
+    # Order by date descending
+    comentarios = query.order_by(Comentario.fecha.desc()).all()
+
+    # Get statistics
+    total_comentarios = Comentario.query.count()
+    pendientes = Comentario.query.filter_by(estado=Comentario.ESTADO_PENDIENTE).count()
+    aprobados = Comentario.query.filter_by(estado=Comentario.ESTADO_APROBADO).count()
+    rechazados = Comentario.query.filter_by(estado=Comentario.ESTADO_RECHAZADO).count()
+
+    # Get products for filter dropdown
+    productos = Producto.query.filter_by(estado=1).order_by(Producto.titulo).all()
+
+    return render_template('admin/comments.html',
+                         comentarios=comentarios,
+                         total_comentarios=total_comentarios,
+                         pendientes=pendientes,
+                         aprobados=aprobados,
+                         rechazados=rechazados,
+                         productos=productos,
+                         estado_filter=estado_filter,
+                         calificacion_filter=calificacion_filter,
+                         producto_filter=producto_filter,
+                         search_query=search_query)
+
+
+@admin_bp.route('/comments/approve/<int:id>', methods=['POST'])
+@admin_required
+def approve_comment(id):
+    """Approve comment."""
+    comentario = Comentario.query.get_or_404(id)
+    comentario.aprobar()
+
+    flash(f'Comentario de {comentario.usuario.nombre} aprobado.', 'success')
+    return redirect(url_for('admin.comments'))
+
+
+@admin_bp.route('/comments/reject/<int:id>', methods=['POST'])
+@admin_required
+def reject_comment(id):
+    """Reject comment."""
+    comentario = Comentario.query.get_or_404(id)
+    comentario.rechazar()
+
+    flash(f'Comentario de {comentario.usuario.nombre} rechazado.', 'success')
+    return redirect(url_for('admin.comments'))
+
+
+@admin_bp.route('/comments/delete/<int:id>', methods=['POST'])
+@admin_required
+def delete_comment(id):
+    """Delete comment."""
+    comentario = Comentario.query.get_or_404(id)
+    usuario_nombre = comentario.usuario.nombre
+
+    db.session.delete(comentario)
+    db.session.commit()
+
+    flash(f'Comentario de {usuario_nombre} eliminado permanentemente.', 'success')
+    return redirect(url_for('admin.comments'))
+
+
+@admin_bp.route('/comments/respond/<int:id>', methods=['POST'])
+@admin_required
+def respond_comment(id):
+    """Respond to comment as admin."""
+    comentario = Comentario.query.get_or_404(id)
+    respuesta = request.form.get('respuesta', '').strip()
+
+    if not respuesta:
+        flash('La respuesta no puede estar vacía.', 'error')
+        return redirect(url_for('admin.comments'))
+
+    comentario.respuesta_admin = respuesta
+    comentario.fecha_moderacion = datetime.utcnow()
+
+    # Auto-approve when responding
+    if comentario.estado == Comentario.ESTADO_PENDIENTE:
+        comentario.estado = Comentario.ESTADO_APROBADO
+
+    db.session.commit()
+
+    flash(f'Respuesta publicada en el comentario de {comentario.usuario.nombre}.', 'success')
+    return redirect(url_for('admin.comments'))
+
+
+@admin_bp.route('/comments/toggle/<int:id>', methods=['POST'])
+@admin_required
+def toggle_comment(id):
+    """Toggle comment status (approve/reject)."""
+    comentario = Comentario.query.get_or_404(id)
+
+    if comentario.estado == Comentario.ESTADO_APROBADO:
+        comentario.rechazar()
+        nuevo_estado = 'rechazado'
+    else:
+        comentario.aprobar()
+        nuevo_estado = 'aprobado'
+
+    return jsonify({
+        'success': True,
+        'estado': comentario.estado,
+        'estado_display': nuevo_estado
+    })

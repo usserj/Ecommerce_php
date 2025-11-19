@@ -39,8 +39,9 @@ class Producto(db.Model):
     fecha = db.Column(db.DateTime, default=datetime.utcnow)
 
     # Relationships
-    categoria = db.relationship('Categoria', backref='productos')
-    subcategoria = db.relationship('Subcategoria', backref='productos')
+    # Use back_populates to avoid backref conflicts
+    categoria = db.relationship('Categoria', foreign_keys=[id_categoria])
+    subcategoria = db.relationship('Subcategoria', foreign_keys=[id_subcategoria])
     comentarios = db.relationship('Comentario', backref='producto', lazy='dynamic', cascade='all, delete-orphan')
     compras = db.relationship('Compra', backref='producto', lazy='dynamic')
     deseos = db.relationship('Deseo', backref='producto', lazy='dynamic', cascade='all, delete-orphan')
@@ -54,6 +55,10 @@ class Producto(db.Model):
             if not self.finOferta or self.finOferta > datetime.utcnow():
                 return self.precioOferta
         return self.precio
+
+    def get_final_price(self):
+        """Get final price (alias for get_price for template compatibility)."""
+        return self.get_price()
 
     def get_discount_percentage(self):
         """Get discount percentage."""
