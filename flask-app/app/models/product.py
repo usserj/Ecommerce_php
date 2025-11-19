@@ -39,8 +39,9 @@ class Producto(db.Model):
     fecha = db.Column(db.DateTime, default=datetime.utcnow)
 
     # Relationships
-    categoria = db.relationship('Categoria', backref='productos')
-    subcategoria = db.relationship('Subcategoria', backref='productos')
+    # Use back_populates to avoid backref conflicts
+    categoria = db.relationship('Categoria', foreign_keys=[id_categoria])
+    subcategoria = db.relationship('Subcategoria', foreign_keys=[id_subcategoria])
     comentarios = db.relationship('Comentario', backref='producto', lazy='dynamic', cascade='all, delete-orphan')
     compras = db.relationship('Compra', backref='producto', lazy='dynamic')
     deseos = db.relationship('Deseo', backref='producto', lazy='dynamic', cascade='all, delete-orphan')

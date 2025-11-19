@@ -81,8 +81,8 @@ def init_database(db_session):
     """Initialize database with test data"""
     # Create test categoria
     categoria = Categoria(
-        nombre='Electrónica',
-        descripcion='Productos electrónicos',
+        nombre='ElectrÃ³nica',
+        descripcion='Productos electrÃ³nicos',
         estado=True
     )
     db_session.add(categoria)
@@ -91,7 +91,7 @@ def init_database(db_session):
     # Create test subcategoria
     subcategoria = Subcategoria(
         nombre='Smartphones',
-        descripcion='Teléfonos inteligentes',
+        descripcion='TelÃ©fonos inteligentes',
         categoria_id=categoria.id,
         estado=True
     )
