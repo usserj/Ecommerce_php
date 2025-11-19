@@ -176,6 +176,58 @@ def user_orders(id):
     )
 
     return render_template('admin/user_orders.html', user=user, orders=orders)
+
+
+@admin_bp.route('/users/<int:id>/detail')
+@admin_required
+def user_detail(id):
+    """View user details."""
+    from sqlalchemy import func
+    user = User.query.get_or_404(id)
+
+    # Get user statistics
+    total_orders = Compra.query.filter_by(id_usuario=id).count()
+    total_spent = db.session.query(func.sum(Compra.pago)).filter_by(id_usuario=id).scalar() or 0
+    total_comments = Comentario.query.filter_by(id_usuario=id).count()
+    total_wishlist = Deseo.query.filter_by(id_usuario=id).count()
+
+    # Get recent orders
+    recent_orders = Compra.query.filter_by(id_usuario=id).order_by(Compra.fecha.desc()).limit(5).all()
+
+    return render_template('admin/user_detail.html',
+                         user=user,
+                         total_orders=total_orders,
+                         total_spent=total_spent,
+                         total_comments=total_comments,
+                         total_wishlist=total_wishlist,
+                         recent_orders=recent_orders)
+
+
+@admin_bp.route('/users/delete/<int:id>', methods=['POST'])
+@admin_required
+def delete_user(id):
+    """Delete user."""
+    try:
+        user = User.query.get_or_404(id)
+
+        # Check if user has orders
+        orders_count = Compra.query.filter_by(id_usuario=id).count()
+        if orders_count > 0:
+            flash(f'No se puede eliminar al usuario "{user.nombre}" porque tiene {orders_count} compra(s) asociada(s). Se recomienda desactivar la cuenta en su lugar.', 'error')
+            return redirect(url_for('admin.users'))
+
+        # Delete user (wishlist and comments will be deleted by cascade)
+        db.session.delete(user)
+        db.session.commit()
+
+        flash(f'Usuario "{user.nombre}" eliminado exitosamente.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al eliminar usuario: {e}', 'error')
+
+    return redirect(url_for('admin.users'))
+
+
 @admin_bp.route('/products')
 @admin_required
 def products():
