@@ -128,6 +128,7 @@ class User(UserMixin, db.Model):
 
     def get_orders(self):
         """Get user's orders."""
+        from app.models.order import Compra
         return self.compras.order_by(Compra.fecha.desc()).all()
 
     def get_wishlist(self):

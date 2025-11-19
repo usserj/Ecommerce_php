@@ -66,10 +66,29 @@
 document.querySelectorAll('.toggle-user').forEach(toggle => {
     toggle.addEventListener('change', function() {
         const userId = this.getAttribute('data-id');
-        fetch(`/admin/users/toggle/${userId}`, {method: 'POST'})
+        const isChecked = this.checked;
+
+        fetch(`/admin/users/toggle/${userId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
         .then(r => r.json())
-        .then(d => { if(!d.success) { this.checked = !this.checked; alert('Error'); } })
-        .catch(() => { this.checked = !this.checked; alert('Error'); });
+        .then(d => {
+            if(d.success) {
+                // verificacion: 0=verified, 1=pending
+                const status = d.verificacion == 0 ? 'Verificado' : 'Pendiente';
+                console.log(`Usuario ${userId} ahora está: ${status}`);
+            } else {
+                this.checked = !isChecked;
+                alert('Error al cambiar estado');
+            }
+        })
+        .catch(() => {
+            this.checked = !isChecked;
+            alert('Error de conexión');
+        });
     });
 });
 </script>

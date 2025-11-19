@@ -159,6 +159,83 @@
         </div>
     </nav>
 
+    <!-- Admin Navigation Menu -->
+    {% if session.get('admin_id') %}
+    <div class="bg-light border-bottom">
+        <div class="container-fluid px-4">
+            <nav class="navbar navbar-expand-lg navbar-light py-2">
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#adminNavMenu">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="adminNavMenu">
+                    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'admin.dashboard' %}active fw-bold{% endif %}"
+                               href="{{ url_for('admin.dashboard') }}">
+                                <i class="fas fa-tachometer-alt"></i> Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if 'users' in request.endpoint %}active fw-bold{% endif %}"
+                               href="{{ url_for('admin.users') }}">
+                                <i class="fas fa-users"></i> Usuarios
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if 'product' in request.endpoint %}active fw-bold{% endif %}"
+                               href="{{ url_for('admin.products') }}">
+                                <i class="fas fa-box"></i> Productos
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if 'categor' in request.endpoint %}active fw-bold{% endif %}"
+                               href="{{ url_for('admin.categories') }}">
+                                <i class="fas fa-folder"></i> Categorías
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if 'subcategor' in request.endpoint %}active fw-bold{% endif %}"
+                               href="{{ url_for('admin.subcategories') }}">
+                                <i class="fas fa-folder-open"></i> Subcategorías
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if 'coupon' in request.endpoint %}active fw-bold{% endif %}"
+                               href="{{ url_for('admin.coupons') }}">
+                                <i class="fas fa-ticket-alt"></i> Cupones
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if 'slide' in request.endpoint %}active fw-bold{% endif %}"
+                               href="{{ url_for('admin.slides') }}">
+                                <i class="fas fa-images"></i> Slides
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if 'order' in request.endpoint %}active fw-bold{% endif %}"
+                               href="{{ url_for('admin.orders') }}">
+                                <i class="fas fa-shopping-cart"></i> Pedidos
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'admin.analytics' %}active fw-bold{% endif %}"
+                               href="{{ url_for('admin.analytics') }}">
+                                <i class="fas fa-chart-line"></i> Analíticas
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'admin.settings' %}active fw-bold{% endif %}"
+                               href="{{ url_for('admin.settings') }}">
+                                <i class="fas fa-cog"></i> Configuración
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Flash Messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}

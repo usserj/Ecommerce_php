@@ -221,9 +221,9 @@ def upload_voucher():
             shipping = config.envioNacional
             total = subtotal + tax + shipping
 
-            # Get user address from session or form
-            direccion = request.form.get('direccion', current_user.direccion or 'Pendiente')
-            pais = request.form.get('pais', current_user.pais or 'Ecuador')
+            # Get user address from form or use default
+            direccion = request.form.get('direccion', 'Pendiente')
+            pais = request.form.get('pais', 'Ecuador')
 
             # Create order
             order = create_order_from_cart(
