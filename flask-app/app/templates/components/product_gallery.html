@@ -1,0 +1,118 @@
+<!-- Product Image Gallery Component -->
+{% set all_images = producto.get_all_images() %}
+
+{% if all_images %}
+<div class="product-gallery mb-4">
+    <!-- Main Image Display -->
+    <div class="main-image-container mb-3">
+        <div id="productImageCarousel" class="carousel slide" data-bs-ride="carousel">
+            <div class="carousel-inner rounded shadow">
+                {% for image in all_images %}
+                <div class="carousel-item {% if loop.first %}active{% endif %}">
+                    <img src="{{ url_for('static', filename=image) }}"
+                         class="d-block w-100"
+                         alt="{{ producto.titulo }} - Imagen {{ loop.index }}"
+                         style="max-height: 500px; object-fit: contain; background: #f8f9fa;">
+                </div>
+                {% endfor %}
+            </div>
+
+            {% if all_images|length > 1 %}
+            <!-- Carousel Controls -->
+            <button class="carousel-control-prev" type="button" data-bs-target="#productImageCarousel" data-bs-slide="prev">
+                <span class="carousel-control-prev-icon" aria-hidden="true" style="background-color: rgba(0,0,0,0.5); padding: 20px; border-radius: 50%;"></span>
+                <span class="visually-hidden">Anterior</span>
+            </button>
+            <button class="carousel-control-next" type="button" data-bs-target="#productImageCarousel" data-bs-slide="next">
+                <span class="carousel-control-next-icon" aria-hidden="true" style="background-color: rgba(0,0,0,0.5); padding: 20px; border-radius: 50%;"></span>
+                <span class="visually-hidden">Siguiente</span>
+            </button>
+
+            <!-- Carousel Indicators (Thumbnails) -->
+            <div class="carousel-indicators position-relative mt-3" style="position: static !important;">
+                <div class="d-flex justify-content-center gap-2 flex-wrap">
+                    {% for image in all_images %}
+                    <button type="button"
+                            data-bs-target="#productImageCarousel"
+                            data-bs-slide-to="{{ loop.index0 }}"
+                            class="{% if loop.first %}active{% endif %}"
+                            aria-current="{% if loop.first %}true{% endif %}"
+                            aria-label="Imagen {{ loop.index }}"
+                            style="width: 80px; height: 80px; border: 2px solid #ddd; border-radius: 4px; overflow: hidden; padding: 0; opacity: 1;">
+                        <img src="{{ url_for('static', filename=image) }}"
+                             class="w-100 h-100"
+                             style="object-fit: cover;">
+                    </button>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Image Counter -->
+    {% if all_images|length > 1 %}
+    <div class="text-center text-muted small">
+        <i class="fas fa-images"></i> {{ all_images|length }} imágenes disponibles
+    </div>
+    {% endif %}
+</div>
+
+<!-- Zoom Modal (Optional) -->
+<div class="modal fade" id="imageZoomModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content bg-transparent border-0">
+            <div class="modal-header border-0">
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img id="zoomImage" src="" class="img-fluid" alt="{{ producto.titulo }}">
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Custom styles for carousel indicators */
+.carousel-indicators button {
+    text-indent: 0 !important;
+    margin: 0 !important;
+}
+
+.carousel-indicators button.active {
+    border-color: #007bff !important;
+    box-shadow: 0 0 5px rgba(0,123,255,0.5);
+}
+
+.carousel-indicators button:hover {
+    border-color: #0056b3 !important;
+}
+
+/* Smooth carousel transitions */
+.carousel-item {
+    transition: transform 0.6s ease-in-out;
+}
+
+/* Main image click for zoom */
+.carousel-inner img {
+    cursor: zoom-in;
+}
+</style>
+
+<script>
+// Click on main image to zoom
+document.querySelectorAll('#productImageCarousel .carousel-item img').forEach(img => {
+    img.addEventListener('click', function() {
+        const zoomImage = document.getElementById('zoomImage');
+        zoomImage.src = this.src;
+        new bootstrap.Modal(document.getElementById('imageZoomModal')).show();
+    });
+});
+</script>
+{% else %}
+<!-- No images available -->
+<div class="text-center py-5 bg-light rounded">
+    <i class="fas fa-image fa-3x text-muted mb-3"></i>
+    <p class="text-muted">No hay imágenes disponibles para este producto</p>
+</div>
+{% endif %}

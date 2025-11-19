@@ -145,6 +145,10 @@
                                        class="btn btn-warning" title="Editar">
                                         <i class="fas fa-edit"></i>
                                     </a>
+                                    <a href="{{ url_for('admin.product_gallery', id=producto.id) }}"
+                                       class="btn btn-info" title="Galería de Imágenes">
+                                        <i class="fas fa-images"></i>
+                                    </a>
                                     <button type="button" class="btn btn-danger delete-product"
                                             data-id="{{ producto.id }}"
                                             data-titulo="{{ producto.titulo }}"

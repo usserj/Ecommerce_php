@@ -426,6 +426,78 @@ def toggle_product(id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
+@admin_bp.route('/products/<int:id>/gallery', methods=['GET', 'POST'])
+@admin_required
+def product_gallery(id):
+    """Manage product image gallery."""
+    producto = Producto.query.get_or_404(id)
+
+    if request.method == 'POST':
+        # Handle multiple image uploads
+        uploaded_files = request.files.getlist('images')
+
+        if not uploaded_files:
+            flash('No se seleccionaron imágenes.', 'error')
+            return redirect(url_for('admin.product_gallery', id=id))
+
+        upload_folder = os.path.join('app/static/uploads/productos')
+        if not os.path.exists(upload_folder):
+            os.makedirs(upload_folder)
+
+        uploaded_count = 0
+        for file in uploaded_files:
+            if file and file.filename:
+                filename = secure_filename(file.filename)
+                # Add timestamp to avoid name conflicts
+                timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+                filename = f"{timestamp}_{filename}"
+                filepath = os.path.join(upload_folder, filename)
+
+                # Resize image to 1280x720
+                try:
+                    img = Image.open(file)
+                    img = img.resize((1280, 720), Image.Resampling.LANCZOS)
+                    img.save(filepath)
+
+                    # Add to multimedia gallery
+                    image_path = f'uploads/productos/{filename}'
+                    producto.add_multimedia_image(image_path)
+                    uploaded_count += 1
+                except Exception as e:
+                    flash(f'Error al procesar imagen {file.filename}: {e}', 'error')
+
+        if uploaded_count > 0:
+            flash(f'{uploaded_count} imagen(es) agregada(s) exitosamente.', 'success')
+
+        return redirect(url_for('admin.product_gallery', id=id))
+
+    # GET request - show gallery management page
+    return render_template('admin/product_gallery.html', producto=producto)
+
+
+@admin_bp.route('/products/<int:id>/gallery/delete/<path:image>', methods=['POST'])
+@admin_required
+def delete_gallery_image(id, image):
+    """Delete image from product gallery."""
+    try:
+        producto = Producto.query.get_or_404(id)
+
+        # Remove from multimedia list
+        producto.remove_multimedia_image(image)
+
+        # Delete physical file
+        try:
+            img_path = os.path.join('app/static', image)
+            if os.path.exists(img_path):
+                os.remove(img_path)
+        except Exception as e:
+            print(f'Error deleting image file: {e}')
+
+        return jsonify({'success': True, 'message': 'Imagen eliminada exitosamente'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
 @admin_bp.route('/orders')
 @admin_required
 def orders():

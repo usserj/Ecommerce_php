@@ -103,7 +103,41 @@ class Producto(db.Model):
         """Get list of multimedia URLs."""
         if isinstance(self.multimedia, list):
             return self.multimedia
+        if isinstance(self.multimedia, str) and self.multimedia:
+            import json
+            try:
+                return json.loads(self.multimedia)
+            except:
+                return []
         return []
+
+    def add_multimedia_image(self, image_path):
+        """Add image to multimedia gallery."""
+        import json
+        images = self.get_multimedia_list()
+        if image_path not in images:
+            images.append(image_path)
+            self.multimedia = json.dumps(images)
+            db.session.commit()
+        return True
+
+    def remove_multimedia_image(self, image_path):
+        """Remove image from multimedia gallery."""
+        import json
+        images = self.get_multimedia_list()
+        if image_path in images:
+            images.remove(image_path)
+            self.multimedia = json.dumps(images) if images else None
+            db.session.commit()
+        return True
+
+    def get_all_images(self):
+        """Get all product images (cover + multimedia)."""
+        images = []
+        if self.portada:
+            images.append(self.portada)
+        images.extend(self.get_multimedia_list())
+        return images
 
     def is_physical(self):
         """Check if product is physical."""
