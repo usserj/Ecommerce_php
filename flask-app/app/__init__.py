@@ -123,8 +123,21 @@ def register_context_processors(app):
             from flask import session
             cart_count = len(session.get('cart', []))
 
+        # Mensajes no leídos para admin
+        admin_mensajes_no_leidos = 0
+        if current_user.is_authenticated and hasattr(current_user, 'es_admin') and current_user.es_admin:
+            try:
+                from app.models.message import Mensaje
+                admin_mensajes_no_leidos = Mensaje.query.filter_by(
+                    destinatario_id=current_user.id,
+                    leido=False
+                ).count()
+            except:
+                admin_mensajes_no_leidos = 0
+
         return {
             'categorias': categorias,
             'plantilla': plantilla,
-            'cart_count': cart_count
+            'cart_count': cart_count,
+            'admin_mensajes_no_leidos': admin_mensajes_no_leidos
         }

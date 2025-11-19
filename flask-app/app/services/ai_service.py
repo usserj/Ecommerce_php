@@ -232,8 +232,13 @@ class DeepSeekService:
             plantilla = Plantilla.query.first()
 
             # Obtener historial de conversación
-            historial = ConversacionChatbot.get_conversacion(session_id, limit=10)
-            historial = list(reversed(historial))  # Orden cronológico
+            historial = []
+            try:
+                historial = ConversacionChatbot.get_conversacion(session_id, limit=10)
+                historial = list(reversed(historial))  # Orden cronológico
+            except Exception as e:
+                logger.warning(f"No se pudo obtener historial de conversación: {e}")
+                historial = []
 
             # Preparar contexto
             context = context or {}
@@ -317,25 +322,30 @@ PROHIBIDO:
 
             if result['success']:
                 # Guardar mensaje del usuario en BD
-                conv_user = ConversacionChatbot(
-                    session_id=session_id,
-                    usuario_id=usuario_id,
-                    rol='user',
-                    mensaje=user_message
-                )
-                conv_user.set_contexto(context)
-                db.session.add(conv_user)
+                try:
+                    conv_user = ConversacionChatbot(
+                        session_id=session_id,
+                        usuario_id=usuario_id,
+                        rol='user',
+                        mensaje=user_message
+                    )
+                    conv_user.set_contexto(context)
+                    db.session.add(conv_user)
 
-                # Guardar respuesta del asistente
-                conv_assistant = ConversacionChatbot(
-                    session_id=session_id,
-                    usuario_id=usuario_id,
-                    rol='assistant',
-                    mensaje=result['response']
-                )
-                db.session.add(conv_assistant)
+                    # Guardar respuesta del asistente
+                    conv_assistant = ConversacionChatbot(
+                        session_id=session_id,
+                        usuario_id=usuario_id,
+                        rol='assistant',
+                        mensaje=result['response']
+                    )
+                    db.session.add(conv_assistant)
 
-                db.session.commit()
+                    db.session.commit()
+                except Exception as e:
+                    logger.warning(f"No se pudo guardar conversación en BD: {e}")
+                    # Continuar sin guardar (fallback graceful)
+                    db.session.rollback()
 
                 return {
                     'success': True,
