@@ -55,6 +55,10 @@ class Producto(db.Model):
                 return self.precioOferta
         return self.precio
 
+    def get_final_price(self):
+        """Get final price (alias for get_price for template compatibility)."""
+        return self.get_price()
+
     def get_discount_percentage(self):
         """Get discount percentage."""
         if self.oferta == 1 and self.descuentoOferta > 0:
