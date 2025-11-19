@@ -1,0 +1,261 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Análisis de Reviews con IA - Panel Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="mb-0">
+                <i class="fas fa-brain text-primary"></i> Análisis de Reviews con IA
+            </h2>
+            <p class="text-muted">Análisis inteligente de opiniones y sentimientos de clientes</p>
+        </div>
+    </div>
+
+    <!-- Estadísticas Generales -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Total Análisis</h6>
+                            <h3 class="mb-0">{{ total_analisis }}</h3>
+                        </div>
+                        <div class="text-primary">
+                            <i class="fas fa-chart-line fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Mejor Calidad</h6>
+                            <h3 class="mb-0">
+                                {% if mejor_calidad %}
+                                    {{ "%.1f"|format(mejor_calidad[0].calidad_score) }}/5.0
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </h3>
+                        </div>
+                        <div class="text-success">
+                            <i class="fas fa-star fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Requieren Atención</h6>
+                            <h3 class="mb-0">{{ necesitan_atencion|length }}</h3>
+                        </div>
+                        <div class="text-warning">
+                            <i class="fas fa-exclamation-triangle fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top 10 - Mejor Calidad -->
+    {% if mejor_calidad %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-trophy"></i> Top 10 - Mejor Calidad</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th width="5%">#</th>
+                                    <th width="40%">Producto</th>
+                                    <th width="15%" class="text-center">Calidad IA</th>
+                                    <th width="15%" class="text-center">Sentimientos</th>
+                                    <th width="15%" class="text-center">Total Reviews</th>
+                                    <th width="10%" class="text-center">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in mejor_calidad %}
+                                <tr>
+                                    <td>{{ loop.index }}</td>
+                                    <td>
+                                        <strong>{{ item.producto.titulo if item.producto else 'N/A' }}</strong>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-success fs-6">
+                                            {{ "%.1f"|format(item.calidad_score) }}/5.0
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        <small class="text-success">😊 {{ item.sentimiento_positivo }}</small> /
+                                        <small class="text-muted">😐 {{ item.sentimiento_neutral }}</small> /
+                                        <small class="text-danger">😞 {{ item.sentimiento_negativo }}</small>
+                                    </td>
+                                    <td class="text-center">{{ item.total_reviews }}</td>
+                                    <td class="text-center">
+                                        <a href="{{ url_for('admin.analisis_reviews_detalle', producto_id=item.producto_id) }}"
+                                           class="btn btn-sm btn-primary">
+                                            <i class="fas fa-eye"></i> Ver
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Productos que Necesitan Atención -->
+    {% if necesitan_atencion %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0"><i class="fas fa-exclamation-circle"></i> Productos que Necesitan Atención</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th width="5%">#</th>
+                                    <th width="40%">Producto</th>
+                                    <th width="15%" class="text-center">Calidad IA</th>
+                                    <th width="15%" class="text-center">Sentimientos</th>
+                                    <th width="15%" class="text-center">Total Reviews</th>
+                                    <th width="10%" class="text-center">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in necesitan_atencion %}
+                                <tr>
+                                    <td>{{ loop.index }}</td>
+                                    <td>
+                                        <strong>{{ item.producto.titulo if item.producto else 'N/A' }}</strong>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-danger fs-6">
+                                            {{ "%.1f"|format(item.calidad_score) }}/5.0
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        <small class="text-success">😊 {{ item.sentimiento_positivo }}</small> /
+                                        <small class="text-muted">😐 {{ item.sentimiento_neutral }}</small> /
+                                        <small class="text-danger">😞 {{ item.sentimiento_negativo }}</small>
+                                    </td>
+                                    <td class="text-center">{{ item.total_reviews }}</td>
+                                    <td class="text-center">
+                                        <a href="{{ url_for('admin.analisis_reviews_detalle', producto_id=item.producto_id) }}"
+                                           class="btn btn-sm btn-warning">
+                                            <i class="fas fa-search"></i> Revisar
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Análisis Recientes -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-list"></i> Análisis Recientes</h5>
+                    <a href="{{ url_for('admin.products') }}" class="btn btn-sm btn-light">
+                        <i class="fas fa-plus"></i> Analizar Producto
+                    </a>
+                </div>
+                <div class="card-body p-0">
+                    {% if analisis %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th width="30%">Producto</th>
+                                    <th width="12%" class="text-center">Calidad IA</th>
+                                    <th width="18%" class="text-center">Sentimientos</th>
+                                    <th width="15%">Fecha Análisis</th>
+                                    <th width="15%">Recomendación IA</th>
+                                    <th width="10%" class="text-center">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in analisis %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ item.producto.titulo if item.producto else 'N/A' }}</strong>
+                                    </td>
+                                    <td class="text-center">
+                                        {% set score = item.calidad_score|float %}
+                                        {% if score >= 4.0 %}
+                                            <span class="badge bg-success fs-6">{{ "%.1f"|format(score) }}</span>
+                                        {% elif score >= 3.0 %}
+                                            <span class="badge bg-warning fs-6">{{ "%.1f"|format(score) }}</span>
+                                        {% else %}
+                                            <span class="badge bg-danger fs-6">{{ "%.1f"|format(score) }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">
+                                        <small class="text-success">😊 {{ item.sentimiento_positivo }}</small> /
+                                        <small class="text-muted">😐 {{ item.sentimiento_neutral }}</small> /
+                                        <small class="text-danger">😞 {{ item.sentimiento_negativo }}</small>
+                                    </td>
+                                    <td>
+                                        <small>{{ item.fecha_analisis.strftime('%d/%m/%Y %H:%M') if item.fecha_analisis else 'N/A' }}</small>
+                                    </td>
+                                    <td>
+                                        <small class="text-truncate d-block" style="max-width: 200px;"
+                                               title="{{ item.recomendacion }}">
+                                            {{ item.recomendacion[:50] }}...
+                                        </small>
+                                    </td>
+                                    <td class="text-center">
+                                        <a href="{{ url_for('admin.analisis_reviews_detalle', producto_id=item.producto_id) }}"
+                                           class="btn btn-sm btn-primary">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="p-5 text-center text-muted">
+                        <i class="fas fa-inbox fa-3x mb-3"></i>
+                        <p>No hay análisis de reviews todavía.</p>
+                        <a href="{{ url_for('admin.products') }}" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Analizar Primer Producto
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

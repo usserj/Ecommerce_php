@@ -3338,3 +3338,84 @@ def marcar_mensaje_leido(id):
         return jsonify({'success': True, 'message': 'Mensaje marcado como leído'})
     else:
         return jsonify({'success': False, 'message': 'No autorizado'}), 403
+
+
+# ============================================================================
+# ANÁLISIS DE REVIEWS CON IA
+# ============================================================================
+
+@admin_bp.route('/analisis-reviews')
+@admin_required
+def analisis_reviews():
+    """Dashboard de análisis de reviews con IA."""
+    from app.models.analisis_review import AnalisisReview
+
+    # Obtener todos los análisis recientes
+    analisis = AnalisisReview.query.order_by(
+        AnalisisReview.fecha_analisis.desc()
+    ).limit(50).all()
+
+    # Estadísticas generales
+    total_analisis = AnalisisReview.query.count()
+
+    # Productos con mejor calidad según IA
+    mejor_calidad = AnalisisReview.query.order_by(
+        AnalisisReview.calidad_score.desc()
+    ).limit(10).all()
+
+    # Productos que necesitan atención (baja calidad)
+    necesitan_atencion = AnalisisReview.query.filter(
+        AnalisisReview.calidad_score < 3.0
+    ).order_by(AnalisisReview.calidad_score.asc()).limit(10).all()
+
+    return render_template('admin/analisis_reviews.html',
+                         analisis=analisis,
+                         total_analisis=total_analisis,
+                         mejor_calidad=mejor_calidad,
+                         necesitan_atencion=necesitan_atencion)
+
+
+@admin_bp.route('/analisis-reviews/generar/<int:producto_id>', methods=['POST'])
+@admin_required
+def generar_analisis_reviews(producto_id):
+    """Genera análisis de reviews para un producto específico usando IA."""
+    from app.services.ai_service import ai_service
+
+    producto = Producto.query.get_or_404(producto_id)
+
+    try:
+        # Llamar al servicio de IA para analizar reviews
+        resultado = ai_service.analizar_reviews(producto_id)
+
+        if resultado.get('success'):
+            flash(f'Análisis de reviews para "{producto.titulo}" generado exitosamente.', 'success')
+        else:
+            flash(f'Error al generar análisis: {resultado.get("error", "Error desconocido")}', 'error')
+    except Exception as e:
+        flash(f'Error al generar análisis: {e}', 'error')
+
+    return redirect(url_for('admin.analisis_reviews_detalle', producto_id=producto_id))
+
+
+@admin_bp.route('/analisis-reviews/<int:producto_id>')
+@admin_required
+def analisis_reviews_detalle(producto_id):
+    """Ver detalles del análisis de reviews de un producto."""
+    from app.models.analisis_review import AnalisisReview
+
+    producto = Producto.query.get_or_404(producto_id)
+
+    # Obtener el análisis más reciente de este producto
+    analisis = AnalisisReview.query.filter_by(
+        producto_id=producto_id
+    ).order_by(AnalisisReview.fecha_analisis.desc()).first()
+
+    # Obtener todos los comentarios del producto
+    comentarios = Comentario.query.filter_by(
+        id_producto=producto_id
+    ).order_by(Comentario.fecha.desc()).all()
+
+    return render_template('admin/analisis_reviews_detalle.html',
+                         producto=producto,
+                         analisis=analisis,
+                         comentarios=comentarios)

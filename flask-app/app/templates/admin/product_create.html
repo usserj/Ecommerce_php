@@ -25,8 +25,13 @@
                             <input type="text" name="titular" class="form-control">
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Descripción</label>
-                            <textarea name="descripcion" class="form-control" rows="5"></textarea>
+                            <label class="form-label d-flex justify-content-between align-items-center">
+                                <span>Descripción</span>
+                                <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#aiDescriptionModal">
+                                    <i class="fas fa-magic"></i> Generar con IA
+                                </button>
+                            </label>
+                            <textarea name="descripcion" id="descripcion" class="form-control" rows="5"></textarea>
                         </div>
                     </div>
                     <div class="col-md-4">
@@ -82,4 +87,132 @@
         </div>
     </div>
 </div>
+
+<!-- Modal de Generación con IA -->
+<div class="modal fade" id="aiDescriptionModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="fas fa-robot"></i> Generar Descripción con IA</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> La IA generará una descripción profesional basada en los datos que proporciones.
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Nombre del Producto *</label>
+                    <input type="text" id="ai-nombre" class="form-control" placeholder="Ej: Laptop HP Pavilion">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Características principales (separadas por comas)</label>
+                    <textarea id="ai-caracteristicas" class="form-control" rows="3" placeholder="Ej: Intel i7, 16GB RAM, SSD 512GB, Pantalla 15.6 Full HD"></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Palabras clave SEO (opcional)</label>
+                    <input type="text" id="ai-keywords" class="form-control" placeholder="Ej: laptop, computadora, gaming">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Tono de la descripción</label>
+                    <select id="ai-tono" class="form-control">
+                        <option value="profesional">Profesional</option>
+                        <option value="casual">Casual y amigable</option>
+                        <option value="tecnico">Técnico</option>
+                        <option value="persuasivo">Persuasivo (venta)</option>
+                    </select>
+                </div>
+                <div id="ai-loading" class="text-center py-4" style="display: none;">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Generando...</span>
+                    </div>
+                    <p class="mt-3 text-muted">La IA está generando tu descripción...</p>
+                </div>
+                <div id="ai-error" class="alert alert-danger" style="display: none;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="generate-description-btn">
+                    <i class="fas fa-magic"></i> Generar Descripción
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('generate-description-btn').addEventListener('click', async function() {
+    const nombre = document.getElementById('ai-nombre').value.trim();
+    const caracteristicas = document.getElementById('ai-caracteristicas').value.trim();
+    const keywords = document.getElementById('ai-keywords').value.trim();
+    const tono = document.getElementById('ai-tono').value;
+
+    // Validar campos requeridos
+    if (!nombre) {
+        alert('Por favor ingresa el nombre del producto');
+        return;
+    }
+
+    // Mostrar loading
+    document.getElementById('ai-loading').style.display = 'block';
+    document.getElementById('ai-error').style.display = 'none';
+    this.disabled = true;
+
+    try {
+        // Llamar a la API de generación de descripciones
+        const response = await fetch('/api/ai/generar-descripcion', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                nombre_producto: nombre,
+                caracteristicas: caracteristicas,
+                keywords: keywords,
+                tono: tono
+            })
+        });
+
+        const data = await response.json();
+
+        // Ocultar loading
+        document.getElementById('ai-loading').style.display = 'none';
+        this.disabled = false;
+
+        if (data.success && data.descripcion) {
+            // Insertar la descripción generada en el campo
+            document.getElementById('descripcion').value = data.descripcion;
+
+            // Cerrar el modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('aiDescriptionModal'));
+            modal.hide();
+
+            // Mostrar mensaje de éxito
+            alert('✅ Descripción generada con éxito!');
+        } else {
+            // Mostrar error
+            document.getElementById('ai-error').textContent = data.error || 'Error al generar descripción';
+            document.getElementById('ai-error').style.display = 'block';
+        }
+
+    } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('ai-loading').style.display = 'none';
+        document.getElementById('ai-error').textContent = 'Error de conexión. Por favor intenta de nuevo.';
+        document.getElementById('ai-error').style.display = 'block';
+        this.disabled = false;
+    }
+});
+
+// Limpiar modal al cerrar
+document.getElementById('aiDescriptionModal').addEventListener('hidden.bs.modal', function() {
+    document.getElementById('ai-nombre').value = '';
+    document.getElementById('ai-caracteristicas').value = '';
+    document.getElementById('ai-keywords').value = '';
+    document.getElementById('ai-tono').value = 'profesional';
+    document.getElementById('ai-loading').style.display = 'none';
+    document.getElementById('ai-error').style.display = 'none';
+});
+</script>
 {% endblock %}

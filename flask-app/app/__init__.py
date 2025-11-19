@@ -37,6 +37,9 @@ def create_app(config_name=None):
     # Register context processors
     register_context_processors(app)
 
+    # Register custom template filters
+    register_template_filters(app)
+
     return app
 
 
@@ -156,3 +159,18 @@ def register_context_processors(app):
             'admin_mensajes_no_leidos': admin_mensajes_no_leidos,
             'user_mensajes_no_leidos': user_mensajes_no_leidos
         }
+
+
+def register_template_filters(app):
+    """Register custom template filters."""
+    import json
+
+    @app.template_filter('from_json')
+    def from_json_filter(value):
+        """Parse JSON string to Python object."""
+        if not value:
+            return []
+        try:
+            return json.loads(value)
+        except (json.JSONDecodeError, TypeError):
+            return []
