@@ -37,7 +37,78 @@ def create_app(config_name=None):
     # Register context processors
     register_context_processors(app)
 
+    # Initialize AI tables on first run
+    with app.app_context():
+        _init_ai_tables()
+
     return app
+
+
+def _init_ai_tables():
+    """Inicializa las tablas de IA automáticamente si no existen."""
+    from app.extensions import db
+    import logging
+    logger = logging.getLogger(__name__)
+
+    try:
+        # Verificar si las tablas ya existen
+        result = db.session.execute(db.text("""
+            SELECT COUNT(*) as count
+            FROM information_schema.tables
+            WHERE table_schema = DATABASE()
+            AND table_name = 'conversaciones_chatbot'
+        """))
+        exists = result.scalar() > 0
+
+        if not exists:
+            logger.info("Creando tablas de IA automáticamente...")
+
+            # Tabla conversaciones_chatbot
+            db.session.execute(db.text("""
+                CREATE TABLE IF NOT EXISTS conversaciones_chatbot (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    session_id VARCHAR(100) NOT NULL,
+                    usuario_id INT NULL,
+                    rol VARCHAR(10) NOT NULL,
+                    mensaje TEXT NOT NULL,
+                    contexto TEXT NULL,
+                    fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_session (session_id),
+                    INDEX idx_usuario (usuario_id),
+                    INDEX idx_fecha (fecha),
+                    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            """))
+
+            # Tabla analisis_reviews
+            db.session.execute(db.text("""
+                CREATE TABLE IF NOT EXISTS analisis_reviews (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    producto_id INT NULL,
+                    sentimiento_positivo INT DEFAULT 0,
+                    sentimiento_neutral INT DEFAULT 0,
+                    sentimiento_negativo INT DEFAULT 0,
+                    aspectos_positivos TEXT NULL,
+                    aspectos_negativos TEXT NULL,
+                    calidad_score DECIMAL(3,1),
+                    recomendacion TEXT,
+                    fecha_analisis DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    total_reviews INT,
+                    INDEX idx_producto (producto_id),
+                    INDEX idx_fecha (fecha_analisis),
+                    FOREIGN KEY (producto_id) REFERENCES productos(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            """))
+
+            db.session.commit()
+            logger.info("✅ Tablas de IA creadas exitosamente")
+        else:
+            logger.debug("Tablas de IA ya existen")
+
+    except Exception as e:
+        logger.warning(f"No se pudieron crear tablas de IA automáticamente: {e}")
+        db.session.rollback()
+        # No detener la app si falla, solo advertir
 
 
 def register_blueprints(app):
