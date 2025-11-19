@@ -393,3 +393,119 @@ def upload_voucher():
     except Exception as e:
         flash(f'Error al subir el comprobante: {str(e)}', 'error')
         return redirect(url_for('checkout.index'))
+
+
+# ==================== PAYMENT WEBHOOKS/IPN ====================
+
+@checkout_bp.route('/webhook/paypal', methods=['POST'])
+def paypal_ipn():
+    """PayPal IPN (Instant Payment Notification) handler."""
+    from app.services.payment_service import process_paypal_ipn
+
+    # Get IPN data from request
+    ipn_data = request.form.to_dict()
+
+    # Log IPN for debugging
+    current_app.logger.info(f"PayPal IPN received: {ipn_data}")
+
+    # Process IPN
+    success, message = process_paypal_ipn(ipn_data)
+
+    if success:
+        current_app.logger.info(f"PayPal IPN processed successfully: {message}")
+        return "OK", 200
+    else:
+        current_app.logger.error(f"PayPal IPN processing failed: {message}")
+        return "ERROR", 400
+
+
+@checkout_bp.route('/webhook/payu/confirmation', methods=['POST'])
+def payu_confirmation():
+    """PayU confirmation webhook handler."""
+    from app.services.payment_service import process_payu_confirmation
+
+    # Get confirmation data from request (can be GET or POST)
+    data = request.form.to_dict() if request.method == 'POST' else request.args.to_dict()
+
+    # Log confirmation
+    current_app.logger.info(f"PayU confirmation received: {data}")
+
+    # Process confirmation
+    success, message = process_payu_confirmation(data)
+
+    if success:
+        current_app.logger.info(f"PayU confirmation processed: {message}")
+        return "OK", 200
+    else:
+        current_app.logger.error(f"PayU confirmation failed: {message}")
+        return "ERROR", 400
+
+
+@checkout_bp.route('/webhook/payu/response', methods=['GET', 'POST'])
+def payu_response():
+    """PayU response page (user is redirected here after payment)."""
+    # Get response data
+    data = request.form.to_dict() if request.method == 'POST' else request.args.to_dict()
+
+    # Log response
+    current_app.logger.info(f"PayU response received: {data}")
+
+    # Check transaction state
+    state_pol = data.get('state_pol', '')
+    response_message = data.get('response_message_pol', '')
+
+    if state_pol == '4':  # Approved
+        flash('¡Pago aprobado! Su pedido ha sido procesado exitosamente.', 'success')
+        return redirect(url_for('checkout.success'))
+    elif state_pol == '7':  # Pending
+        flash('Su pago está pendiente de confirmación. Le notificaremos cuando se procese.', 'info')
+        return redirect(url_for('checkout.success'))
+    else:  # Declined or failed
+        flash(f'El pago no fue aprobado: {response_message}', 'error')
+        return redirect(url_for('checkout.index'))
+
+
+@checkout_bp.route('/webhook/paymentez', methods=['POST'])
+def paymentez_webhook():
+    """Paymentez webhook handler."""
+    from app.services.payment_service import process_paymentez_webhook
+
+    # Get webhook data
+    data = request.get_json()
+
+    # Log webhook
+    current_app.logger.info(f"Paymentez webhook received: {data}")
+
+    # Process webhook
+    success, message = process_paymentez_webhook(data)
+
+    if success:
+        current_app.logger.info(f"Paymentez webhook processed: {message}")
+        return jsonify({'status': 'success'}), 200
+    else:
+        current_app.logger.error(f"Paymentez webhook failed: {message}")
+        return jsonify({'status': 'error', 'message': message}), 400
+
+
+@checkout_bp.route('/webhook/datafast', methods=['POST', 'GET'])
+def datafast_callback():
+    """Datafast callback/response handler."""
+    from app.services.payment_service import process_datafast_callback
+
+    # Get callback data (can be GET or POST depending on Datafast config)
+    data = request.form.to_dict() if request.method == 'POST' else request.args.to_dict()
+
+    # Log callback
+    current_app.logger.info(f"Datafast callback received: {data}")
+
+    # Process callback
+    success, message = process_datafast_callback(data)
+
+    response_code = data.get('cd_response', '')
+
+    if response_code == '00':  # Approved
+        flash('¡Pago aprobado! Su pedido ha sido procesado exitosamente.', 'success')
+        return redirect(url_for('checkout.success'))
+    else:
+        flash(f'El pago no fue aprobado. Código: {response_code}', 'error')
+        return redirect(url_for('checkout.index'))
