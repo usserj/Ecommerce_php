@@ -1736,6 +1736,32 @@ def delete_slide(id):
     return redirect(url_for('admin.slides'))
 
 
+@admin_bp.route('/slides/reorder', methods=['POST'])
+@admin_required
+def reorder_slides():
+    """Reorder slides via drag and drop."""
+    try:
+        data = request.get_json()
+        slide_ids = data.get('slide_ids', [])
+
+        if not slide_ids:
+            return jsonify({'success': False, 'message': 'No slide IDs provided'}), 400
+
+        # Update orden for each slide
+        for index, slide_id in enumerate(slide_ids):
+            slide = Slide.query.get(slide_id)
+            if slide:
+                slide.orden = index + 1
+
+        db.session.commit()
+
+        return jsonify({'success': True, 'message': 'Orden actualizado correctamente'})
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
 # ===========================
 # BANNERS MANAGEMENT
 # ===========================

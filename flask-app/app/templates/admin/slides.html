@@ -12,10 +12,14 @@
         </div>
         <div class="card-body">
             {% if slides %}
+            <div class="alert alert-info mb-3">
+                <i class="fas fa-info-circle"></i> <strong>Tip:</strong> Arrastra las filas para reordenar los slides. El orden se guardará automáticamente.
+            </div>
             <div class="table-responsive">
                 <table class="table table-striped table-hover">
                     <thead>
                         <tr>
+                            <th style="width: 5%"><i class="fas fa-grip-vertical text-muted"></i></th>
                             <th>Orden</th>
                             <th>Vista Previa</th>
                             <th>Nombre</th>
@@ -25,9 +29,12 @@
                             <th>Acciones</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="sortable-slides">
                         {% for slide in slides %}
-                        <tr>
+                        <tr data-id="{{ slide.id }}" style="cursor: move;">
+                            <td class="drag-handle text-center">
+                                <i class="fas fa-grip-vertical text-muted"></i>
+                            </td>
                             <td><span class="badge bg-secondary">{{ slide.orden }}</span></td>
                             <td>
                                 <img src="{{ url_for('static', filename=slide.imgFondo) }}"
@@ -103,6 +110,9 @@
 {% endblock %}
 
 {% block extra_js %}
+<!-- SortableJS library for drag & drop -->
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+
 <script>
 // Delete slide
 document.querySelectorAll('.delete-slide').forEach(btn => {
@@ -116,5 +126,89 @@ document.querySelectorAll('.delete-slide').forEach(btn => {
         new bootstrap.Modal(document.getElementById('deleteModal')).show();
     });
 });
+
+// Initialize SortableJS for drag & drop reordering
+const sortableSlides = document.getElementById('sortable-slides');
+if (sortableSlides) {
+    new Sortable(sortableSlides, {
+        animation: 150,
+        handle: '.drag-handle',
+        ghostClass: 'sortable-ghost',
+        chosenClass: 'sortable-chosen',
+        dragClass: 'sortable-drag',
+        onEnd: function(evt) {
+            // Get new order of slide IDs
+            const slideIds = [];
+            const rows = document.querySelectorAll('#sortable-slides tr');
+
+            rows.forEach((row, index) => {
+                const slideId = row.getAttribute('data-id');
+                slideIds.push(slideId);
+
+                // Update orden badge
+                const ordenBadge = row.querySelector('.badge');
+                if (ordenBadge) {
+                    ordenBadge.textContent = index + 1;
+                }
+            });
+
+            // Send new order to backend
+            fetch('{{ url_for("admin.reorder_slides") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({
+                    slide_ids: slideIds
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Show success message (optional)
+                    console.log('Orden actualizado correctamente');
+                } else {
+                    alert('Error al actualizar el orden: ' + data.message);
+                    // Reload page to restore correct order
+                    location.reload();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error de conexión al actualizar el orden');
+                location.reload();
+            });
+        }
+    });
+}
 </script>
+
+<style>
+/* Sortable styles */
+.sortable-ghost {
+    opacity: 0.4;
+    background-color: #f8f9fa;
+}
+
+.sortable-chosen {
+    background-color: #e7f3ff;
+}
+
+.sortable-drag {
+    opacity: 1;
+}
+
+.drag-handle {
+    cursor: grab;
+}
+
+.drag-handle:active {
+    cursor: grabbing;
+}
+
+#sortable-slides tr:hover {
+    background-color: #f8f9fa;
+}
+</style>
 {% endblock %}

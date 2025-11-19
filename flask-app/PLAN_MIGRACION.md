@@ -2,7 +2,7 @@
 
 **Total de funcionalidades pendientes:** 45
 **Prioridad:** Alta (23), Media (15), Baja (7)
-**Estado actual:** 78% migrado (35/45 completadas)
+**Estado actual:** 80% migrado (36/45 completadas)
 
 ---
 
@@ -190,13 +190,29 @@
 
 ---
 
-### 10. Drag & Drop para Reordenar Slides (1 funcionalidad) ⏳ PENDIENTE
+### 10. Drag & Drop para Reordenar Slides (1 funcionalidad) ✅ COMPLETADO
 **Tareas:**
-- [ ] UI drag & drop con SortableJS
-- [ ] Endpoint para actualizar orden
-- [ ] Guardar orden en DB
+- [x] UI drag & drop con SortableJS
+- [x] Endpoint para actualizar orden
+- [x] Guardar orden en DB
+- [x] Visual feedback al arrastrar
+- [x] Auto-actualización de badges de orden
 
-**Tiempo estimado:** 1 hora
+**Archivos modificados:**
+- ✅ `app/blueprints/admin/routes.py` (reorder_slides endpoint)
+- ✅ `app/templates/admin/slides.html` (SortableJS integration)
+
+**Funcionalidades:**
+- Drag & drop con SortableJS 1.15.0
+- Handle específico para arrastre (icono grip)
+- Actualización automática del orden en BD vía AJAX
+- Visual feedback durante el arrastre (ghost, chosen, drag states)
+- Actualización instantánea de badges de orden
+- Manejo de errores con reload automático
+- Tooltip informativo sobre funcionalidad
+- Cursor visual (grab/grabbing)
+
+**Tiempo real:** 30 minutos
 
 ---
 
@@ -246,9 +262,9 @@
 | Fase | Funcionalidades | Completadas | Pendientes | % Completo |
 |------|----------------|-------------|------------|------------|
 | Fase 1 (Alta) | 23 | 23 | 0 | 100% ✅ |
-| Fase 2 (Media) | 15 | 12 | 3 | 80% 🚀 |
+| Fase 2 (Media) | 15 | 13 | 2 | 87% 🚀 |
 | Fase 3 (Baja) | 7 | 0 | 7 | 0% |
-| **TOTAL** | **45** | **35** | **10** | **78%** ⬆️ |
+| **TOTAL** | **45** | **36** | **9** | **80%** ⬆️ |
 
 ---
 
@@ -277,7 +293,7 @@
 7. ⏳ Reportes avanzados
 8. ✅ **Gestión usuarios admin** (COMPLETADO)
 9. ✅ **Filtros avanzados de órdenes** (COMPLETADO)
-10. ⏳ Drag & drop reordenar slides
+10. ✅ **Drag & drop reordenar slides** (COMPLETADO)
 
 ### 📋 PENDIENTE - FASE 3 (Baja Prioridad)
 11. ⏳ Sistema de mensajería interna
@@ -301,3 +317,4 @@
 **Últimas funcionalidades completadas:**
 - Gestión completa de usuarios desde admin (editar/eliminar)
 - Filtros avanzados de órdenes (fecha, usuario, método pago, estado)
+- Drag & drop para reordenar slides (SortableJS)
