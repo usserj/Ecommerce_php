@@ -604,3 +604,262 @@ def export_orders():
     except Exception as e:
         flash(f'Error al exportar: {e}', 'error')
         return redirect(url_for('admin.orders'))
+
+
+# ===========================
+# CATEGORY MANAGEMENT
+# ===========================
+
+@admin_bp.route('/categories')
+@admin_required
+def categories():
+    """Categories management page."""
+    page = request.args.get('page', 1, type=int)
+    search = request.args.get('search', '')
+    
+    query = Categoria.query
+    
+    if search:
+        query = query.filter(Categoria.categoria.like(f'%{search}%'))
+    
+    categorias = query.order_by(Categoria.fecha.desc()).paginate(
+        page=page, per_page=25, error_out=False
+    )
+    
+    return render_template('admin/categories.html', categorias=categorias)
+
+
+@admin_bp.route('/categories/create', methods=['GET', 'POST'])
+@admin_required
+def create_category():
+    """Create new category."""
+    if request.method == 'POST':
+        categoria_nombre = request.form.get('categoria')
+        ruta = request.form.get('ruta')
+        estado = request.form.get('estado', 1, type=int)
+        
+        if not categoria_nombre or not ruta:
+            flash('Todos los campos son requeridos.', 'error')
+            return redirect(url_for('admin.create_category'))
+        
+        # Check if ruta already exists
+        existing = Categoria.query.filter_by(ruta=ruta).first()
+        if existing:
+            flash('La ruta ya existe. Use una ruta única.', 'error')
+            return redirect(url_for('admin.create_category'))
+        
+        categoria = Categoria(
+            categoria=categoria_nombre,
+            ruta=ruta,
+            estado=estado
+        )
+        
+        db.session.add(categoria)
+        db.session.commit()
+        
+        flash('Categoría creada exitosamente.', 'success')
+        return redirect(url_for('admin.categories'))
+    
+    return render_template('admin/category_create.html')
+
+
+@admin_bp.route('/categories/edit/<int:id>', methods=['GET', 'POST'])
+@admin_required
+def edit_category(id):
+    """Edit category."""
+    categoria = Categoria.query.get_or_404(id)
+    
+    if request.method == 'POST':
+        categoria_nombre = request.form.get('categoria')
+        ruta = request.form.get('ruta')
+        estado = request.form.get('estado', 1, type=int)
+        
+        if not categoria_nombre or not ruta:
+            flash('Todos los campos son requeridos.', 'error')
+            return redirect(url_for('admin.edit_category', id=id))
+        
+        # Check if ruta already exists (except current)
+        existing = Categoria.query.filter(Categoria.ruta == ruta, Categoria.id != id).first()
+        if existing:
+            flash('La ruta ya existe. Use una ruta única.', 'error')
+            return redirect(url_for('admin.edit_category', id=id))
+        
+        categoria.categoria = categoria_nombre
+        categoria.ruta = ruta
+        categoria.estado = estado
+        
+        db.session.commit()
+        
+        flash('Categoría actualizada exitosamente.', 'success')
+        return redirect(url_for('admin.categories'))
+    
+    return render_template('admin/category_edit.html', categoria=categoria)
+
+
+@admin_bp.route('/categories/delete/<int:id>', methods=['POST'])
+@admin_required
+def delete_category(id):
+    """Delete category."""
+    categoria = Categoria.query.get_or_404(id)
+    
+    # Check if category has products
+    if categoria.get_products_count() > 0:
+        flash('No se puede eliminar una categoría con productos asignados.', 'error')
+        return redirect(url_for('admin.categories'))
+    
+    db.session.delete(categoria)
+    db.session.commit()
+    
+    flash('Categoría eliminada exitosamente.', 'success')
+    return redirect(url_for('admin.categories'))
+
+
+@admin_bp.route('/categories/toggle/<int:id>', methods=['POST'])
+@admin_required
+def toggle_category(id):
+    """Toggle category status."""
+    categoria = Categoria.query.get_or_404(id)
+    categoria.estado = 0 if categoria.estado == 1 else 1
+    db.session.commit()
+    
+    return jsonify({'success': True, 'estado': categoria.estado})
+
+
+# ===========================
+# SLIDES MANAGEMENT
+# ===========================
+
+@admin_bp.route('/slides')
+@admin_required
+def slides():
+    """Slides management page."""
+    slides = Slide.query.order_by(Slide.orden.asc(), Slide.fecha.desc()).all()
+    return render_template('admin/slides.html', slides=slides)
+
+
+@admin_bp.route('/slides/create', methods=['GET', 'POST'])
+@admin_required
+def create_slide():
+    """Create new slide."""
+    if request.method == 'POST':
+        from PIL import Image
+        
+        nombre = request.form.get('nombre')
+        titulo1 = request.form.get('titulo1', '')
+        titulo2 = request.form.get('titulo2', '')
+        titulo3 = request.form.get('titulo3', '')
+        boton = request.form.get('boton', '')
+        url = request.form.get('url', '')
+        orden = request.form.get('orden', 0, type=int)
+        
+        if not nombre:
+            flash('El nombre es requerido.', 'error')
+            return redirect(url_for('admin.create_slide'))
+        
+        # Handle background image upload
+        img_fondo = ''
+        if 'imgFondo' in request.files:
+            file = request.files['imgFondo']
+            if file and file.filename:
+                filename = secure_filename(file.filename)
+                upload_folder = os.path.join('app/static/uploads/slides')
+                
+                if not os.path.exists(upload_folder):
+                    os.makedirs(upload_folder)
+                
+                filepath = os.path.join(upload_folder, filename)
+                
+                # Save and optionally resize
+                try:
+                    img = Image.open(file)
+                    # Resize to 1920x600 for slides
+                    img = img.resize((1920, 600), Image.Resampling.LANCZOS)
+                    img.save(filepath)
+                except:
+                    file.seek(0)
+                    file.save(filepath)
+                
+                img_fondo = f'uploads/slides/{filename}'
+        
+        if not img_fondo:
+            flash('La imagen de fondo es requerida.', 'error')
+            return redirect(url_for('admin.create_slide'))
+        
+        slide = Slide(
+            nombre=nombre,
+            imgFondo=img_fondo,
+            titulo1=titulo1,
+            titulo2=titulo2,
+            titulo3=titulo3,
+            boton=boton,
+            url=url,
+            orden=orden
+        )
+        
+        db.session.add(slide)
+        db.session.commit()
+        
+        flash('Slide creado exitosamente.', 'success')
+        return redirect(url_for('admin.slides'))
+    
+    return render_template('admin/slide_create.html')
+
+
+@admin_bp.route('/slides/edit/<int:id>', methods=['GET', 'POST'])
+@admin_required
+def edit_slide(id):
+    """Edit slide."""
+    slide = Slide.query.get_or_404(id)
+    
+    if request.method == 'POST':
+        from PIL import Image
+        
+        slide.nombre = request.form.get('nombre')
+        slide.titulo1 = request.form.get('titulo1', '')
+        slide.titulo2 = request.form.get('titulo2', '')
+        slide.titulo3 = request.form.get('titulo3', '')
+        slide.boton = request.form.get('boton', '')
+        slide.url = request.form.get('url', '')
+        slide.orden = request.form.get('orden', 0, type=int)
+        
+        # Handle background image upload (optional on edit)
+        if 'imgFondo' in request.files:
+            file = request.files['imgFondo']
+            if file and file.filename:
+                filename = secure_filename(file.filename)
+                upload_folder = os.path.join('app/static/uploads/slides')
+                
+                if not os.path.exists(upload_folder):
+                    os.makedirs(upload_folder)
+                
+                filepath = os.path.join(upload_folder, filename)
+                
+                try:
+                    img = Image.open(file)
+                    img = img.resize((1920, 600), Image.Resampling.LANCZOS)
+                    img.save(filepath)
+                except:
+                    file.seek(0)
+                    file.save(filepath)
+                
+                slide.imgFondo = f'uploads/slides/{filename}'
+        
+        db.session.commit()
+        
+        flash('Slide actualizado exitosamente.', 'success')
+        return redirect(url_for('admin.slides'))
+    
+    return render_template('admin/slide_edit.html', slide=slide)
+
+
+@admin_bp.route('/slides/delete/<int:id>', methods=['POST'])
+@admin_required
+def delete_slide(id):
+    """Delete slide."""
+    slide = Slide.query.get_or_404(id)
+    
+    db.session.delete(slide)
+    db.session.commit()
+    
+    flash('Slide eliminado exitosamente.', 'success')
+    return redirect(url_for('admin.slides'))
