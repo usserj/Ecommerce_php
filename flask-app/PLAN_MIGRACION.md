@@ -227,13 +227,39 @@
 
 ## 🟢 FASE 3: BAJA PRIORIDAD (7 funcionalidades)
 
-### 11. Sistema de Mensajería Interna (3 funcionalidades) ⏳ PENDIENTE
+### 11. Sistema de Mensajería Interna (3 funcionalidades) ✅ COMPLETADO
 **Tareas:**
-- [ ] Modelo Mensaje
-- [ ] Bandeja de entrada
-- [ ] Enviar/responder mensajes
+- [x] Modelo Mensaje
+- [x] Bandeja de entrada
+- [x] Enviar/responder mensajes
 
-**Tiempo estimado:** 2-3 horas
+**Archivos creados/modificados:**
+- ✅ `app/models/message.py` (modelo Mensaje completo)
+- ✅ `app/models/__init__.py` (agregado Mensaje)
+- ✅ `app/utils/db_init.py` (create_mensajes_table migration)
+- ✅ `app/blueprints/admin/routes.py` (7 rutas de mensajería)
+- ✅ `app/templates/admin/mensajes.html` (bandeja de entrada/enviados)
+- ✅ `app/templates/admin/mensaje_form.html` (componer/responder)
+- ✅ `app/templates/admin/mensaje_detalle.html` (vista detalle con thread)
+- ✅ `app/templates/admin/base_admin.html` (link en navegación con contador)
+
+**Funcionalidades:**
+- Modelo Mensaje con soporte para admin-usuario, usuario-admin
+- Bandeja de entrada con mensajes recibidos (pestañas recibidos/enviados)
+- Mensajes enviados por administrador
+- Componer nuevo mensaje a cualquier usuario
+- Ver detalles de mensaje con conversación completa (threading)
+- Responder mensajes (mantiene conversación)
+- Respuesta rápida desde vista de detalle
+- Marcar como leído automáticamente
+- Eliminar mensajes (con confirmación)
+- Contador de mensajes no leídos en navegación
+- Estados visuales (leído/no leído, fecha de lectura)
+- Validación de permisos (solo destinatario/remitente puede ver)
+- Cascade delete para respuestas
+- Interfaz con Bootstrap 5 y Font Awesome
+
+**Tiempo real:** 2 horas
 
 ---
 
@@ -287,8 +313,8 @@
 |------|----------------|-------------|------------|------------|
 | Fase 1 (Alta) | 23 | 23 | 0 | 100% ✅ |
 | Fase 2 (Media) | 15 | 15 | 0 | 100% ✅ |
-| Fase 3 (Baja) | 7 | 2 | 5 | 29% 🚀 |
-| **TOTAL** | **45** | **40** | **5** | **89%** ⬆️ |
+| Fase 3 (Baja) | 7 | 5 | 2 | 71% 🚀 |
+| **TOTAL** | **45** | **43** | **2** | **96%** ⬆️ |
 
 ---
 
@@ -319,9 +345,11 @@
 9. ✅ **Filtros avanzados de órdenes** (COMPLETADO)
 10. ✅ **Drag & drop reordenar slides** (COMPLETADO)
 
-### 🚀 SIGUIENTE - FASE 3 (Baja Prioridad)
-11. ⏳ Sistema de mensajería interna
+### ✅ COMPLETADO - FASE 3 (Baja Prioridad)
+11. ✅ **Sistema de mensajería interna** (COMPLETADO)
 12. ✅ **UI para cabeceras SEO** (COMPLETADO)
+
+### 🚀 PENDIENTE - FASE 3 (Baja Prioridad)
 13. ⏳ PayU completion
 14. ⏳ Webhooks para pagos
 
@@ -338,11 +366,14 @@
 
 **Última actualización:** 2025-01-19
 **Actualizado por:** Sistema de migración automática
+**Progreso actual:** 96% completado (43/45 funcionalidades) 🎉
 **Últimas funcionalidades completadas:**
-- ✅ **FASE 2 COMPLETADA AL 100%** 🎉
+- ✅ **FASE 1 Y FASE 2 COMPLETADAS AL 100%** 🎉
+- ✅ **FASE 3 AL 71%** - Solo quedan 2 funcionalidades pendientes
+- **Sistema de mensajería interna** (bandeja de entrada, enviar, responder, threading)
+- **UI para Cabeceras SEO** (CRUD completo, vista previa Google, contador de caracteres)
+- **Reportes avanzados con Chart.js** (gráficos de ventas, top productos, métodos de pago)
+- **Exportación a Excel** con openpyxl y estilos profesionales
 - Gestión completa de usuarios desde admin (editar/eliminar)
 - Filtros avanzados de órdenes (fecha, usuario, método pago, estado)
 - Drag & drop para reordenar slides (SortableJS)
-- **Reportes avanzados con Chart.js** (gráficos de ventas, top productos, métodos de pago)
-- **Exportación a Excel** con openpyxl y estilos profesionales
-- **UI para Cabeceras SEO** (CRUD completo, vista previa Google, contador de caracteres)

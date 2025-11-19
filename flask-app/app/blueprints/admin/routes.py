@@ -14,6 +14,7 @@ from app.models.comercio import Comercio
 from app.models.comment import Comentario
 from app.models.coupon import Cupon
 from app.models.wishlist import Deseo
+from app.models.message import Mensaje
 from app.extensions import db, bcrypt
 from werkzeug.utils import secure_filename
 from functools import wraps
@@ -3128,3 +3129,212 @@ def personalizacion():
     return render_template('admin/personalizacion.html',
                          plantilla=plantilla,
                          redes=redes)
+
+
+# ==================== MESSAGING SYSTEM ====================
+
+@admin_bp.route('/mensajes')
+@admin_required
+def mensajes():
+    """Admin inbox - received messages."""
+    admin = Administrador.query.get(session['admin_id'])
+
+    # Get all received messages
+    mensajes = Mensaje.query.filter_by(
+        destinatario_tipo='admin',
+        destinatario_id=admin.id
+    ).order_by(Mensaje.fecha.desc()).all()
+
+    # Count unread messages
+    no_leidos = Mensaje.contar_no_leidos('admin', admin.id)
+
+    return render_template('admin/mensajes.html',
+                         mensajes=mensajes,
+                         no_leidos=no_leidos,
+                         tab='recibidos')
+
+
+@admin_bp.route('/mensajes/enviados')
+@admin_required
+def mensajes_enviados():
+    """Admin sent messages."""
+    admin = Administrador.query.get(session['admin_id'])
+
+    # Get all sent messages
+    mensajes = Mensaje.query.filter_by(
+        remitente_tipo='admin',
+        remitente_id=admin.id
+    ).order_by(Mensaje.fecha.desc()).all()
+
+    return render_template('admin/mensajes.html',
+                         mensajes=mensajes,
+                         tab='enviados')
+
+
+@admin_bp.route('/mensajes/nuevo', methods=['GET', 'POST'])
+@admin_required
+def nuevo_mensaje():
+    """Compose new message."""
+    admin = Administrador.query.get(session['admin_id'])
+
+    if request.method == 'POST':
+        try:
+            destinatario_id = request.form.get('destinatario_id')
+            asunto = request.form.get('asunto', '').strip()
+            contenido = request.form.get('contenido', '').strip()
+
+            if not all([destinatario_id, asunto, contenido]):
+                flash('Todos los campos son obligatorios.', 'error')
+                return redirect(url_for('admin.nuevo_mensaje'))
+
+            # Send message (admin to user)
+            mensaje = Mensaje.enviar_mensaje(
+                remitente_tipo='admin',
+                remitente_id=admin.id,
+                destinatario_tipo='user',
+                destinatario_id=int(destinatario_id),
+                asunto=asunto,
+                contenido=contenido
+            )
+
+            flash(f'Mensaje enviado exitosamente a {mensaje.get_destinatario_nombre()}.', 'success')
+            return redirect(url_for('admin.mensajes_enviados'))
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error al enviar mensaje: {e}', 'error')
+
+    # GET - show form
+    usuarios = User.query.order_by(User.nombre).all()
+    return render_template('admin/mensaje_form.html',
+                         usuarios=usuarios,
+                         mensaje=None)
+
+
+@admin_bp.route('/mensajes/<int:id>')
+@admin_required
+def ver_mensaje(id):
+    """View message details."""
+    admin = Administrador.query.get(session['admin_id'])
+    mensaje = Mensaje.query.get_or_404(id)
+
+    # Verify admin has access to this message (either sender or recipient)
+    if not ((mensaje.destinatario_tipo == 'admin' and mensaje.destinatario_id == admin.id) or
+            (mensaje.remitente_tipo == 'admin' and mensaje.remitente_id == admin.id)):
+        flash('No tiene permiso para ver este mensaje.', 'error')
+        return redirect(url_for('admin.mensajes'))
+
+    # Mark as read if admin is recipient
+    if mensaje.destinatario_tipo == 'admin' and mensaje.destinatario_id == admin.id:
+        mensaje.marcar_como_leido()
+
+    # Get conversation thread
+    if mensaje.mensaje_padre_id:
+        # This is a reply, get parent and all siblings
+        padre = Mensaje.query.get(mensaje.mensaje_padre_id)
+        conversacion = [padre] + list(padre.respuestas.all())
+    else:
+        # This is a parent message, get all replies
+        conversacion = [mensaje] + list(mensaje.respuestas.all())
+
+    return render_template('admin/mensaje_detalle.html',
+                         mensaje=mensaje,
+                         conversacion=conversacion)
+
+
+@admin_bp.route('/mensajes/<int:id>/responder', methods=['GET', 'POST'])
+@admin_required
+def responder_mensaje(id):
+    """Reply to a message."""
+    admin = Administrador.query.get(session['admin_id'])
+    mensaje_original = Mensaje.query.get_or_404(id)
+
+    # Verify admin has access
+    if not ((mensaje_original.destinatario_tipo == 'admin' and mensaje_original.destinatario_id == admin.id) or
+            (mensaje_original.remitente_tipo == 'admin' and mensaje_original.remitente_id == admin.id)):
+        flash('No tiene permiso para responder este mensaje.', 'error')
+        return redirect(url_for('admin.mensajes'))
+
+    if request.method == 'POST':
+        try:
+            contenido = request.form.get('contenido', '').strip()
+
+            if not contenido:
+                flash('El contenido del mensaje es obligatorio.', 'error')
+                return redirect(url_for('admin.responder_mensaje', id=id))
+
+            # Determine recipient (whoever is NOT the current admin)
+            if mensaje_original.remitente_tipo == 'admin' and mensaje_original.remitente_id == admin.id:
+                # Admin sent original, reply to recipient
+                dest_tipo = mensaje_original.destinatario_tipo
+                dest_id = mensaje_original.destinatario_id
+            else:
+                # Admin received original, reply to sender
+                dest_tipo = mensaje_original.remitente_tipo
+                dest_id = mensaje_original.remitente_id
+
+            # Find the root message for threading
+            mensaje_padre_id = mensaje_original.mensaje_padre_id if mensaje_original.mensaje_padre_id else mensaje_original.id
+
+            # Send reply
+            respuesta = Mensaje.enviar_mensaje(
+                remitente_tipo='admin',
+                remitente_id=admin.id,
+                destinatario_tipo=dest_tipo,
+                destinatario_id=dest_id,
+                asunto=f"Re: {mensaje_original.asunto}",
+                contenido=contenido,
+                mensaje_padre_id=mensaje_padre_id
+            )
+
+            flash('Respuesta enviada exitosamente.', 'success')
+            return redirect(url_for('admin.ver_mensaje', id=mensaje_padre_id))
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error al enviar respuesta: {e}', 'error')
+
+    # GET - show reply form
+    return render_template('admin/mensaje_form.html',
+                         mensaje=mensaje_original,
+                         es_respuesta=True)
+
+
+@admin_bp.route('/mensajes/<int:id>/eliminar', methods=['POST'])
+@admin_required
+def eliminar_mensaje(id):
+    """Delete a message."""
+    admin = Administrador.query.get(session['admin_id'])
+    mensaje = Mensaje.query.get_or_404(id)
+
+    # Verify admin has access
+    if not ((mensaje.destinatario_tipo == 'admin' and mensaje.destinatario_id == admin.id) or
+            (mensaje.remitente_tipo == 'admin' and mensaje.remitente_id == admin.id)):
+        flash('No tiene permiso para eliminar este mensaje.', 'error')
+        return redirect(url_for('admin.mensajes'))
+
+    try:
+        asunto = mensaje.asunto
+        db.session.delete(mensaje)
+        db.session.commit()
+        flash(f'Mensaje "{asunto}" eliminado exitosamente.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al eliminar mensaje: {e}', 'error')
+
+    return redirect(url_for('admin.mensajes'))
+
+
+@admin_bp.route('/mensajes/marcar-leido/<int:id>', methods=['POST'])
+@admin_required
+def marcar_mensaje_leido(id):
+    """Mark message as read via AJAX."""
+    admin = Administrador.query.get(session['admin_id'])
+    mensaje = Mensaje.query.get_or_404(id)
+
+    # Verify admin is recipient
+    if mensaje.destinatario_tipo == 'admin' and mensaje.destinatario_id == admin.id:
+        mensaje.marcar_como_leido()
+        return jsonify({'success': True, 'message': 'Mensaje marcado como leído'})
+    else:
+        return jsonify({'success': False, 'message': 'No autorizado'}), 403

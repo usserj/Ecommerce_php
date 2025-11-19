@@ -234,6 +234,80 @@ def migrate_payment_gateway_columns(database_url):
         return False
 
 
+def create_mensajes_table(database_url):
+    """
+    Create mensajes table if it doesn't exist.
+
+    Args:
+        database_url: SQLAlchemy database URL
+
+    Returns:
+        bool: True if successful
+    """
+    try:
+        # Parse the database URL
+        parsed = urlparse(database_url)
+
+        # Extract connection details
+        username = parsed.username or 'root'
+        password = parsed.password or ''
+        host = parsed.hostname or 'localhost'
+        port = parsed.port or 3306
+        database = parsed.path.lstrip('/')
+
+        # Connect to database
+        connection = pymysql.connect(
+            host=host,
+            port=port,
+            user=username,
+            password=password,
+            database=database,
+            charset='utf8mb4'
+        )
+
+        try:
+            with connection.cursor() as cursor:
+                # Check if table exists
+                cursor.execute("SHOW TABLES LIKE 'mensajes'")
+                result = cursor.fetchone()
+
+                if not result:
+                    # Create table
+                    create_table_sql = """
+                    CREATE TABLE mensajes (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        remitente_tipo VARCHAR(20) NOT NULL,
+                        remitente_id INT NOT NULL,
+                        destinatario_tipo VARCHAR(20) NOT NULL,
+                        destinatario_id INT NOT NULL,
+                        asunto VARCHAR(255) NOT NULL,
+                        contenido TEXT NOT NULL,
+                        leido BOOLEAN DEFAULT FALSE,
+                        fecha_leido DATETIME NULL,
+                        mensaje_padre_id INT NULL,
+                        fecha DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (mensaje_padre_id) REFERENCES mensajes(id) ON DELETE CASCADE,
+                        INDEX idx_remitente (remitente_tipo, remitente_id),
+                        INDEX idx_destinatario (destinatario_tipo, destinatario_id),
+                        INDEX idx_leido (leido),
+                        INDEX idx_fecha (fecha)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+                    """
+                    cursor.execute(create_table_sql)
+                    connection.commit()
+                    print("✅ Tabla 'mensajes' creada exitosamente")
+                    return True
+
+            return True
+
+        finally:
+            connection.close()
+
+    except Exception as e:
+        print(f"⚠️  Error creando tabla mensajes: {e}")
+        return False
+
+
 def auto_init_database(app):
     """
     Automatically initialize database on first run.
@@ -255,6 +329,9 @@ def auto_init_database(app):
 
             # Migrate payment gateway columns
             migrate_payment_gateway_columns(database_url)
+
+            # Create mensajes table
+            create_mensajes_table(database_url)
 
             # Check and seed data if empty
             check_and_seed_data(app)

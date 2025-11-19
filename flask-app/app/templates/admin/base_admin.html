@@ -371,6 +371,19 @@
                 <i class="fas fa-shopping-cart"></i>
                 <span>Pedidos</span>
             </a>
+            <a class="nav-link {% if 'mensaje' in request.endpoint %}active{% endif %}"
+               href="{{ url_for('admin.mensajes') }}">
+                <i class="fas fa-envelope"></i>
+                <span>Mensajes</span>
+                {% set mensajes_no_leidos = namespace(count=0) %}
+                {% if session.get('admin_id') %}
+                    {% from 'app.models.message' import Mensaje %}
+                    {% set mensajes_no_leidos.count = Mensaje.contar_no_leidos('admin', session.get('admin_id')) %}
+                    {% if mensajes_no_leidos.count > 0 %}
+                    <span class="badge bg-danger ms-auto">{{ mensajes_no_leidos.count }}</span>
+                    {% endif %}
+                {% endif %}
+            </a>
             <a class="nav-link {% if request.endpoint == 'admin.analytics' %}active{% endif %}"
                href="{{ url_for('admin.analytics') }}">
                 <i class="fas fa-chart-line"></i>
