@@ -29,22 +29,34 @@ class DeepSeekService:
     """Servicio base para interactuar con DeepSeek API"""
 
     def __init__(self):
-        # Leer configuración desde Flask config
+        self.cache = {}  # Cache en memoria simple
+        self._config_loaded = False
+        self.api_key = None
+        self.api_url = None
+        self.model = None
+        self.cache_ttl = None
+
+    def _load_config(self):
+        """Carga la configuración de Flask de manera lazy"""
+        if self._config_loaded:
+            return
+
         try:
             from flask import current_app
             self.api_key = current_app.config.get('DEEPSEEK_API_KEY', 'sk-5967b2b9feb7438dadd1059f600094c9')
             self.api_url = current_app.config.get('DEEPSEEK_API_URL', 'https://api.deepseek.com/v1/chat/completions')
             self.model = current_app.config.get('DEEPSEEK_MODEL', 'deepseek-chat')
             self.cache_ttl = current_app.config.get('DEEPSEEK_CACHE_TTL', 3600)
+            self._config_loaded = True
+            logger.info(f"✅ Configuración de IA cargada: API={self.api_url}, Model={self.model}")
         except RuntimeError:
-            # Fallback si no hay contexto de Flask (testing)
-            logger.warning("No hay contexto de Flask, usando configuración por defecto")
+            # Fallback si no hay contexto de Flask
+            logger.warning("⚠️ No hay contexto de Flask, usando configuración por defecto")
             self.api_key = "sk-5967b2b9feb7438dadd1059f600094c9"
             self.api_url = "https://api.deepseek.com/v1/chat/completions"
             self.model = "deepseek-chat"
             self.cache_ttl = 3600
-
-        self.cache = {}  # Cache en memoria simple
+            self._config_loaded = True
 
     def _get_cache_key(self, prompt: str, context: dict = None) -> str:
         """Genera key única para cache basada en prompt y contexto"""
@@ -103,6 +115,9 @@ class DeepSeekService:
                 'tokens_used': int (total de tokens consumidos)
             }
         """
+        # Cargar configuración (lazy loading)
+        self._load_config()
+
         try:
             # Limpiar cache antiguo periódicamente
             if len(self.cache) > 100:

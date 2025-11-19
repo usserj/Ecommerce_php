@@ -415,9 +415,69 @@ def busqueda_inteligente_endpoint():
 
 @ai_bp.route('/health', methods=['GET'])
 def health():
-    """Endpoint de salud para verificar que el servicio de IA está funcionando"""
-    return jsonify({
-        'status': 'ok',
-        'service': 'AI Service',
-        'timestamp': datetime.now().isoformat()
-    })
+    """
+    Endpoint de salud para verificar que el servicio de IA está funcionando
+
+    Verifica:
+    - Configuración de DeepSeek
+    - Conexión con la API
+    - Estado de las tablas de BD
+    """
+    # Cargar configuración
+    ai_service._load_config()
+
+    # Construir respuesta
+    response = {
+        'status': 'healthy',
+        'service': 'AI Service with DeepSeek',
+        'timestamp': datetime.now().isoformat(),
+        'config': {
+            'api_key': ai_service.api_key[:15] + '...' + ai_service.api_key[-4:] if ai_service.api_key else 'NO CONFIGURADA',
+            'api_url': ai_service.api_url or 'NO CONFIGURADA',
+            'model': ai_service.model or 'NO CONFIGURADO',
+            'cache_ttl': ai_service.cache_ttl or 0
+        },
+        'database': {
+            'conversaciones_chatbot': False,
+            'analisis_reviews': False
+        }
+    }
+
+    # Verificar tablas de BD
+    try:
+        from app.models.chatbot import ConversacionChatbot
+        response['database']['conversaciones_chatbot'] = True
+    except:
+        pass
+
+    try:
+        from app.models.analisis_review import AnalisisReview
+        response['database']['analisis_reviews'] = True
+    except:
+        pass
+
+    # Probar conexión con API (llamada simple)
+    try:
+        test_result = ai_service.call_api(
+            messages=[
+                {"role": "system", "content": "You are a test assistant."},
+                {"role": "user", "content": "Say 'ok' if you receive this."}
+            ],
+            max_tokens=10,
+            temperature=0,
+            use_cache=False
+        )
+
+        if test_result['success']:
+            response['api_connection'] = 'OK'
+            response['message'] = 'API de DeepSeek funcionando correctamente'
+        else:
+            response['status'] = 'degraded'
+            response['api_connection'] = 'ERROR'
+            response['message'] = f'Error en API: {test_result.get("error", "Desconocido")}'
+    except Exception as e:
+        response['status'] = 'unhealthy'
+        response['api_connection'] = 'ERROR'
+        response['message'] = f'Error al conectar con DeepSeek: {str(e)}'
+
+    return jsonify(response)

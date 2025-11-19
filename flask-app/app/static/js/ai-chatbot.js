@@ -230,14 +230,24 @@ class AIChatbot {
             }
 
         } catch (error) {
-            console.error('Error en chatbot:', error);
+            console.error('❌ Error en chatbot:', error);
             this.hideTypingIndicator();
 
-            // Mensaje de error amigable
-            this.addMessage(
-                'Lo siento, estoy teniendo problemas técnicos. Por favor intenta de nuevo en un momento. 😅',
-                'bot'
-            );
+            // Mensaje de error con detalles para debug
+            let errorMessage = 'Lo siento, estoy teniendo problemas técnicos. Por favor intenta de nuevo en un momento. 😅';
+
+            // Si estamos en desarrollo, mostrar más detalles
+            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                errorMessage += `\n\n🔍 Debug: ${error.message}`;
+                console.error('Detalles del error:', {
+                    error: error,
+                    apiUrl: this.apiUrl,
+                    message: message,
+                    stack: error.stack
+                });
+            }
+
+            this.addMessage(errorMessage, 'bot');
         }
     }
 
