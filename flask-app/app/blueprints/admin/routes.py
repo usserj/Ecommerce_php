@@ -1112,19 +1112,83 @@ def export_orders():
 @admin_required
 def categories():
     """Categories management page."""
-    page = request.args.get('page', 1, type=int)
-    search = request.args.get('search', '')
-    
+    # Get statistics
+    total_categories = Categoria.query.count()
+    active_categories = Categoria.query.filter_by(estado=1).count()
+
+    return render_template('admin/categories.html',
+                         total_categories=total_categories,
+                         active_categories=active_categories)
+
+
+@admin_bp.route('/categories/ajax')
+@admin_required
+def categories_ajax():
+    """AJAX endpoint for DataTables category listing."""
+    # DataTables parameters
+    draw = request.args.get('draw', type=int, default=1)
+    start = request.args.get('start', type=int, default=0)
+    length = request.args.get('length', type=int, default=10)
+    search_value = request.args.get('search[value]', default='')
+    order_column = request.args.get('order[0][column]', type=int, default=0)
+    order_dir = request.args.get('order[0][dir]', default='desc')
+
+    # Base query
     query = Categoria.query
-    
-    if search:
-        query = query.filter(Categoria.categoria.like(f'%{search}%'))
-    
-    categorias = query.order_by(Categoria.fecha.desc()).paginate(
-        page=page, per_page=25, error_out=False
-    )
-    
-    return render_template('admin/categories.html', categorias=categorias)
+
+    # Search filter
+    if search_value:
+        query = query.filter(
+            db.or_(
+                Categoria.categoria.like(f'%{search_value}%'),
+                Categoria.ruta.like(f'%{search_value}%')
+            )
+        )
+
+    # Total records
+    total_records = Categoria.query.count()
+    filtered_records = query.count()
+
+    # Ordering
+    columns = [
+        Categoria.id,
+        Categoria.categoria,
+        Categoria.ruta,
+        None,  # productos count (not sortable)
+        Categoria.estado,
+        Categoria.fecha
+    ]
+
+    if 0 <= order_column < len(columns) and columns[order_column] is not None:
+        order_col = columns[order_column]
+        if order_dir == 'asc':
+            query = query.order_by(order_col.asc())
+        else:
+            query = query.order_by(order_col.desc())
+    else:
+        query = query.order_by(Categoria.fecha.desc())
+
+    # Get paginated data
+    categorias = query.offset(start).limit(length).all()
+
+    # Format data for DataTables
+    data = []
+    for categoria in categorias:
+        data.append({
+            'id': categoria.id,
+            'categoria': categoria.categoria,
+            'ruta': f'<code>{categoria.ruta}</code>',
+            'productos': categoria.get_products_count(),
+            'estado': categoria.estado,
+            'fecha': categoria.fecha.strftime('%d/%m/%Y') if categoria.fecha else 'N/A'
+        })
+
+    return jsonify({
+        'draw': draw,
+        'recordsTotal': total_records,
+        'recordsFiltered': filtered_records,
+        'data': data
+    })
 
 
 @admin_bp.route('/categories/create', methods=['GET', 'POST'])
@@ -1231,26 +1295,96 @@ def toggle_category(id):
 @admin_required
 def subcategories():
     """Subcategories management page."""
-    page = request.args.get('page', 1, type=int)
-    search = request.args.get('search', '')
-    categoria_id = request.args.get('categoria', type=int)
-
-    query = Subcategoria.query
-
-    if search:
-        query = query.filter(Subcategoria.subcategoria.contains(search))
-
-    if categoria_id:
-        query = query.filter_by(id_categoria=categoria_id)
-
-    subcategorias = query.order_by(Subcategoria.fecha.desc()).paginate(
-        page=page, per_page=25, error_out=False
-    )
+    # Get statistics
+    total_subcategories = Subcategoria.query.count()
+    active_subcategories = Subcategoria.query.filter_by(estado=1).count()
     categorias = Categoria.query.all()
 
     return render_template('admin/subcategories.html',
-                          subcategorias=subcategorias,
+                          total_subcategories=total_subcategories,
+                          active_subcategories=active_subcategories,
                           categorias=categorias)
+
+
+@admin_bp.route('/subcategories/ajax')
+@admin_required
+def subcategories_ajax():
+    """AJAX endpoint for DataTables subcategory listing."""
+    # DataTables parameters
+    draw = request.args.get('draw', type=int, default=1)
+    start = request.args.get('start', type=int, default=0)
+    length = request.args.get('length', type=int, default=10)
+    search_value = request.args.get('search[value]', default='')
+    order_column = request.args.get('order[0][column]', type=int, default=0)
+    order_dir = request.args.get('order[0][dir]', default='desc')
+
+    # Custom filter
+    categoria_filter = request.args.get('categoria_filter', default='')
+
+    # Base query with join
+    query = Subcategoria.query.join(Categoria, Subcategoria.id_categoria == Categoria.id, isouter=True)
+
+    # Search filter
+    if search_value:
+        query = query.filter(
+            db.or_(
+                Subcategoria.subcategoria.like(f'%{search_value}%'),
+                Subcategoria.ruta.like(f'%{search_value}%'),
+                Categoria.categoria.like(f'%{search_value}%')
+            )
+        )
+
+    # Category filter
+    if categoria_filter:
+        query = query.filter(Subcategoria.id_categoria == int(categoria_filter))
+
+    # Total records
+    total_records = Subcategoria.query.count()
+    filtered_records = query.count()
+
+    # Ordering
+    columns = [
+        Subcategoria.id,
+        Subcategoria.subcategoria,
+        Categoria.categoria,
+        Subcategoria.ruta,
+        None,  # productos count (not sortable)
+        Subcategoria.estado,
+        Subcategoria.fecha
+    ]
+
+    if 0 <= order_column < len(columns) and columns[order_column] is not None:
+        order_col = columns[order_column]
+        if order_dir == 'asc':
+            query = query.order_by(order_col.asc())
+        else:
+            query = query.order_by(order_col.desc())
+    else:
+        query = query.order_by(Subcategoria.fecha.desc())
+
+    # Get paginated data
+    subcategorias = query.offset(start).limit(length).all()
+
+    # Format data for DataTables
+    data = []
+    for subcat in subcategorias:
+        data.append({
+            'id': subcat.id,
+            'subcategoria': subcat.subcategoria,
+            'categoria': subcat.categoria.categoria if subcat.categoria else 'N/A',
+            'categoria_id': subcat.id_categoria,
+            'ruta': f'<code>{subcat.ruta}</code>',
+            'productos': subcat.get_products_count(),
+            'estado': subcat.estado,
+            'fecha': subcat.fecha.strftime('%d/%m/%Y') if subcat.fecha else 'N/A'
+        })
+
+    return jsonify({
+        'draw': draw,
+        'recordsTotal': total_records,
+        'recordsFiltered': filtered_records,
+        'data': data
+    })
 
 
 @admin_bp.route('/subcategories/create', methods=['GET', 'POST'])
