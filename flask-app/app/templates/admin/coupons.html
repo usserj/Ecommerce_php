@@ -167,11 +167,22 @@
 
 {% block extra_js %}
 <script>
+// Get CSRF token
+function getCsrfToken() {
+    return document.querySelector('input[name="csrf_token"]')?.value || '{{ csrf_token() }}';
+}
+
 // Toggle coupon status
 document.querySelectorAll('.toggle-coupon').forEach(toggle => {
     toggle.addEventListener('change', function() {
         const couponId = this.getAttribute('data-id');
-        fetch(`/admin/coupons/toggle/${couponId}`, {method: 'POST'})
+        fetch(`/admin/coupons/toggle/${couponId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            }
+        })
         .then(r => r.json())
         .then(d => {
             if (!d.success) {
