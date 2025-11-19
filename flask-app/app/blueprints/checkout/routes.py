@@ -1,10 +1,11 @@
 """Checkout routes."""
-from flask import render_template, request, redirect, url_for, flash, session
+from flask import render_template, request, redirect, url_for, flash, session, jsonify
 from flask_login import login_required, current_user
 from app.blueprints.checkout import checkout_bp
 from app.models.product import Producto
 from app.models.order import Compra
 from app.models.notification import Notificacion
+from app.models.coupon import Cupon
 from app.extensions import db
 from app.services.payment_service import (
     process_paypal_payment,
@@ -148,6 +149,65 @@ def process():
         return redirect(url_for('checkout.index'))
 
 
+@checkout_bp.route('/validate-coupon', methods=['POST'])
+@login_required
+def validate_coupon():
+    """Validate coupon code and return discount."""
+    try:
+        data = request.get_json()
+        codigo = data.get('codigo', '').strip().upper()
+        monto = float(data.get('monto', 0))
+
+        if not codigo:
+            return jsonify({
+                'success': False,
+                'message': 'Código de cupón requerido'
+            }), 400
+
+        # Find coupon
+        cupon = Cupon.query.filter_by(codigo=codigo).first()
+
+        if not cupon:
+            return jsonify({
+                'success': False,
+                'message': 'Cupón no válido o no existe'
+            })
+
+        # Validate coupon
+        is_valid, message = cupon.is_valid(monto)
+
+        if not is_valid:
+            return jsonify({
+                'success': False,
+                'message': message
+            })
+
+        # Calculate discount
+        descuento = cupon.calculate_discount(monto)
+
+        # Save coupon in session for later use
+        session['applied_coupon'] = {
+            'codigo': codigo,
+            'id': cupon.id,
+            'descuento': descuento
+        }
+        session.modified = True
+
+        return jsonify({
+            'success': True,
+            'message': f'¡Cupón aplicado! {message}',
+            'descuento': round(descuento, 2),
+            'tipo': cupon.tipo,
+            'valor': cupon.valor
+        })
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error al validar cupón: {str(e)}'
+        }), 500
+
+
 @checkout_bp.route('/paypal/execute')
 @login_required
 def paypal_execute():
@@ -176,6 +236,9 @@ def paypal_execute():
                 direccion = session.get('checkout_direccion', 'Pendiente')
                 pais = session.get('checkout_pais', 'Ecuador')
 
+                # Get coupon from session
+                cupon_info = session.get('applied_coupon', None)
+
                 # Create order with completed status
                 success, message, orders = create_order_from_cart(
                     current_user.id,
@@ -184,17 +247,19 @@ def paypal_execute():
                     pais,
                     'paypal',
                     payment_id,
-                    estado='procesando'
+                    estado='procesando',
+                    cupon_info=cupon_info
                 )
 
                 if not success:
                     flash(f'Pago completado pero error al crear orden: {message}', 'warning')
                     return redirect(url_for('account.orders'))
 
-                # Clear cart
+                # Clear cart and session data
                 session['cart'] = []
                 session.pop('checkout_direccion', None)
                 session.pop('checkout_pais', None)
+                session.pop('applied_coupon', None)
                 session.modified = True
 
                 flash('¡Pago completado exitosamente!', 'success')
@@ -292,6 +357,9 @@ def upload_voucher():
             direccion = request.form.get('direccion', 'Pendiente')
             pais = request.form.get('pais', 'Ecuador')
 
+            # Get coupon from session
+            cupon_info = session.get('applied_coupon', None)
+
             # Create order
             success, message, orders = create_order_from_cart(
                 current_user.id,
@@ -300,7 +368,8 @@ def upload_voucher():
                 pais,
                 'transferencia_comprobante',
                 order_id or f"ORD-{current_user.id}-{int(datetime.now().timestamp())}",
-                estado='pendiente'
+                estado='pendiente',
+                cupon_info=cupon_info
             )
 
             if not success:
@@ -310,8 +379,9 @@ def upload_voucher():
             # TODO: Could add a Message/Log model to track voucher uploads
             # For now, the voucher is saved and the order is created with pending status
 
-            # Clear cart
+            # Clear cart and coupon
             session['cart'] = []
+            session.pop('applied_coupon', None)
             session.modified = True
 
             flash('Comprobante subido exitosamente. Su pedido será procesado en 24-48 horas.', 'success')
