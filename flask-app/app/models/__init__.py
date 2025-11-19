@@ -11,6 +11,9 @@ from app.models.setting import Plantilla, Slide, Banner, Cabecera
 from app.models.notification import Notificacion
 from app.models.visit import VisitaPais, VisitaPersona
 from app.models.coupon import Cupon
+# Modelos de IA
+from app.models.chatbot import ConversacionChatbot
+from app.models.analisis_review import AnalisisReview
 
 __all__ = [
     'User',
@@ -29,5 +32,8 @@ __all__ = [
     'Notificacion',
     'VisitaPais',
     'VisitaPersona',
-    'Cupon'
+    'Cupon',
+    # Modelos de IA
+    'ConversacionChatbot',
+    'AnalisisReview'
 ]

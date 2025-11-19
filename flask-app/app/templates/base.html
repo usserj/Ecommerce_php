@@ -17,6 +17,11 @@
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 
+    <!-- AI Chatbot CSS -->
+    {% if not request.path.startswith('/admin') %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ai-chatbot.css') }}">
+    {% endif %}
+
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -209,6 +214,21 @@
 
     <!-- Custom JS -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+    <!-- AI Chatbot Integration -->
+    {% if not request.path.startswith('/admin') %}
+    <script>
+        // Configuración del chatbot desde Flask
+        window.CHATBOT_CONFIG = {
+            apiUrl: '{{ url_for("ai.chat") }}',
+            userName: {% if current_user.is_authenticated %}'{{ current_user.nombre }}'{% else %}null{% endif %},
+            userId: {% if current_user.is_authenticated %}{{ current_user.id }}{% else %}null{% endif %},
+            cartCount: {{ cart_count }},
+            storeName: '{{ plantilla.nombre_tienda if plantilla and plantilla.nombre_tienda else "Tienda Virtual" }}'
+        };
+    </script>
+    <script src="{{ url_for('static', filename='js/ai-chatbot.js') }}"></script>
+    {% endif %}
 
     {% block extra_js %}{% endblock %}
 </body>
