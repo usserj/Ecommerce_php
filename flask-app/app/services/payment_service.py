@@ -1,6 +1,5 @@
 """Payment service for multiple payment gateways."""
 from flask import current_app, url_for, redirect, flash, render_template, session
-import paypalrestsdk
 import requests
 import hashlib
 import hmac
@@ -13,6 +12,14 @@ from app.models.order import Compra
 from app.models.notification import Notificacion
 from app.extensions import db
 
+# PayPal SDK - opcional
+try:
+    import paypalrestsdk
+    PAYPAL_AVAILABLE = True
+except ImportError:
+    PAYPAL_AVAILABLE = False
+    current_app.logger.warning("PayPal SDK no está instalado. La funcionalidad de PayPal no estará disponible.") if current_app else None
+
 
 def get_coupon_from_session():
     """Get coupon info from session if available."""
@@ -21,6 +28,9 @@ def get_coupon_from_session():
 
 def configure_paypal():
     """Configure PayPal SDK."""
+    if not PAYPAL_AVAILABLE:
+        raise ImportError("PayPal SDK no está instalado")
+
     config = Comercio.get_config()
     paypal_config = config.get_paypal_config()
 
@@ -33,6 +43,10 @@ def configure_paypal():
 
 def process_paypal_payment(order_data):
     """Process PayPal payment."""
+    if not PAYPAL_AVAILABLE:
+        flash('PayPal no está disponible en este momento. Use otro método de pago.', 'error')
+        return redirect(url_for('checkout.index'))
+
     configure_paypal()
 
     cart_items = order_data['cart_items']
