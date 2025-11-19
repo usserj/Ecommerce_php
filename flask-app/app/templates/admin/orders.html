@@ -113,27 +113,54 @@
         </div>
         <div class="card-body">
             <!-- Filters -->
-            <div class="row g-3 mb-4">
-                <div class="col-md-3">
-                    <select id="metodoFilter" class="form-control">
-                        <option value="">Todos los métodos</option>
-                        <option value="paypal">PayPal</option>
-                        <option value="paymentez">Paymentez</option>
-                        <option value="datafast">Datafast</option>
-                        <option value="deuna">De Una</option>
-                        <option value="transferencia">Transferencia</option>
-                    </select>
+            <div class="mb-4">
+                <h6 class="text-muted mb-3"><i class="fas fa-filter"></i> Filtros Avanzados</h6>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-3">
+                        <label for="metodoFilter" class="form-label small text-muted">Método de Pago</label>
+                        <select id="metodoFilter" class="form-control">
+                            <option value="">Todos los métodos</option>
+                            <option value="paypal">PayPal</option>
+                            <option value="paymentez">Paymentez</option>
+                            <option value="datafast">Datafast</option>
+                            <option value="deuna">De Una</option>
+                            <option value="transferencia">Transferencia</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="estadoFilter" class="form-label small text-muted">Estado</label>
+                        <select id="estadoFilter" class="form-control">
+                            <option value="">Todos los estados</option>
+                            <option value="pendiente">Pendiente</option>
+                            <option value="procesando">Procesando</option>
+                            <option value="enviado">Enviado</option>
+                            <option value="entregado">Entregado</option>
+                            <option value="completado">Completado</option>
+                            <option value="cancelado">Cancelado</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="fechaDesde" class="form-label small text-muted">Fecha Desde</label>
+                        <input type="date" id="fechaDesde" class="form-control" placeholder="Desde">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="fechaHasta" class="form-label small text-muted">Fecha Hasta</label>
+                        <input type="date" id="fechaHasta" class="form-control" placeholder="Hasta">
+                    </div>
                 </div>
-                <div class="col-md-3">
-                    <select id="estadoFilter" class="form-control">
-                        <option value="">Todos los estados</option>
-                        <option value="pendiente">Pendiente</option>
-                        <option value="procesando">Procesando</option>
-                        <option value="enviado">Enviado</option>
-                        <option value="entregado">Entregado</option>
-                        <option value="completado">Completado</option>
-                        <option value="cancelado">Cancelado</option>
-                    </select>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="usuarioFilter" class="form-label small text-muted">Buscar por Cliente</label>
+                        <input type="text" id="usuarioFilter" class="form-control" placeholder="Nombre o email del cliente">
+                    </div>
+                    <div class="col-md-6 d-flex align-items-end">
+                        <button type="button" id="clearFilters" class="btn btn-outline-secondary me-2">
+                            <i class="fas fa-times"></i> Limpiar Filtros
+                        </button>
+                        <button type="button" id="applyFilters" class="btn btn-primary">
+                            <i class="fas fa-filter"></i> Aplicar Filtros
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -229,6 +256,9 @@ $(document).ready(function() {
             data: function(d) {
                 d.metodo_filter = $('#metodoFilter').val();
                 d.estado_filter = $('#estadoFilter').val();
+                d.fecha_desde = $('#fechaDesde').val();
+                d.fecha_hasta = $('#fechaHasta').val();
+                d.usuario_filter = $('#usuarioFilter').val();
             }
         },
         columns: [
@@ -268,8 +298,35 @@ $(document).ready(function() {
         lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]]
     });
 
-    // Filters change
+    // Auto-apply filters for dropdowns
     $('#metodoFilter, #estadoFilter').on('change', function() {
+        table.ajax.reload();
+    });
+
+    // Apply filters button
+    $('#applyFilters').on('click', function() {
+        table.ajax.reload();
+    });
+
+    // Clear filters button
+    $('#clearFilters').on('click', function() {
+        $('#metodoFilter').val('');
+        $('#estadoFilter').val('');
+        $('#fechaDesde').val('');
+        $('#fechaHasta').val('');
+        $('#usuarioFilter').val('');
+        table.ajax.reload();
+    });
+
+    // Allow Enter key on user filter
+    $('#usuarioFilter').on('keypress', function(e) {
+        if (e.which === 13) {
+            table.ajax.reload();
+        }
+    });
+
+    // Date change auto-apply
+    $('#fechaDesde, #fechaHasta').on('change', function() {
         table.ajax.reload();
     });
 

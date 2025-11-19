@@ -786,6 +786,9 @@ def orders_ajax():
     # Custom filters
     metodo_filter = request.args.get('metodo_filter', default='')
     estado_filter = request.args.get('estado_filter', default='')
+    fecha_desde = request.args.get('fecha_desde', default='')
+    fecha_hasta = request.args.get('fecha_hasta', default='')
+    usuario_filter = request.args.get('usuario_filter', default='')
 
     # Base query with joins
     query = Compra.query.join(User, Compra.id_usuario == User.id, isouter=True)\
@@ -810,6 +813,33 @@ def orders_ajax():
     # Status filter
     if estado_filter:
         query = query.filter(Compra.estado == estado_filter)
+
+    # Date range filter
+    if fecha_desde:
+        try:
+            fecha_desde_dt = datetime.strptime(fecha_desde, '%Y-%m-%d')
+            query = query.filter(Compra.fecha >= fecha_desde_dt)
+        except ValueError:
+            pass
+
+    if fecha_hasta:
+        try:
+            # Add 1 day to include the entire end date
+            fecha_hasta_dt = datetime.strptime(fecha_hasta, '%Y-%m-%d')
+            from datetime import timedelta
+            fecha_hasta_dt = fecha_hasta_dt + timedelta(days=1)
+            query = query.filter(Compra.fecha < fecha_hasta_dt)
+        except ValueError:
+            pass
+
+    # User filter
+    if usuario_filter:
+        query = query.filter(
+            db.or_(
+                User.nombre.like(f'%{usuario_filter}%'),
+                User.email.like(f'%{usuario_filter}%')
+            )
+        )
 
     # Total records
     total_records = Compra.query.count()

@@ -2,7 +2,7 @@
 
 **Total de funcionalidades pendientes:** 45
 **Prioridad:** Alta (23), Media (15), Baja (7)
-**Estado actual:** 76% migrado (34/45 completadas)
+**Estado actual:** 78% migrado (35/45 completadas)
 
 ---
 
@@ -167,14 +167,26 @@
 
 ---
 
-### 9. Filtros Avanzados de Órdenes (1 funcionalidad) ⏳ PENDIENTE
+### 9. Filtros Avanzados de Órdenes (1 funcionalidad) ✅ COMPLETADO
 **Tareas:**
-- [ ] Filtrar por fecha
-- [ ] Filtrar por estado
-- [ ] Filtrar por método de pago
-- [ ] Filtrar por usuario
+- [x] Filtrar por fecha (rango desde-hasta)
+- [x] Filtrar por estado
+- [x] Filtrar por método de pago
+- [x] Filtrar por usuario (nombre o email)
 
-**Tiempo estimado:** 1 hora
+**Archivos modificados:**
+- ✅ `app/blueprints/admin/routes.py` (lógica de filtros en orders_ajax)
+- ✅ `app/templates/admin/orders.html` (UI de filtros avanzados)
+
+**Funcionalidades:**
+- Filtro por rango de fechas con auto-aplicación
+- Filtro por nombre o email de cliente con búsqueda en tiempo real
+- Filtros combinables (todos los filtros funcionan juntos)
+- Botones "Aplicar Filtros" y "Limpiar Filtros"
+- Enter key habilitado en búsqueda de cliente
+- Interfaz mejorada con labels descriptivos
+
+**Tiempo real:** 45 minutos
 
 ---
 
@@ -234,9 +246,9 @@
 | Fase | Funcionalidades | Completadas | Pendientes | % Completo |
 |------|----------------|-------------|------------|------------|
 | Fase 1 (Alta) | 23 | 23 | 0 | 100% ✅ |
-| Fase 2 (Media) | 15 | 11 | 4 | 73% 🚀 |
+| Fase 2 (Media) | 15 | 12 | 3 | 80% 🚀 |
 | Fase 3 (Baja) | 7 | 0 | 7 | 0% |
-| **TOTAL** | **45** | **34** | **11** | **76%** ⬆️ |
+| **TOTAL** | **45** | **35** | **10** | **78%** ⬆️ |
 
 ---
 
@@ -264,7 +276,7 @@
 6. ✅ **Tablas dinámicas AJAX** (COMPLETADO)
 7. ⏳ Reportes avanzados
 8. ✅ **Gestión usuarios admin** (COMPLETADO)
-9. ⏳ Filtros avanzados de órdenes
+9. ✅ **Filtros avanzados de órdenes** (COMPLETADO)
 10. ⏳ Drag & drop reordenar slides
 
 ### 📋 PENDIENTE - FASE 3 (Baja Prioridad)
@@ -286,4 +298,6 @@
 
 **Última actualización:** 2025-01-19
 **Actualizado por:** Sistema de migración automática
-**Últimas funcionalidades completadas:** Gestión completa de usuarios desde admin (editar/eliminar)
+**Últimas funcionalidades completadas:**
+- Gestión completa de usuarios desde admin (editar/eliminar)
+- Filtros avanzados de órdenes (fecha, usuario, método pago, estado)
