@@ -69,10 +69,27 @@
             <div>{{ producto.descripcion|safe }}</div>
         </div>
 
+        <!-- Stock Information -->
+        <div class="mb-3">
+            {% if producto.is_virtual() %}
+                <span class="badge bg-info"><i class="fas fa-download"></i> Producto Digital - Stock Ilimitado</span>
+            {% elif producto.agotado() %}
+                <span class="badge bg-danger fs-6"><i class="fas fa-times-circle"></i> Agotado</span>
+            {% elif producto.stock_bajo() %}
+                <span class="badge bg-warning text-dark fs-6"><i class="fas fa-exclamation-triangle"></i> Solo quedan {{ producto.stock }} unidades</span>
+            {% else %}
+                <span class="badge bg-success fs-6"><i class="fas fa-check-circle"></i> En Stock ({{ producto.stock }} disponibles)</span>
+            {% endif %}
+        </div>
+
+        {% if not producto.agotado() or producto.is_virtual() %}
         <div class="mb-4">
+            <label class="form-label fw-bold">Cantidad:</label>
             <div class="input-group" style="max-width: 200px;">
                 <button class="btn btn-outline-secondary" type="button" id="decreaseQty">-</button>
-                <input type="number" class="form-control text-center" value="1" min="1" id="quantity">
+                <input type="number" class="form-control text-center" value="1" min="1"
+                       {% if not producto.is_virtual() %}max="{{ producto.stock }}"{% endif %}
+                       id="quantity">
                 <button class="btn btn-outline-secondary" type="button" id="increaseQty">+</button>
             </div>
         </div>
@@ -88,6 +105,12 @@
             </button>
             {% endif %}
         </div>
+        {% else %}
+        <div class="alert alert-danger" role="alert">
+            <i class="fas fa-exclamation-triangle"></i> <strong>Producto Agotado</strong><br>
+            Este producto no está disponible en este momento. Por favor, revisa más tarde.
+        </div>
+        {% endif %}
 
         <div class="mt-4">
             <ul class="list-unstyled">
@@ -107,6 +130,55 @@
         {% for producto in relacionados %}
         <div class="col-md-3 col-sm-6 mb-4">
             {% include 'components/product_card.html' %}
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<!-- Related Products Section -->
+{% if relacionados %}
+<section class="mt-5">
+    <h3 class="mb-4"><i class="fas fa-boxes"></i> Productos Relacionados</h3>
+    <div class="row">
+        {% for prod in relacionados %}
+        <div class="col-md-3 col-sm-6 mb-4">
+            <div class="card h-100 shadow-sm">
+                <a href="{{ url_for('shop.product_detail', ruta=prod.ruta) }}">
+                    <img src="{{ url_for('static', filename=prod.portada or 'img/default-product.jpg') }}"
+                         class="card-img-top" alt="{{ prod.titulo }}"
+                         style="height: 200px; object-fit: cover;">
+                </a>
+                <div class="card-body d-flex flex-column">
+                    <h6 class="card-title">
+                        <a href="{{ url_for('shop.product_detail', ruta=prod.ruta) }}"
+                           class="text-decoration-none text-dark">
+                            {{ prod.titulo[:50] }}{% if prod.titulo|length > 50 %}...{% endif %}
+                        </a>
+                    </h6>
+                    <div class="mt-auto">
+                        {% set precio_final = prod.get_final_price() %}
+                        {% if prod.oferta %}
+                            <p class="mb-1">
+                                <span class="text-danger fw-bold">${{ "%.2f"|format(precio_final) }}</span>
+                                <small class="text-muted text-decoration-line-through ms-2">
+                                    ${{ "%.2f"|format(prod.precio) }}
+                                </small>
+                            </p>
+                        {% else %}
+                            <p class="mb-1 fw-bold text-primary">${{ "%.2f"|format(precio_final) }}</p>
+                        {% endif %}
+
+                        {% if prod.agotado() %}
+                            <span class="badge bg-danger">Agotado</span>
+                        {% elif prod.stock_bajo() %}
+                            <span class="badge bg-warning text-dark">Últimas unidades</span>
+                        {% else %}
+                            <span class="badge bg-success">Disponible</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
         </div>
         {% endfor %}
     </div>

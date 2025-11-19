@@ -72,6 +72,8 @@ def edit():
         if 'foto' in request.files:
             file = request.files['foto']
             if file and file.filename:
+                from PIL import Image
+
                 filename = secure_filename(file.filename)
                 upload_folder = os.path.join('app/static/uploads/usuarios', str(current_user.id))
 
@@ -79,7 +81,16 @@ def edit():
                     os.makedirs(upload_folder)
 
                 filepath = os.path.join(upload_folder, filename)
-                file.save(filepath)
+
+                # Resize image to 500x500 using PIL
+                try:
+                    img = Image.open(file)
+                    img = img.resize((500, 500), Image.Resampling.LANCZOS)
+                    img.save(filepath)
+                except Exception as e:
+                    # If resize fails, save original
+                    file.seek(0)  # Reset file pointer
+                    file.save(filepath)
 
                 current_user.foto = filepath.replace('app/static/', '')
 

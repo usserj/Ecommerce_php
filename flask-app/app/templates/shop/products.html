@@ -35,7 +35,15 @@
     <div class="col-md-9">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h2>{% if categoria_actual %}{{ categoria_actual.categoria }}{% else %}Todos los Productos{% endif %}</h2>
-            <span class="text-muted">{{ productos.total }} productos encontrados</span>
+            <div class="d-flex align-items-center gap-3">
+                <span class="text-muted">{{ productos.total }} productos</span>
+                <select class="form-select form-select-sm" style="width: 200px;" id="sortSelect">
+                    <option value="reciente" {% if sort_by == 'reciente' %}selected{% endif %}>Más recientes</option>
+                    <option value="vendidos" {% if sort_by == 'vendidos' %}selected{% endif %}>Más vendidos</option>
+                    <option value="precio_asc" {% if sort_by == 'precio_asc' %}selected{% endif %}>Precio: Bajo a Alto</option>
+                    <option value="precio_desc" {% if sort_by == 'precio_desc' %}selected{% endif %}>Precio: Alto a Bajo</option>
+                </select>
+            </div>
         </div>
 
         {% if productos.items %}
@@ -84,4 +92,17 @@
         {% endif %}
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Handle sort change
+document.getElementById('sortSelect').addEventListener('change', function() {
+    const sortValue = this.value;
+    const currentUrl = new URL(window.location.href);
+    currentUrl.searchParams.set('sort', sortValue);
+    currentUrl.searchParams.delete('page');  // Reset to page 1 when sorting changes
+    window.location.href = currentUrl.toString();
+});
+</script>
 {% endblock %}

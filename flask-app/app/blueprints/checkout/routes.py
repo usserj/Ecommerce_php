@@ -33,10 +33,19 @@ def index():
     # Get products and calculate totals
     products = []
     subtotal = 0
+    stock_errors = []
 
     for item in cart_items:
         producto = Producto.query.get(item['id'])
         if producto:
+            # Validate stock availability
+            if not producto.is_virtual() and not producto.tiene_stock(item['cantidad']):
+                if producto.agotado():
+                    stock_errors.append(f"{producto.titulo} está agotado.")
+                else:
+                    stock_errors.append(f"{producto.titulo} solo tiene {producto.stock} unidades disponibles (solicitadas: {item['cantidad']}).")
+                continue
+
             precio = producto.get_price()
             item_total = precio * item['cantidad']
             products.append({
@@ -46,6 +55,12 @@ def index():
                 'total': item_total
             })
             subtotal += item_total
+
+    # If there are stock errors, redirect to cart
+    if stock_errors:
+        for error in stock_errors:
+            flash(error, 'error')
+        return redirect(url_for('cart.index'))
 
     # Calculate tax and shipping
     from app.models.comercio import Comercio
@@ -82,6 +97,22 @@ def process():
     if not cart_items:
         flash('Su carrito está vacío.', 'warning')
         return redirect(url_for('shop.index'))
+
+    # Validate stock before processing payment
+    stock_errors = []
+    for item in cart_items:
+        producto = Producto.query.get(item['id'])
+        if producto:
+            if not producto.is_virtual() and not producto.tiene_stock(item['cantidad']):
+                if producto.agotado():
+                    stock_errors.append(f"{producto.titulo} está agotado.")
+                else:
+                    stock_errors.append(f"{producto.titulo} solo tiene {producto.stock} unidades disponibles.")
+
+    if stock_errors:
+        for error in stock_errors:
+            flash(error, 'error')
+        return redirect(url_for('cart.index'))
 
     # Prepare order data
     order_data = {

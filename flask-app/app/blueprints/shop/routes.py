@@ -12,6 +12,7 @@ from sqlalchemy import or_
 def index(ruta=None):
     """Product listing page."""
     page = request.args.get('page', 1, type=int)
+    sort_by = request.args.get('sort', 'reciente')  # reciente, vendidos, precio_asc, precio_desc
     per_page = 12
 
     query = Producto.query.filter_by(estado=1)
@@ -22,8 +23,18 @@ def index(ruta=None):
         categoria = Categoria.query.filter_by(ruta=ruta, estado=1).first_or_404()
         query = query.filter_by(id_categoria=categoria.id)
 
+    # Sorting
+    if sort_by == 'vendidos':
+        query = query.order_by(Producto.ventas.desc())
+    elif sort_by == 'precio_asc':
+        query = query.order_by(Producto.precio.asc())
+    elif sort_by == 'precio_desc':
+        query = query.order_by(Producto.precio.desc())
+    else:  # reciente (default)
+        query = query.order_by(Producto.fecha.desc())
+
     # Pagination
-    productos = query.order_by(Producto.fecha.desc()).paginate(
+    productos = query.paginate(
         page=page, per_page=per_page, error_out=False
     )
 
@@ -32,7 +43,8 @@ def index(ruta=None):
     return render_template('shop/products.html',
                          productos=productos,
                          categorias=categorias,
-                         categoria_actual=categoria)
+                         categoria_actual=categoria,
+                         sort_by=sort_by)
 
 
 @shop_bp.route('/producto/<ruta>')
