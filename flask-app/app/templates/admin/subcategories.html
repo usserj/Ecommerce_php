@@ -3,47 +3,67 @@
 
 {% block content %}
 <div class="container-fluid">
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card admin-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Total Subcategorías</h6>
+                            <h3 class="mb-0">{{ total_subcategories }}</h3>
+                        </div>
+                        <div class="text-info">
+                            <i class="fas fa-folder-open fa-2x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card admin-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Subcategorías Activas</h6>
+                            <h3 class="mb-0">{{ active_subcategories }}</h3>
+                        </div>
+                        <div class="text-success">
+                            <i class="fas fa-check-circle fa-2x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="card shadow">
-        <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+        <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
             <h4 class="mb-0"><i class="fas fa-folder-open"></i> Gestión de Subcategorías</h4>
-            <a href="{{ url_for('admin.create_subcategory') }}" class="btn btn-dark btn-sm">
+            <a href="{{ url_for('admin.create_subcategory') }}" class="btn btn-light btn-sm">
                 <i class="fas fa-plus"></i> Crear Subcategoría
             </a>
         </div>
         <div class="card-body">
-            <!-- Search and Filters -->
-            <form method="GET" class="row g-3 mb-4">
-                <div class="col-md-6">
-                    <input type="text" name="search" class="form-control"
-                           placeholder="Buscar subcategoría..." value="{{ request.args.get('search', '') }}">
-                </div>
+            <!-- Category Filter -->
+            <div class="row g-3 mb-4">
                 <div class="col-md-4">
-                    <select name="categoria" class="form-control">
+                    <select id="categoriaFilter" class="form-control">
                         <option value="">Todas las categorías</option>
                         {% for cat in categorias %}
-                        <option value="{{ cat.id }}" {% if request.args.get('categoria', type=int) == cat.id %}selected{% endif %}>
-                            {{ cat.categoria }}
-                        </option>
+                        <option value="{{ cat.id }}">{{ cat.categoria }}</option>
                         {% endfor %}
                     </select>
                 </div>
-                <div class="col-md-2">
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-search"></i> Buscar
-                    </button>
-                    <a href="{{ url_for('admin.subcategories') }}" class="btn btn-secondary">
-                        <i class="fas fa-redo"></i>
-                    </a>
-                </div>
-            </form>
+            </div>
 
             <div class="table-responsive">
-                <table class="table table-striped table-hover">
+                <table id="subcategoriesTable" class="table table-striped table-hover">
                     <thead>
                         <tr>
                             <th>ID</th>
                             <th>Subcategoría</th>
-                            <th>Categoría Padre</th>
+                            <th>Categoría</th>
                             <th>Ruta</th>
                             <th>Productos</th>
                             <th>Estado</th>
@@ -52,79 +72,10 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for subcat in subcategorias.items %}
-                        <tr>
-                            <td>{{ subcat.id }}</td>
-                            <td><strong>{{ subcat.subcategoria }}</strong></td>
-                            <td>
-                                <span class="badge bg-primary">{{ subcat.categoria.categoria }}</span>
-                            </td>
-                            <td><code>{{ subcat.ruta }}</code></td>
-                            <td>
-                                <span class="badge bg-info">{{ subcat.get_products_count() }} productos</span>
-                            </td>
-                            <td>
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input toggle-subcategory" type="checkbox"
-                                           data-id="{{ subcat.id }}"
-                                           {{ 'checked' if subcat.estado == 1 else '' }}>
-                                </div>
-                            </td>
-                            <td>{{ subcat.fecha.strftime('%d/%m/%Y') }}</td>
-                            <td>
-                                <div class="btn-group btn-group-sm" role="group">
-                                    <a href="{{ url_for('admin.edit_subcategory', id=subcat.id) }}"
-                                       class="btn btn-warning" title="Editar">
-                                        <i class="fas fa-edit"></i>
-                                    </a>
-                                    <button type="button" class="btn btn-danger delete-subcategory"
-                                            data-id="{{ subcat.id }}"
-                                            data-nombre="{{ subcat.subcategoria }}"
-                                            title="Eliminar">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
+                        <!-- DataTables will populate this -->
                     </tbody>
                 </table>
             </div>
-
-            <!-- Pagination -->
-            {% if subcategorias.has_prev or subcategorias.has_next %}
-            <nav>
-                <ul class="pagination justify-content-center">
-                    {% if subcategorias.has_prev %}
-                    <li class="page-item">
-                        <a class="page-link" href="{{ url_for('admin.subcategories', page=subcategorias.prev_num, search=request.args.get('search', ''), categoria=request.args.get('categoria', '')) }}">
-                            Anterior
-                        </a>
-                    </li>
-                    {% endif %}
-
-                    {% for page_num in subcategorias.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
-                        {% if page_num %}
-                        <li class="page-item {% if page_num == subcategorias.page %}active{% endif %}">
-                            <a class="page-link" href="{{ url_for('admin.subcategories', page=page_num, search=request.args.get('search', ''), categoria=request.args.get('categoria', '')) }}">
-                                {{ page_num }}
-                            </a>
-                        </li>
-                        {% else %}
-                        <li class="page-item disabled"><span class="page-link">...</span></li>
-                        {% endif %}
-                    {% endfor %}
-
-                    {% if subcategorias.has_next %}
-                    <li class="page-item">
-                        <a class="page-link" href="{{ url_for('admin.subcategories', page=subcategorias.next_num, search=request.args.get('search', ''), categoria=request.args.get('categoria', '')) }}">
-                            Siguiente
-                        </a>
-                    </li>
-                    {% endif %}
-                </ul>
-            </nav>
-            {% endif %}
         </div>
     </div>
 </div>
@@ -143,6 +94,7 @@
             </div>
             <div class="modal-footer">
                 <form id="deleteForm" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                     <button type="submit" class="btn btn-danger">Eliminar</button>
                 </form>
@@ -152,37 +104,144 @@
 </div>
 {% endblock %}
 
+{% block extra_css %}
+<style>
+.opacity-50 {
+    opacity: 0.5;
+}
+</style>
+{% endblock %}
+
 {% block extra_js %}
+<!-- DataTables CSS/JS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+
 <script>
-// Toggle subcategory status
-document.querySelectorAll('.toggle-subcategory').forEach(toggle => {
-    toggle.addEventListener('change', function() {
-        const subcatId = this.getAttribute('data-id');
-        fetch(`/admin/subcategories/toggle/${subcatId}`, {method: 'POST'})
+// Get CSRF token
+function getCsrfToken() {
+    return document.querySelector('input[name="csrf_token"]')?.value || '{{ csrf_token() }}';
+}
+
+// Initialize DataTable
+$(document).ready(function() {
+    const table = $('#subcategoriesTable').DataTable({
+        processing: true,
+        serverSide: true,
+        ajax: {
+            url: '{{ url_for("admin.subcategories_ajax") }}',
+            type: 'GET',
+            data: function(d) {
+                d.categoria_filter = $('#categoriaFilter').val();
+            }
+        },
+        columns: [
+            { data: 'id', width: '5%' },
+            {
+                data: 'subcategoria',
+                width: '20%',
+                render: function(data) {
+                    return `<strong>${data}</strong>`;
+                }
+            },
+            { data: 'categoria', width: '15%' },
+            { data: 'ruta', width: '15%', orderable: true },
+            {
+                data: 'productos',
+                width: '10%',
+                orderable: false,
+                render: function(data) {
+                    return `<span class="badge bg-info">${data} productos</span>`;
+                }
+            },
+            {
+                data: null,
+                orderable: false,
+                width: '10%',
+                render: function(data) {
+                    const checked = data.estado == 1 ? 'checked' : '';
+                    return `<div class="form-check form-switch">
+                        <input class="form-check-input toggle-subcategory" type="checkbox"
+                               data-id="${data.id}" ${checked}>
+                    </div>`;
+                }
+            },
+            { data: 'fecha', width: '12%' },
+            {
+                data: null,
+                orderable: false,
+                width: '13%',
+                render: function(data) {
+                    return `
+                        <div class="btn-group btn-group-sm" role="group">
+                            <a href="/admin/subcategories/edit/${data.id}"
+                               class="btn btn-warning" title="Editar">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <button type="button" class="btn btn-danger delete-subcategory"
+                                    data-id="${data.id}"
+                                    data-nombre="${data.subcategoria}"
+                                    title="Eliminar">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    `;
+                }
+            }
+        ],
+        order: [[0, 'desc']],
+        language: {
+            url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json'
+        },
+        pageLength: 25,
+        lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]]
+    });
+
+    // Category filter change
+    $('#categoriaFilter').on('change', function() {
+        table.ajax.reload();
+    });
+
+    // Toggle subcategory status
+    $('#subcategoriesTable').on('change', '.toggle-subcategory', function() {
+        const subcategoryId = $(this).data('id');
+        const checkbox = this;
+
+        fetch(`/admin/subcategories/toggle/${subcategoryId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            }
+        })
         .then(r => r.json())
         .then(d => {
             if (!d.success) {
-                this.checked = !this.checked;
+                checkbox.checked = !checkbox.checked;
                 alert('Error al cambiar estado');
             }
         })
         .catch(() => {
-            this.checked = !this.checked;
+            checkbox.checked = !checkbox.checked;
             alert('Error de conexión');
         });
     });
-});
 
-// Delete subcategory
-document.querySelectorAll('.delete-subcategory').forEach(btn => {
-    btn.addEventListener('click', function() {
-        const subcatId = this.getAttribute('data-id');
-        const subcatName = this.getAttribute('data-nombre');
+    // Delete subcategory
+    $('#subcategoriesTable').on('click', '.delete-subcategory', function() {
+        const subcategoryId = $(this).data('id');
+        const subcategoryName = $(this).data('nombre');
 
-        document.getElementById('subcategoryName').textContent = subcatName;
-        document.getElementById('deleteForm').action = `/admin/subcategories/delete/${subcatId}`;
+        document.getElementById('subcategoryName').textContent = subcategoryName;
+        document.getElementById('deleteForm').action = `/admin/subcategories/delete/${subcategoryId}`;
 
         new bootstrap.Modal(document.getElementById('deleteModal')).show();
+    });
+
+    // Reload table after successful delete
+    $('#deleteForm').on('submit', function() {
+        setTimeout(() => table.ajax.reload(), 500);
     });
 });
 </script>

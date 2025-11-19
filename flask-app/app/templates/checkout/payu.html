@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}Procesando Pago - PayU{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-lg">
+                <div class="card-header bg-success text-white text-center">
+                    <h3><i class="fas fa-credit-card"></i> Procesando Pago con PayU</h3>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-4">
+                        <i class="fas fa-shield-alt fa-3x text-success mb-3"></i>
+                        <h5>Será redirigido a la pasarela de pago segura de PayU</h5>
+                        <p class="text-muted">Por favor espere mientras procesamos su solicitud...</p>
+                    </div>
+
+                    <!-- Payment Summary -->
+                    <div class="alert alert-info">
+                        <h6><i class="fas fa-receipt"></i> Resumen de Pago:</h6>
+                        <hr>
+                        <div class="row">
+                            <div class="col-6"><strong>Orden:</strong></div>
+                            <div class="col-6 text-end">{{ order_id }}</div>
+                        </div>
+                        <div class="row">
+                            <div class="col-6"><strong>Total:</strong></div>
+                            <div class="col-6 text-end"><strong>${{ "%.2f"|format(total) }}</strong></div>
+                        </div>
+                    </div>
+
+                    <!-- PayU Payment Form -->
+                    {% if payu_config.mode == 'test' %}
+                    <form method="post" action="https://sandbox.checkout.payulatam.com/ppp-web-gateway-payu/" id="payuForm">
+                    {% else %}
+                    <form method="post" action="https://checkout.payulatam.com/ppp-web-gateway-payu/" id="payuForm">
+                    {% endif %}
+                        <!-- Merchant Configuration -->
+                        <input name="merchantId" type="hidden" value="{{ payu_config.merchant_id }}">
+                        <input name="accountId" type="hidden" value="{{ payu_config.account_id }}">
+                        <input name="description" type="hidden" value="{{ payu_config.description }}">
+                        <input name="referenceCode" type="hidden" value="{{ payu_config.reference_code }}">
+                        <input name="amount" type="hidden" value="{{ payu_config.amount }}">
+                        <input name="tax" type="hidden" value="{{ payu_config.tax }}">
+                        <input name="taxReturnBase" type="hidden" value="{{ payu_config.tax_return_base }}">
+                        <input name="currency" type="hidden" value="{{ payu_config.currency }}">
+                        <input name="signature" type="hidden" value="{{ payu_config.signature }}">
+
+                        {% if payu_config.mode == 'test' %}
+                        <input name="test" type="hidden" value="1">
+                        {% endif %}
+
+                        <!-- Response URLs -->
+                        <input name="responseUrl" type="hidden" value="{{ payu_config.response_url }}">
+                        <input name="confirmationUrl" type="hidden" value="{{ payu_config.confirmation_url }}">
+
+                        <!-- Buyer Information -->
+                        {% if payu_config.buyer_email %}
+                        <input name="buyerEmail" type="hidden" value="{{ payu_config.buyer_email }}">
+                        {% endif %}
+
+                        <div class="text-center mt-4">
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="fas fa-lock"></i> Ir a Pagar con PayU
+                            </button>
+                            <div class="mt-3">
+                                <a href="{{ url_for('cart.index') }}" class="btn btn-outline-secondary">
+                                    <i class="fas fa-arrow-left"></i> Regresar al Carrito
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+
+                    <!-- Auto-submit notice -->
+                    <div class="text-center mt-4">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle"></i>
+                            El formulario se enviará automáticamente en 3 segundos...
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Security Notice -->
+            <div class="card mt-4 border-warning">
+                <div class="card-body">
+                    <h6 class="text-warning"><i class="fas fa-shield-alt"></i> Información de Seguridad:</h6>
+                    <ul class="small mb-0">
+                        <li>PayU utiliza encriptación SSL de 256 bits para proteger sus datos</li>
+                        <li>Sus datos de tarjeta nunca son almacenados en nuestros servidores</li>
+                        <li>Todos los pagos son procesados en un entorno seguro certificado PCI-DSS</li>
+                        {% if payu_config.mode == 'test' %}
+                        <li class="text-danger"><strong>MODO DE PRUEBA - Use tarjetas de prueba de PayU</strong></li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Auto-submit form after 3 seconds
+setTimeout(function() {
+    document.getElementById('payuForm').submit();
+}, 3000);
+
+// Show loading spinner on submit
+document.getElementById('payuForm').addEventListener('submit', function() {
+    document.querySelector('.card-body').innerHTML = `
+        <div class="text-center py-5">
+            <div class="spinner-border text-success" role="status" style="width: 3rem; height: 3rem;">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+            <h5 class="mt-3">Redirigiendo a PayU...</h5>
+            <p class="text-muted">Por favor espere...</p>
+        </div>
+    `;
+});
+</script>
+{% endblock %}

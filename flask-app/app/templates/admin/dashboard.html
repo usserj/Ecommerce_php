@@ -1,137 +1,116 @@
 {% extends "admin/base_admin.html" %}
 {% block title %}Panel Administrativo{% endblock %}
 {% block content %}
-<div class="container-fluid">
-    <!-- Admin Navigation -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card shadow-sm">
-                <div class="card-body py-2">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <a href="{{ url_for('admin.dashboard') }}" class="btn btn-sm btn-primary me-2">
-                                <i class="fas fa-tachometer-alt"></i> Dashboard
-                            </a>
-                            <a href="{{ url_for('admin.users') }}" class="btn btn-sm btn-outline-primary me-2">
-                                <i class="fas fa-users"></i> Usuarios
-                            </a>
-                            <a href="{{ url_for('admin.products') }}" class="btn btn-sm btn-outline-primary me-2">
-                                <i class="fas fa-box"></i> Productos
-                            </a>
-                            <a href="{{ url_for('admin.orders') }}" class="btn btn-sm btn-outline-primary me-2">
-                                <i class="fas fa-shopping-cart"></i> Pedidos
-                            </a>
-                            <a href="{{ url_for('admin.analytics') }}" class="btn btn-sm btn-outline-primary me-2">
-                                <i class="fas fa-chart-line"></i> Analíticas
-                            </a>
-                            <a href="{{ url_for('admin.settings') }}" class="btn btn-sm btn-outline-success me-2">
-                                <i class="fas fa-cog"></i> Configuración
-                            </a>
-                        </div>
-                        <div>
-                            <span class="me-3">
-                                <i class="fas fa-user-shield"></i> {{ session.admin_nombre }}
-                            </span>
-                            <a href="{{ url_for('admin.logout') }}" class="btn btn-sm btn-outline-danger">
-                                <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+<!-- Page Header -->
+<div class="page-header">
+    <h1><i class="fas fa-tachometer-alt me-2"></i>Panel Administrativo</h1>
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item active">Dashboard</li>
+        </ol>
+    </nav>
+</div>
 
-    <h2 class="mb-4"><i class="fas fa-tachometer-alt"></i> Panel Administrativo</h2>
+<!-- Statistics Cards -->
 <div class="row mb-4">
-    <div class="col-md-3">
-        <div class="card bg-primary text-white">
-            <div class="card-body"><h6><i class="fas fa-users"></i> Usuarios</h6><h2>{{ total_users }}</h2></div>
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="stat-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <i class="fas fa-users stat-icon"></i>
+            <h6>Total Usuarios</h6>
+            <h2>{{ total_users }}</h2>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card bg-success text-white">
-            <div class="card-body"><h6><i class="fas fa-box"></i> Productos</h6><h2>{{ total_products }}</h2></div>
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="stat-card" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+            <i class="fas fa-box stat-icon"></i>
+            <h6>Total Productos</h6>
+            <h2>{{ total_products }}</h2>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card bg-info text-white">
-            <div class="card-body"><h6><i class="fas fa-shopping-cart"></i> Ventas</h6><h2>{{ total_orders }}</h2></div>
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="stat-card" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);">
+            <i class="fas fa-shopping-cart stat-icon"></i>
+            <h6>Total Ventas</h6>
+            <h2>{{ total_orders }}</h2>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card bg-warning text-white">
-            <div class="card-body"><h6><i class="fas fa-eye"></i> Visitas</h6><h2>{{ total_visits }}</h2></div>
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="stat-card" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+            <i class="fas fa-eye stat-icon"></i>
+            <h6>Total Visitas</h6>
+            <h2>{{ total_visits }}</h2>
         </div>
     </div>
 </div>
 
-    <!-- Charts Row -->
-    <div class="row mb-4">
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header bg-info text-white">
-                    <h5 class="mb-0"><i class="fas fa-chart-line"></i> Ventas (Últimos 7 días)</h5>
-                </div>
-                <div class="card-body" style="height: 300px;">
-                    <canvas id="salesChart"></canvas>
-                </div>
+<!-- Charts Section -->
+<div class="row mb-4">
+    <div class="col-lg-6 mb-4">
+        <div class="card admin-card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>Ventas (Últimos 7 días)</h5>
             </div>
-        </div>
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header bg-success text-white">
-                    <h5 class="mb-0"><i class="fas fa-globe"></i> Visitas por País (Top 5)</h5>
-                </div>
-                <div class="card-body" style="height: 300px;">
-                    <canvas id="countriesChart"></canvas>
-                </div>
+            <div class="card-body" style="height: 300px;">
+                <canvas id="salesChart"></canvas>
             </div>
         </div>
     </div>
-
-    <div class="row mb-4">
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header bg-warning text-dark">
-                    <h5 class="mb-0"><i class="fas fa-chart-pie"></i> Top Productos Vendidos</h5>
-                </div>
-                <div class="card-body" style="height: 300px;">
-                    <canvas id="productsChart"></canvas>
-                </div>
+    <div class="col-lg-6 mb-4">
+        <div class="card admin-card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-globe me-2"></i>Visitas por País (Top 5)</h5>
+            </div>
+            <div class="card-body" style="height: 300px;">
+                <canvas id="countriesChart"></canvas>
             </div>
         </div>
     </div>
+</div>
 
-<div class="row">
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header"><h5 class="mb-0">Últimas Ventas</h5></div>
-            <div class="card-body">
-                <div class="list-group">
-                    {% for order in recent_orders %}
-                    <div class="list-group-item">
-                        <div class="d-flex justify-content-between">
-                            <span>{{ order.producto.titulo }}</span>
-                            <span class="text-success">${{ "%.2f"|format(order.pago|float) }}</span>
-                        </div>
-                        <small class="text-muted">{{ order.fecha.strftime('%d/%m/%Y %H:%M') }}</small>
+<div class="row mb-4">
+    <div class="col-lg-6 mb-4">
+        <div class="card admin-card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-chart-pie me-2"></i>Top Productos Vendidos</h5>
+            </div>
+            <div class="card-body" style="height: 300px;">
+                <canvas id="productsChart"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6 mb-4">
+        <div class="card admin-card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-shopping-bag me-2"></i>Últimas Ventas</h5>
+            </div>
+            <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+                {% for order in recent_orders %}
+                <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
+                    <div>
+                        <p class="mb-1 fw-semibold">{{ order.producto.titulo[:40] }}{% if order.producto.titulo|length > 40 %}...{% endif %}</p>
+                        <small class="text-muted"><i class="fas fa-clock me-1"></i>{{ order.fecha.strftime('%d/%m/%Y %H:%M') }}</small>
                     </div>
-                    {% endfor %}
+                    <span class="badge bg-success fs-6">${{ "%.2f"|format(order.pago|float) }}</span>
                 </div>
+                {% endfor %}
             </div>
         </div>
     </div>
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header"><h5 class="mb-0">Productos Más Vendidos</h5></div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-lg-12">
+        <div class="card admin-card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-trophy me-2"></i>Productos Más Vendidos</h5>
+            </div>
             <div class="card-body">
-                <div class="list-group">
+                <div class="row">
                     {% for producto in top_products %}
-                    <div class="list-group-item">
-                        <div class="d-flex justify-content-between">
-                            <span>{{ producto.titulo }}</span>
-                            <span class="badge bg-primary">{{ producto.ventas }} ventas</span>
+                    <div class="col-md-6 mb-3">
+                        <div class="d-flex justify-content-between align-items-center p-3 border rounded">
+                            <span class="fw-semibold">{{ loop.index }}. {{ producto.titulo[:35] }}{% if producto.titulo|length > 35 %}...{% endif %}</span>
+                            <span class="badge bg-primary rounded-pill">{{ producto.ventas }} ventas</span>
                         </div>
                     </div>
                     {% endfor %}
@@ -139,7 +118,6 @@
             </div>
         </div>
     </div>
-</div>
 </div>
 {% endblock %}
 

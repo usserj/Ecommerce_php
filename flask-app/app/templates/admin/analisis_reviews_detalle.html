@@ -1,0 +1,351 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Análisis de Reviews - {{ producto.titulo }} - Panel Admin{% endblock %}
+
+{% block extra_css %}
+<style>
+.aspect-card {
+    transition: transform 0.2s;
+}
+.aspect-card:hover {
+    transform: translateY(-3px);
+}
+.sentiment-chart {
+    max-width: 400px;
+    margin: 0 auto;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-0">
+                        <i class="fas fa-brain text-primary"></i> Análisis de Reviews
+                    </h2>
+                    <p class="text-muted mb-0">{{ producto.titulo }}</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('admin.analisis_reviews') }}" class="btn btn-secondary me-2">
+                        <i class="fas fa-arrow-left"></i> Volver
+                    </a>
+                    <form method="POST" action="{{ url_for('admin.generar_analisis_reviews', producto_id=producto.id) }}"
+                          class="d-inline">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-sync-alt"></i>
+                            {% if analisis %}Regenerar Análisis{% else %}Generar Análisis{% endif %}
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if analisis %}
+    <!-- Información del Producto -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <img src="{{ producto.imagen }}" class="card-img-top" alt="{{ producto.titulo }}"
+                     style="height: 200px; object-fit: cover;">
+                <div class="card-body">
+                    <h6 class="card-title">{{ producto.titulo }}</h6>
+                    <p class="text-primary fw-bold mb-0">
+                        ${{ "%.2f"|format(producto.precio) }}
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-9">
+            <div class="row">
+                <!-- Calidad Score -->
+                <div class="col-md-3 mb-3">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body text-center">
+                            <h6 class="text-muted mb-2">Calidad IA</h6>
+                            {% set score = analisis.calidad_score|float %}
+                            {% if score >= 4.0 %}
+                                <h2 class="text-success mb-0">{{ "%.1f"|format(score) }}</h2>
+                                <small class="text-muted">Excelente</small>
+                            {% elif score >= 3.0 %}
+                                <h2 class="text-warning mb-0">{{ "%.1f"|format(score) }}</h2>
+                                <small class="text-muted">Bueno</small>
+                            {% else %}
+                                <h2 class="text-danger mb-0">{{ "%.1f"|format(score) }}</h2>
+                                <small class="text-muted">Necesita mejora</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Total Reviews -->
+                <div class="col-md-3 mb-3">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body text-center">
+                            <h6 class="text-muted mb-2">Total Reviews</h6>
+                            <h2 class="mb-0">{{ analisis.total_reviews }}</h2>
+                            <small class="text-muted">Analizadas</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Positivos -->
+                <div class="col-md-2 mb-3">
+                    <div class="card border-0 shadow-sm h-100 border-success">
+                        <div class="card-body text-center">
+                            <h6 class="text-muted mb-2">Positivos</h6>
+                            <h3 class="text-success mb-0">{{ analisis.sentimiento_positivo }}</h3>
+                            <small class="text-muted">😊</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Neutrales -->
+                <div class="col-md-2 mb-3">
+                    <div class="card border-0 shadow-sm h-100 border-secondary">
+                        <div class="card-body text-center">
+                            <h6 class="text-muted mb-2">Neutrales</h6>
+                            <h3 class="text-secondary mb-0">{{ analisis.sentimiento_neutral }}</h3>
+                            <small class="text-muted">😐</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Negativos -->
+                <div class="col-md-2 mb-3">
+                    <div class="card border-0 shadow-sm h-100 border-danger">
+                        <div class="card-body text-center">
+                            <h6 class="text-muted mb-2">Negativos</h6>
+                            <h3 class="text-danger mb-0">{{ analisis.sentimiento_negativo }}</h3>
+                            <small class="text-muted">😞</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gráfico de Sentimientos -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-chart-pie"></i> Distribución de Sentimientos</h5>
+                </div>
+                <div class="card-body">
+                    <div class="sentiment-chart">
+                        <canvas id="sentimentChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fas fa-lightbulb"></i> Recomendación de IA</h5>
+                </div>
+                <div class="card-body">
+                    <p class="lead">{{ analisis.recomendacion }}</p>
+                    <hr>
+                    <small class="text-muted">
+                        <i class="fas fa-calendar"></i> Análisis generado el:
+                        {{ analisis.fecha_analisis.strftime('%d/%m/%Y %H:%M') if analisis.fecha_analisis else 'N/A' }}
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Aspectos Positivos y Negativos -->
+    <div class="row mb-4">
+        <!-- Aspectos Positivos -->
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm aspect-card h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-thumbs-up"></i> Aspectos Positivos</h5>
+                </div>
+                <div class="card-body">
+                    {% if analisis.aspectos_positivos %}
+                        {% set positivos = analisis.aspectos_positivos|from_json %}
+                        {% if positivos %}
+                            <ul class="list-unstyled">
+                                {% for aspecto in positivos %}
+                                <li class="mb-2">
+                                    <i class="fas fa-check-circle text-success"></i>
+                                    <strong>{{ aspecto }}</strong>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <p class="text-muted">No se identificaron aspectos positivos específicos.</p>
+                        {% endif %}
+                    {% else %}
+                        <p class="text-muted">No se identificaron aspectos positivos específicos.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Aspectos Negativos -->
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm aspect-card h-100">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0"><i class="fas fa-thumbs-down"></i> Aspectos Negativos</h5>
+                </div>
+                <div class="card-body">
+                    {% if analisis.aspectos_negativos %}
+                        {% set negativos = analisis.aspectos_negativos|from_json %}
+                        {% if negativos %}
+                            <ul class="list-unstyled">
+                                {% for aspecto in negativos %}
+                                <li class="mb-2">
+                                    <i class="fas fa-exclamation-circle text-danger"></i>
+                                    <strong>{{ aspecto }}</strong>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <p class="text-muted">No se identificaron aspectos negativos específicos.</p>
+                        {% endif %}
+                    {% else %}
+                        <p class="text-muted">No se identificaron aspectos negativos específicos.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reviews del Producto -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0"><i class="fas fa-comments"></i> Reviews del Producto ({{ comentarios|length }})</h5>
+                </div>
+                <div class="card-body">
+                    {% if comentarios %}
+                        <div class="list-group">
+                            {% for comentario in comentarios %}
+                            <div class="list-group-item">
+                                <div class="d-flex w-100 justify-content-between align-items-start">
+                                    <div>
+                                        <h6 class="mb-1">
+                                            {{ comentario.usuario.nombre if comentario.usuario else 'Usuario' }}
+                                        </h6>
+                                        <div class="mb-2">
+                                            {% for i in range(1, 6) %}
+                                                {% if i <= comentario.calificacion %}
+                                                    <i class="fas fa-star text-warning"></i>
+                                                {% else %}
+                                                    <i class="far fa-star text-muted"></i>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                        <p class="mb-1">{{ comentario.comentario }}</p>
+                                    </div>
+                                    <small class="text-muted">
+                                        {{ comentario.fecha.strftime('%d/%m/%Y') if comentario.fecha else 'N/A' }}
+                                    </small>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center text-muted py-5">
+                            <i class="fas fa-inbox fa-3x mb-3"></i>
+                            <p>Este producto no tiene reviews todavía.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% else %}
+    <!-- No hay análisis -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-chart-line fa-4x text-muted mb-4"></i>
+                    <h4>No hay análisis disponible para este producto</h4>
+                    <p class="text-muted mb-4">
+                        Genera un análisis con IA para obtener insights sobre las opiniones de tus clientes.
+                    </p>
+                    <form method="POST" action="{{ url_for('admin.generar_analisis_reviews', producto_id=producto.id) }}">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-brain"></i> Generar Análisis con IA
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if analisis %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script>
+// Gráfico de Sentimientos
+const ctx = document.getElementById('sentimentChart').getContext('2d');
+const sentimentChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+        labels: ['Positivos', 'Neutrales', 'Negativos'],
+        datasets: [{
+            data: [
+                {{ analisis.sentimiento_positivo }},
+                {{ analisis.sentimiento_neutral }},
+                {{ analisis.sentimiento_negativo }}
+            ],
+            backgroundColor: [
+                'rgba(40, 167, 69, 0.8)',   // Verde
+                'rgba(108, 117, 125, 0.8)',  // Gris
+                'rgba(220, 53, 69, 0.8)'     // Rojo
+            ],
+            borderColor: [
+                'rgba(40, 167, 69, 1)',
+                'rgba(108, 117, 125, 1)',
+                'rgba(220, 53, 69, 1)'
+            ],
+            borderWidth: 2
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: {
+                    font: {
+                        size: 14
+                    },
+                    padding: 20
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        const label = context.label || '';
+                        const value = context.parsed || 0;
+                        const total = {{ analisis.total_reviews }};
+                        const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                        return label + ': ' + value + ' (' + percentage + '%)';
+                    }
+                }
+            }
+        }
+    }
+});
+</script>
+{% endif %}
+{% endblock %}

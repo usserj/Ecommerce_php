@@ -1,9 +1,10 @@
 """Shop/Product catalog routes."""
-from flask import render_template, request, abort
+from flask import render_template, request, abort, redirect, url_for
 from app.blueprints.shop import shop_bp
 from app.models.product import Producto
 from app.models.categoria import Categoria, Subcategoria
 from app.models.comment import Comentario
+from app.models.setting import Banner
 from sqlalchemy import or_
 
 
@@ -17,11 +18,18 @@ def index(ruta=None):
 
     query = Producto.query.filter_by(estado=1)
 
-    # Filter by category
+    # Filter by category and get banners
     categoria = None
+    banners = []
+
     if ruta:
         categoria = Categoria.query.filter_by(ruta=ruta, estado=1).first_or_404()
         query = query.filter_by(id_categoria=categoria.id)
+        # Get category-specific banners
+        banners = Banner.get_banners_for_category(ruta)
+    else:
+        # Get general banners for home/all products page
+        banners = Banner.get_general_banners()
 
     # Sorting
     if sort_by == 'vendidos':
@@ -44,6 +52,7 @@ def index(ruta=None):
                          productos=productos,
                          categorias=categorias,
                          categoria_actual=categoria,
+                         banners=banners,
                          sort_by=sort_by)
 
 
@@ -73,7 +82,7 @@ def product_detail(ruta):
 
 @shop_bp.route('/buscar')
 def search():
-    """Search products."""
+    """Search products with AI-powered intelligent search."""
     q = request.args.get('q', '')
     page = request.args.get('page', 1, type=int)
     per_page = 12
@@ -81,18 +90,51 @@ def search():
     if not q:
         return redirect(url_for('shop.index'))
 
-    # Search in title and description
-    productos = Producto.query.filter(
-        or_(
-            Producto.titulo.like(f'%{q}%'),
-            Producto.descripcion.like(f'%{q}%')
-        ),
-        Producto.estado == 1
-    ).paginate(page=page, per_page=per_page, error_out=False)
+    # Variables para resultados de IA
+    intencion_usuario = None
+    sugerencias_busqueda = []
+    use_ai = False
+
+    # Intentar búsqueda inteligente con IA (solo para queries más específicas)
+    if len(q.strip()) > 3:
+        try:
+            from app.services.ai_service import ai_service
+            resultado_ia = ai_service.busqueda_inteligente(q)
+
+            if resultado_ia.get('success') and resultado_ia.get('productos_ids'):
+                # IA encontró productos relevantes
+                productos_ids = resultado_ia.get('productos_ids', [])
+                intencion_usuario = resultado_ia.get('intencion_usuario', '')
+                sugerencias_busqueda = resultado_ia.get('sugerencias_busqueda', [])
+
+                # Buscar productos por IDs recomendados por IA
+                if productos_ids:
+                    productos = Producto.query.filter(
+                        Producto.id.in_(productos_ids),
+                        Producto.estado == 1
+                    ).paginate(page=page, per_page=per_page, error_out=False)
+                    use_ai = True
+        except Exception as e:
+            # Si falla IA, continuar con búsqueda SQL tradicional
+            print(f"Error en búsqueda con IA: {e}")
+            pass
+
+    # Fallback: Búsqueda SQL tradicional si IA no se usó o no encontró nada
+    if not use_ai:
+        productos = Producto.query.filter(
+            or_(
+                Producto.titulo.like(f'%{q}%'),
+                Producto.descripcion.like(f'%{q}%')
+            ),
+            Producto.estado == 1
+        ).paginate(page=page, per_page=per_page, error_out=False)
 
     return render_template('shop/search.html',
                          productos=productos,
-                         query=q)
+                         query=q,
+                         intencion_usuario=intencion_usuario,
+                         sugerencias_busqueda=sugerencias_busqueda,
+                         use_ai=use_ai)
 
 
 @shop_bp.route('/ofertas')

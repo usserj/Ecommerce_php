@@ -1,5 +1,6 @@
 """Settings models (Plantilla, Slide, Banner, Cabecera)."""
 from datetime import datetime
+from flask import url_for
 from app.extensions import db
 
 
@@ -34,6 +35,40 @@ class Plantilla(db.Model):
             db.session.commit()
         return settings
 
+    def get_logo_url(self):
+        """Get full URL for logo."""
+        if self.logo:
+            if self.logo.startswith('http'):
+                return self.logo
+            return url_for('static', filename=self.logo)
+        return url_for('static', filename='img/logo-default.png')
+
+    def get_favicon_url(self):
+        """Get full URL for favicon."""
+        if self.icono:
+            if self.icono.startswith('http'):
+                return self.icono
+            return url_for('static', filename=self.icono)
+        return url_for('static', filename='img/favicon.ico')
+
+    def get_social_networks(self):
+        """Get social networks as dict."""
+        import json
+        if isinstance(self.redesSociales, dict):
+            return self.redesSociales
+        if isinstance(self.redesSociales, str) and self.redesSociales:
+            try:
+                return json.loads(self.redesSociales)
+            except:
+                return {}
+        return {}
+
+    def set_social_networks(self, networks):
+        """Set social networks from dict."""
+        import json
+        self.redesSociales = json.dumps(networks) if networks else None
+        db.session.commit()
+
 
 class Slide(db.Model):
     """Carousel slide model."""
@@ -60,20 +95,106 @@ class Slide(db.Model):
 
 
 class Banner(db.Model):
-    """Banner model."""
+    """Banner model for category/subcategory promotional images."""
 
     __tablename__ = 'banner'
 
     id = db.Column(db.Integer, primary_key=True)
-    ruta = db.Column(db.String(255), nullable=False)
-    # categorias, subcategorias, etc.
-    tipo = db.Column(db.String(50), nullable=False)
-    img = db.Column(db.String(255), nullable=False)
-    estado = db.Column(db.Integer, default=1)
+    ruta = db.Column(db.String(255), nullable=False)  # Route (category/subcategory path or 'general')
+    tipo = db.Column(db.String(50), nullable=False)  # Type: 'categorias', 'subcategorias', 'general'
+    img = db.Column(db.String(255), nullable=False)  # Image filename
+    estado = db.Column(db.Integer, default=1)  # 1=active, 0=inactive
     fecha = db.Column(db.DateTime, default=datetime.utcnow)
 
     def __repr__(self):
-        return f'<Banner {self.ruta}>'
+        return f'<Banner {self.tipo}:{self.ruta}>'
+
+    def is_active(self):
+        """Check if banner is active."""
+        return self.estado == 1
+
+    def activate(self):
+        """Activate banner."""
+        self.estado = 1
+        db.session.commit()
+
+    def deactivate(self):
+        """Deactivate banner."""
+        self.estado = 0
+        db.session.commit()
+
+    def get_image_url(self):
+        """Get full URL for banner image."""
+        if self.img.startswith('http'):
+            return self.img
+        return url_for('static', filename=f'uploads/banners/{self.img}')
+
+    def to_dict(self):
+        """Convert banner to dictionary for JSON responses."""
+        return {
+            'id': self.id,
+            'ruta': self.ruta,
+            'tipo': self.tipo,
+            'img': self.img,
+            'img_url': self.get_image_url(),
+            'estado': self.estado,
+            'activo': self.is_active(),
+            'fecha': self.fecha.isoformat() if self.fecha else None
+        }
+
+    @staticmethod
+    def get_active_banners(tipo=None, ruta=None):
+        """Get active banners filtered by type and/or route.
+
+        Args:
+            tipo: 'categorias', 'subcategorias', 'general' or None for all
+            ruta: Specific route path or None for all
+
+        Returns:
+            List of active Banner objects
+        """
+        query = Banner.query.filter_by(estado=1)
+
+        if tipo:
+            query = query.filter_by(tipo=tipo)
+
+        if ruta:
+            query = query.filter_by(ruta=ruta)
+
+        return query.order_by(Banner.fecha.desc()).all()
+
+    @staticmethod
+    def get_banners_for_category(categoria_ruta):
+        """Get active banners for a specific category.
+
+        Args:
+            categoria_ruta: Category route path (e.g., 'electronics')
+
+        Returns:
+            List of active banners for the category
+        """
+        return Banner.get_active_banners(tipo='categorias', ruta=categoria_ruta)
+
+    @staticmethod
+    def get_banners_for_subcategory(subcategoria_ruta):
+        """Get active banners for a specific subcategory.
+
+        Args:
+            subcategoria_ruta: Subcategory route path (e.g., 'laptops')
+
+        Returns:
+            List of active banners for the subcategory
+        """
+        return Banner.get_active_banners(tipo='subcategorias', ruta=subcategoria_ruta)
+
+    @staticmethod
+    def get_general_banners():
+        """Get active general banners (shown everywhere).
+
+        Returns:
+            List of active general banners
+        """
+        return Banner.get_active_banners(tipo='general', ruta='general')
 
 
 class Cabecera(db.Model):

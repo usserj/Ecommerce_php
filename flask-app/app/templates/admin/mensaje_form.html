@@ -1,0 +1,127 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}{% if es_respuesta %}Responder Mensaje{% else %}Nuevo Mensaje{% endif %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="page-header mb-4">
+        <h1>
+            <i class="fas fa-{% if es_respuesta %}reply{% else %}plus{% endif %} me-2"></i>
+            {% if es_respuesta %}Responder Mensaje{% else %}Nuevo Mensaje{% endif %}
+        </h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('admin.mensajes') }}">Mensajes</a></li>
+                <li class="breadcrumb-item active">{% if es_respuesta %}Responder{% else %}Nuevo{% endif %}</li>
+            </ol>
+        </nav>
+    </div>
+
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">
+                <i class="fas fa-{% if es_respuesta %}reply{% else %}envelope{% endif %}"></i>
+                {% if es_respuesta %}Responder Mensaje{% else %}Nuevo Mensaje{% endif %}
+            </h4>
+        </div>
+        <div class="card-body">
+            {% if es_respuesta and mensaje %}
+            <!-- Original Message Preview -->
+            <div class="alert alert-secondary mb-4">
+                <h6 class="mb-3"><i class="fas fa-quote-left"></i> Mensaje Original:</h6>
+                <div class="row">
+                    <div class="col-md-6">
+                        <p class="mb-1"><strong>De:</strong> {{ mensaje.get_remitente_nombre() }}</p>
+                        <p class="mb-1"><strong>Para:</strong> {{ mensaje.get_destinatario_nombre() }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="mb-1"><strong>Fecha:</strong> {{ mensaje.fecha.strftime('%d/%m/%Y %H:%M') }}</p>
+                        <p class="mb-1"><strong>Asunto:</strong> {{ mensaje.asunto }}</p>
+                    </div>
+                </div>
+                <hr>
+                <div class="mt-2">
+                    <p class="mb-0 text-muted">{{ mensaje.contenido }}</p>
+                </div>
+            </div>
+            {% endif %}
+
+            <form method="POST"
+                  action="{% if es_respuesta %}{{ url_for('admin.responder_mensaje', id=mensaje.id) }}{% else %}{{ url_for('admin.nuevo_mensaje') }}{% endif %}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                {% if not es_respuesta %}
+                <!-- Recipient Selection (only for new messages) -->
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <label for="destinatario_id" class="form-label">Destinatario *</label>
+                        <select class="form-control" id="destinatario_id" name="destinatario_id" required>
+                            <option value="">Seleccione un usuario...</option>
+                            {% for usuario in usuarios %}
+                            <option value="{{ usuario.id }}">
+                                {{ usuario.nombre }} ({{ usuario.email }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-muted">Seleccione el cliente que recibirá el mensaje.</small>
+                    </div>
+                </div>
+
+                <!-- Subject (only for new messages) -->
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <label for="asunto" class="form-label">Asunto *</label>
+                        <input type="text" class="form-control" id="asunto" name="asunto"
+                               required maxlength="255"
+                               placeholder="Ej: Consulta sobre pedido #1234">
+                        <small class="text-muted">Escriba un asunto descriptivo para el mensaje.</small>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Message Content -->
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <label for="contenido" class="form-label">Mensaje *</label>
+                        <textarea class="form-control" id="contenido" name="contenido"
+                                  rows="8" required
+                                  placeholder="Escriba su mensaje aquí..."></textarea>
+                        <small class="text-muted">Escriba el contenido del mensaje.</small>
+                    </div>
+                </div>
+
+                <!-- Buttons -->
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                    <a href="{% if es_respuesta %}{{ url_for('admin.ver_mensaje', id=mensaje.id) }}{% else %}{{ url_for('admin.mensajes') }}{% endif %}"
+                       class="btn btn-secondary">
+                        <i class="fas fa-times"></i> Cancelar
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-{% if es_respuesta %}reply{% else %}paper-plane{% endif %}"></i>
+                        {% if es_respuesta %}Enviar Respuesta{% else %}Enviar Mensaje{% endif %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Character counter for content
+const contenidoTextarea = document.getElementById('contenido');
+if (contenidoTextarea) {
+    contenidoTextarea.addEventListener('input', function() {
+        const count = this.value.length;
+        console.log(`Mensaje: ${count} caracteres`);
+    });
+}
+
+// Focus on content field on load
+window.addEventListener('DOMContentLoaded', function() {
+    contenidoTextarea.focus();
+});
+</script>
+{% endblock %}

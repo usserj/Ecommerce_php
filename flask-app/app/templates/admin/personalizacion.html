@@ -1,0 +1,289 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Personalización de Tienda{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="card shadow">
+        <div class="card-header bg-gradient-primary text-white">
+            <h4 class="mb-0">
+                <i class="fas fa-palette"></i> Personalización de Tienda
+            </h4>
+        </div>
+        <div class="card-body">
+            <form method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <!-- Logo and Favicon -->
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0"><i class="fas fa-image"></i> Logo y Favicon</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="logo" class="form-label">Logo de la Tienda</label>
+                                    <input type="file" class="form-control" id="logo" name="logo"
+                                           accept="image/*">
+                                    <small class="text-muted">
+                                        Tamaño recomendado: Ancho máximo 400px. Se redimensionará automáticamente manteniendo proporción.
+                                    </small>
+
+                                    {% if plantilla.logo %}
+                                    <div class="mt-3">
+                                        <p class="text-muted mb-2"><strong>Logo actual:</strong></p>
+                                        <img src="{{ plantilla.get_logo_url() }}" alt="Logo"
+                                             style="max-width: 300px; border: 1px solid #ddd; padding: 10px; background: #f8f9fa;">
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="icono" class="form-label">Favicon (Icono del Navegador)</label>
+                                    <input type="file" class="form-control" id="icono" name="icono"
+                                           accept="image/*">
+                                    <small class="text-muted">
+                                        Se redimensionará a 32x32px. Formatos: .ico, .png
+                                    </small>
+
+                                    {% if plantilla.icono %}
+                                    <div class="mt-3">
+                                        <p class="text-muted mb-2"><strong>Favicon actual:</strong></p>
+                                        <img src="{{ plantilla.get_favicon_url() }}" alt="Favicon"
+                                             style="width: 32px; height: 32px; border: 1px solid #ddd;">
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Colors -->
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0"><i class="fas fa-fill-drip"></i> Colores del Sitio</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="colorFondo" class="form-label">Color de Fondo</label>
+                                    <div class="input-group">
+                                        <input type="color" class="form-control form-control-color" id="colorFondo" name="colorFondo"
+                                               value="{{ plantilla.colorFondo or '#ffffff' }}">
+                                        <input type="text" class="form-control" id="colorFondoText" value="{{ plantilla.colorFondo or '#ffffff' }}" readonly>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="colorTexto" class="form-label">Color de Texto</label>
+                                    <div class="input-group">
+                                        <input type="color" class="form-control form-control-color" id="colorTexto" name="colorTexto"
+                                               value="{{ plantilla.colorTexto or '#000000' }}">
+                                        <input type="text" class="form-control" id="colorTextoText" value="{{ plantilla.colorTexto or '#000000' }}" readonly>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="barraSuperior" class="form-label">Color Barra Superior</label>
+                                    <input type="text" class="form-control" id="barraSuperior" name="barraSuperior"
+                                           value="{{ plantilla.barraSuperior or '' }}" placeholder="#007bff">
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="textoSuperior" class="form-label">Texto Barra Superior</label>
+                                    <input type="text" class="form-control" id="textoSuperior" name="textoSuperior"
+                                           value="{{ plantilla.textoSuperior or '' }}" placeholder="Envío gratis en compras mayores a $50">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Social Media -->
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0"><i class="fas fa-share-alt"></i> Redes Sociales</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="facebook" class="form-label">
+                                        <i class="fab fa-facebook text-primary"></i> Facebook
+                                    </label>
+                                    <input type="url" class="form-control" id="facebook" name="facebook"
+                                           value="{{ redes.facebook or '' }}" placeholder="https://facebook.com/tutienda">
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="instagram" class="form-label">
+                                        <i class="fab fa-instagram text-danger"></i> Instagram
+                                    </label>
+                                    <input type="url" class="form-control" id="instagram" name="instagram"
+                                           value="{{ redes.instagram or '' }}" placeholder="https://instagram.com/tutienda">
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="twitter" class="form-label">
+                                        <i class="fab fa-twitter text-info"></i> Twitter / X
+                                    </label>
+                                    <input type="url" class="form-control" id="twitter" name="twitter"
+                                           value="{{ redes.twitter or '' }}" placeholder="https://twitter.com/tutienda">
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="youtube" class="form-label">
+                                        <i class="fab fa-youtube text-danger"></i> YouTube
+                                    </label>
+                                    <input type="url" class="form-control" id="youtube" name="youtube"
+                                           value="{{ redes.youtube or '' }}" placeholder="https://youtube.com/tutienda">
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="linkedin" class="form-label">
+                                        <i class="fab fa-linkedin text-primary"></i> LinkedIn
+                                    </label>
+                                    <input type="url" class="form-control" id="linkedin" name="linkedin"
+                                           value="{{ redes.linkedin or '' }}" placeholder="https://linkedin.com/company/tutienda">
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="tiktok" class="form-label">
+                                        <i class="fab fa-tiktok"></i> TikTok
+                                    </label>
+                                    <input type="url" class="form-control" id="tiktok" name="tiktok"
+                                           value="{{ redes.tiktok or '' }}" placeholder="https://tiktok.com/@tutienda">
+                                </div>
+                            </div>
+
+                            <div class="col-md-12">
+                                <div class="mb-3">
+                                    <label for="whatsapp" class="form-label">
+                                        <i class="fab fa-whatsapp text-success"></i> WhatsApp
+                                    </label>
+                                    <input type="tel" class="form-control" id="whatsapp" name="whatsapp"
+                                           value="{{ redes.whatsapp or '' }}" placeholder="+593987654321">
+                                    <small class="text-muted">Incluye código de país (ej: +593987654321)</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Analytics and Tracking -->
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0"><i class="fas fa-chart-line"></i> Analytics y Seguimiento</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="googleAnalytics" class="form-label">
+                                <i class="fab fa-google"></i> Google Analytics Tracking ID
+                            </label>
+                            <input type="text" class="form-control" id="googleAnalytics" name="googleAnalytics"
+                                   value="{{ plantilla.googleAnalytics or '' }}" placeholder="G-XXXXXXXXXX o UA-XXXXXXXXX">
+                            <small class="text-muted">ID de seguimiento de Google Analytics (ej: G-XXXXXXXXXX)</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="pixelFacebook" class="form-label">
+                                <i class="fab fa-facebook"></i> Facebook Pixel ID
+                            </label>
+                            <input type="text" class="form-control" id="pixelFacebook" name="pixelFacebook"
+                                   value="{{ plantilla.pixelFacebook or '' }}" placeholder="123456789012345">
+                            <small class="text-muted">ID del píxel de Facebook para seguimiento de conversiones</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="apiFacebook" class="form-label">
+                                <i class="fab fa-facebook"></i> Facebook App ID (Opcional)
+                            </label>
+                            <input type="text" class="form-control" id="apiFacebook" name="apiFacebook"
+                                   value="{{ plantilla.apiFacebook or '' }}" placeholder="123456789">
+                            <small class="text-muted">ID de aplicación de Facebook para integraciones</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Submit -->
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    <a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> Cancelar
+                    </a>
+                    <button type="submit" class="btn btn-success btn-lg">
+                        <i class="fas fa-save"></i> Guardar Personalización
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Update color text fields when color picker changes
+document.getElementById('colorFondo').addEventListener('input', function() {
+    document.getElementById('colorFondoText').value = this.value;
+});
+
+document.getElementById('colorTexto').addEventListener('input', function() {
+    document.getElementById('colorTextoText').value = this.value;
+});
+
+// Preview colors
+const previewBtn = document.createElement('button');
+previewBtn.type = 'button';
+previewBtn.className = 'btn btn-sm btn-outline-info mt-3';
+previewBtn.innerHTML = '<i class="fas fa-eye"></i> Vista Previa de Colores';
+previewBtn.addEventListener('click', function() {
+    const bgColor = document.getElementById('colorFondo').value;
+    const textColor = document.getElementById('colorTexto').value;
+
+    const preview = document.createElement('div');
+    preview.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: ${bgColor};
+        color: ${textColor};
+        padding: 40px;
+        border-radius: 10px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        z-index: 9999;
+        max-width: 500px;
+    `;
+    preview.innerHTML = `
+        <h3 style="color: ${textColor};">Vista Previa de Colores</h3>
+        <p style="color: ${textColor};">Este es un ejemplo de cómo se verán los colores en tu tienda.</p>
+        <button onclick="this.parentElement.remove()" class="btn btn-secondary btn-sm">Cerrar</button>
+    `;
+    document.body.appendChild(preview);
+});
+
+document.querySelector('.card-body .row').appendChild(previewBtn);
+</script>
+{% endblock %}

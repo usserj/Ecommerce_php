@@ -153,6 +153,53 @@
                             </div>
                         </div>
 
+                        <!-- SMTP Email Configuration -->
+                        <div class="card mb-4">
+                            <div class="card-header" style="background-color: #dc3545; color: white;">
+                                <h5 class="mb-0"><i class="fas fa-envelope"></i> Configuración de Email (SMTP)</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle"></i>
+                                    <strong>Importante:</strong> Configure su servidor SMTP para permitir el envío de emails de verificación, recuperación de contraseña y notificaciones.
+                                    Para Gmail, necesita crear una <a href="https://myaccount.google.com/apppasswords" target="_blank">contraseña de aplicación</a>.
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Servidor SMTP</label>
+                                        <input type="text" class="form-control" name="mailServer" value="{{ config.mailServer or 'smtp.gmail.com' }}" placeholder="smtp.gmail.com">
+                                        <small class="text-muted">Gmail: smtp.gmail.com, SendGrid: smtp.sendgrid.net, Mailgun: smtp.mailgun.org</small>
+                                    </div>
+                                    <div class="col-md-3 mb-3">
+                                        <label class="form-label">Puerto</label>
+                                        <input type="number" class="form-control" name="mailPort" value="{{ config.mailPort or 587 }}">
+                                        <small class="text-muted">Generalmente 587 (TLS) o 465 (SSL)</small>
+                                    </div>
+                                    <div class="col-md-3 mb-3">
+                                        <label class="form-label">Usar TLS</label>
+                                        <select class="form-select" name="mailUseTLS">
+                                            <option value="true" {% if config.mailUseTLS %}selected{% endif %}>Sí</option>
+                                            <option value="false" {% if not config.mailUseTLS %}selected{% endif %}>No</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-12 mb-3">
+                                        <label class="form-label">Email / Usuario</label>
+                                        <input type="email" class="form-control" name="mailUsername" value="{{ config.mailUsername or '' }}" placeholder="tu_email@gmail.com">
+                                    </div>
+                                    <div class="col-md-12 mb-3">
+                                        <label class="form-label">Contraseña / Contraseña de Aplicación</label>
+                                        <input type="password" class="form-control" name="mailPassword" value="{{ config.mailPassword or '' }}" placeholder="xxxx xxxx xxxx xxxx">
+                                        <small class="text-muted">Para Gmail, use la contraseña de aplicación de 16 dígitos, no su contraseña normal</small>
+                                    </div>
+                                    <div class="col-md-12 mb-3">
+                                        <label class="form-label">Email Remitente por Defecto</label>
+                                        <input type="email" class="form-control" name="mailDefaultSender" value="{{ config.mailDefaultSender or '' }}" placeholder="noreply@tutienda.com">
+                                        <small class="text-muted">Este email aparecerá como remitente en todos los emails enviados</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Bank Accounts Settings -->
                         <div class="card mb-4">
                             <div class="card-header" style="background-color: #17a2b8; color: white;">
