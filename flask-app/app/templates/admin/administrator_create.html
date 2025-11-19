@@ -1,0 +1,26 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Crear Administrador{% endblock %}
+{% block content %}
+<div class="container-fluid"><div class="card shadow"><div class="card-header bg-danger text-white"><h4 class="mb-0"><i class="fas fa-plus"></i> Crear Administrador</h4></div><div class="card-body">
+<form method="POST" enctype="multipart/form-data">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<div class="row">
+    <div class="col-md-6 mb-3"><label>Nombre *</label><input type="text" class="form-control" name="nombre" required></div>
+    <div class="col-md-6 mb-3"><label>Email *</label><input type="email" class="form-control" name="email" required></div>
+</div>
+<div class="row">
+    <div class="col-md-6 mb-3"><label>Contraseña *</label><input type="password" class="form-control" name="password" required minlength="6"></div>
+    <div class="col-md-6 mb-3"><label>Confirmar Contraseña *</label><input type="password" class="form-control" name="password2" required minlength="6"></div>
+</div>
+<div class="row">
+    <div class="col-md-4 mb-3"><label>Perfil</label><select class="form-control" name="perfil"><option value="editor">Editor</option><option value="administrador">Administrador</option></select></div>
+    <div class="col-md-4 mb-3"><label>Estado</label><select class="form-control" name="estado"><option value="1" selected>Activo</option><option value="0">Inactivo</option></select></div>
+    <div class="col-md-4 mb-3"><label>Foto (500x500)</label><input type="file" class="form-control" name="foto" accept="image/*"></div>
+</div>
+<div class="d-grid gap-2 d-md-flex justify-content-md-end">
+    <a href="{{ url_for('admin.administrators') }}" class="btn btn-secondary"><i class="fas fa-times"></i> Cancelar</a>
+    <button type="submit" class="btn btn-success"><i class="fas fa-save"></i> Crear</button>
+</div>
+</form>
+</div></div></div>
+{% endblock %}

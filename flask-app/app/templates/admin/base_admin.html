@@ -366,6 +366,11 @@
                 <i class="fas fa-images"></i>
                 <span>Slides</span>
             </a>
+            <a class="nav-link {% if 'banner' in request.endpoint %}active{% endif %}"
+               href="{{ url_for('admin.banners') }}">
+                <i class="fas fa-image"></i>
+                <span>Banners</span>
+            </a>
             <a class="nav-link {% if 'order' in request.endpoint %}active{% endif %}"
                href="{{ url_for('admin.orders') }}">
                 <i class="fas fa-shopping-cart"></i>
@@ -375,6 +380,11 @@
                href="{{ url_for('admin.analytics') }}">
                 <i class="fas fa-chart-line"></i>
                 <span>Analíticas</span>
+            </a>
+            <a class="nav-link {% if 'administrator' in request.endpoint %}active{% endif %}"
+               href="{{ url_for('admin.administrators') }}">
+                <i class="fas fa-user-shield"></i>
+                <span>Administradores</span>
             </a>
             <a class="nav-link {% if request.endpoint == 'admin.settings' %}active{% endif %}"
                href="{{ url_for('admin.settings') }}">

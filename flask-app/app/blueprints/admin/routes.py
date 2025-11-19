@@ -1438,3 +1438,461 @@ def toggle_comment(id):
         'estado': comentario.estado,
         'estado_display': nuevo_estado
     })
+
+
+# ===========================
+# BANNERS MANAGEMENT
+# ===========================
+
+@admin_bp.route('/banners')
+@admin_required
+def banners():
+    """Banners management page."""
+    banners_list = Banner.query.order_by(Banner.fecha.desc()).all()
+
+    # Get available categories and subcategories for filtering
+    categorias = Categoria.query.all()
+    subcategorias = Subcategoria.query.all()
+
+    return render_template('admin/banners.html',
+                          banners=banners_list,
+                          categorias=categorias,
+                          subcategorias=subcategorias)
+
+
+@admin_bp.route('/banners/create', methods=['GET', 'POST'])
+@admin_required
+def create_banner():
+    """Create new banner."""
+    if request.method == 'POST':
+        ruta = request.form.get('ruta', '').strip()
+        tipo = request.form.get('tipo', '').strip()
+
+        if not ruta:
+            ruta = 'sin-categoria'
+
+        if not tipo:
+            flash('El tipo de banner es requerido.', 'error')
+            categorias = Categoria.query.all()
+            subcategorias = Subcategoria.query.all()
+            return render_template('admin/banner_create.html',
+                                  categorias=categorias,
+                                  subcategorias=subcategorias)
+
+        # Handle image upload
+        if 'img' not in request.files:
+            flash('Debe seleccionar una imagen.', 'error')
+            categorias = Categoria.query.all()
+            subcategorias = Subcategoria.query.all()
+            return render_template('admin/banner_create.html',
+                                  categorias=categorias,
+                                  subcategorias=subcategorias)
+
+        file = request.files['img']
+        if file.filename == '':
+            flash('Debe seleccionar una imagen.', 'error')
+            categorias = Categoria.query.all()
+            subcategorias = Subcategoria.query.all()
+            return render_template('admin/banner_create.html',
+                                  categorias=categorias,
+                                  subcategorias=subcategorias)
+
+        if file and allowed_file(file.filename):
+            # Generate secure filename
+            filename = secure_filename(file.filename)
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            filename = f'banner_{timestamp}_{filename}'
+
+            # Create upload directory if it doesn't exist
+            upload_dir = os.path.join('app', 'static', 'uploads', 'banners')
+            os.makedirs(upload_dir, exist_ok=True)
+
+            filepath = os.path.join(upload_dir, filename)
+
+            # Resize image to 1600x550 (banner size from PHP)
+            img = Image.open(file)
+            img = img.resize((1600, 550), Image.LANCZOS)
+            img.save(filepath, quality=90, optimize=True)
+
+            # Store relative path
+            img_path = f'uploads/banners/{filename}'
+
+            # Create banner
+            banner = Banner(
+                ruta=ruta,
+                tipo=tipo,
+                img=img_path,
+                estado=1
+            )
+
+            db.session.add(banner)
+            db.session.commit()
+
+            flash('Banner creado exitosamente.', 'success')
+            return redirect(url_for('admin.banners'))
+        else:
+            flash('Tipo de archivo no permitido. Use JPG, PNG o GIF.', 'error')
+
+    categorias = Categoria.query.all()
+    subcategorias = Subcategoria.query.all()
+    return render_template('admin/banner_create.html',
+                          categorias=categorias,
+                          subcategorias=subcategorias)
+
+
+@admin_bp.route('/banners/edit/<int:id>', methods=['GET', 'POST'])
+@admin_required
+def edit_banner(id):
+    """Edit banner."""
+    banner = Banner.query.get_or_404(id)
+
+    if request.method == 'POST':
+        ruta = request.form.get('ruta', '').strip()
+        tipo = request.form.get('tipo', '').strip()
+
+        if not ruta:
+            ruta = 'sin-categoria'
+
+        if not tipo:
+            flash('El tipo de banner es requerido.', 'error')
+            categorias = Categoria.query.all()
+            subcategorias = Subcategoria.query.all()
+            return render_template('admin/banner_edit.html',
+                                  banner=banner,
+                                  categorias=categorias,
+                                  subcategorias=subcategorias)
+
+        banner.ruta = ruta
+        banner.tipo = tipo
+
+        # Handle image upload if new image provided
+        if 'img' in request.files:
+            file = request.files['img']
+            if file and file.filename != '':
+                if allowed_file(file.filename):
+                    # Delete old image
+                    if banner.img:
+                        old_path = os.path.join('app', 'static', banner.img)
+                        if os.path.exists(old_path):
+                            try:
+                                os.remove(old_path)
+                            except:
+                                pass
+
+                    # Save new image
+                    filename = secure_filename(file.filename)
+                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                    filename = f'banner_{timestamp}_{filename}'
+
+                    upload_dir = os.path.join('app', 'static', 'uploads', 'banners')
+                    os.makedirs(upload_dir, exist_ok=True)
+
+                    filepath = os.path.join(upload_dir, filename)
+
+                    # Resize image
+                    img = Image.open(file)
+                    img = img.resize((1600, 550), Image.LANCZOS)
+                    img.save(filepath, quality=90, optimize=True)
+
+                    banner.img = f'uploads/banners/{filename}'
+                else:
+                    flash('Tipo de archivo no permitido. Use JPG, PNG o GIF.', 'error')
+                    categorias = Categoria.query.all()
+                    subcategorias = Subcategoria.query.all()
+                    return render_template('admin/banner_edit.html',
+                                          banner=banner,
+                                          categorias=categorias,
+                                          subcategorias=subcategorias)
+
+        db.session.commit()
+
+        flash('Banner actualizado exitosamente.', 'success')
+        return redirect(url_for('admin.banners'))
+
+    categorias = Categoria.query.all()
+    subcategorias = Subcategoria.query.all()
+    return render_template('admin/banner_edit.html',
+                          banner=banner,
+                          categorias=categorias,
+                          subcategorias=subcategorias)
+
+
+@admin_bp.route('/banners/delete/<int:id>', methods=['POST'])
+@admin_required
+def delete_banner(id):
+    """Delete banner."""
+    banner = Banner.query.get_or_404(id)
+
+    # Delete image file
+    if banner.img:
+        img_path = os.path.join('app', 'static', banner.img)
+        if os.path.exists(img_path):
+            try:
+                os.remove(img_path)
+            except:
+                pass
+
+    db.session.delete(banner)
+    db.session.commit()
+
+    flash('Banner eliminado exitosamente.', 'success')
+    return redirect(url_for('admin.banners'))
+
+
+@admin_bp.route('/banners/toggle/<int:id>', methods=['POST'])
+@admin_required
+def toggle_banner(id):
+    """Toggle banner status."""
+    banner = Banner.query.get_or_404(id)
+    banner.estado = 0 if banner.estado == 1 else 1
+    db.session.commit()
+
+    return jsonify({'success': True, 'estado': banner.estado})
+
+
+# ===========================
+# ADMINISTRATORS MANAGEMENT
+# ===========================
+
+@admin_bp.route('/administrators')
+@admin_required
+def administrators():
+    """Administrators management page."""
+    # Only administrators can manage other administrators
+    current_admin = Administrador.query.get(session['admin_id'])
+    if not current_admin.is_admin():
+        flash('Solo los administradores pueden gestionar usuarios administradores.', 'error')
+        return redirect(url_for('admin.dashboard'))
+
+    admins = Administrador.query.order_by(Administrador.fecha.desc()).all()
+    return render_template('admin/administrators.html', administrators=admins)
+
+
+@admin_bp.route('/administrators/create', methods=['GET', 'POST'])
+@admin_required
+def create_administrator():
+    """Create new administrator."""
+    # Only administrators can create other administrators
+    current_admin = Administrador.query.get(session['admin_id'])
+    if not current_admin.is_admin():
+        flash('Solo los administradores pueden crear usuarios administradores.', 'error')
+        return redirect(url_for('admin.dashboard'))
+
+    if request.method == 'POST':
+        nombre = request.form.get('nombre', '').strip()
+        email = request.form.get('email', '').strip().lower()
+        password = request.form.get('password', '').strip()
+        password2 = request.form.get('password2', '').strip()
+        perfil = request.form.get('perfil', 'editor')
+        estado = request.form.get('estado', 1, type=int)
+
+        # Validations
+        if not nombre or not email or not password:
+            flash('Todos los campos son requeridos.', 'error')
+            return render_template('admin/administrator_create.html')
+
+        if password != password2:
+            flash('Las contraseñas no coinciden.', 'error')
+            return render_template('admin/administrator_create.html')
+
+        if len(password) < 6:
+            flash('La contraseña debe tener al menos 6 caracteres.', 'error')
+            return render_template('admin/administrator_create.html')
+
+        # Check if email already exists
+        if Administrador.query.filter_by(email=email).first():
+            flash('El email ya está registrado.', 'error')
+            return render_template('admin/administrator_create.html')
+
+        # Handle photo upload
+        foto_path = ''
+        if 'foto' in request.files:
+            file = request.files['foto']
+            if file and file.filename != '' and allowed_file(file.filename):
+                filename = secure_filename(file.filename)
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                filename = f'admin_{timestamp}_{filename}'
+
+                upload_dir = os.path.join('app', 'static', 'uploads', 'admins')
+                os.makedirs(upload_dir, exist_ok=True)
+
+                filepath = os.path.join(upload_dir, filename)
+
+                # Resize to 500x500
+                img = Image.open(file)
+                img = img.resize((500, 500), Image.LANCZOS)
+                img.save(filepath, quality=90, optimize=True)
+
+                foto_path = f'uploads/admins/{filename}'
+
+        # Create administrator
+        admin = Administrador(
+            nombre=nombre,
+            email=email,
+            perfil=perfil,
+            estado=estado,
+            foto=foto_path
+        )
+        admin.set_password(password)
+
+        db.session.add(admin)
+        db.session.commit()
+
+        flash(f'Administrador {nombre} creado exitosamente.', 'success')
+        return redirect(url_for('admin.administrators'))
+
+    return render_template('admin/administrator_create.html')
+
+
+@admin_bp.route('/administrators/edit/<int:id>', methods=['GET', 'POST'])
+@admin_required
+def edit_administrator(id):
+    """Edit administrator."""
+    # Only administrators can edit other administrators
+    current_admin = Administrador.query.get(session['admin_id'])
+    if not current_admin.is_admin():
+        flash('Solo los administradores pueden editar usuarios administradores.', 'error')
+        return redirect(url_for('admin.dashboard'))
+
+    admin = Administrador.query.get_or_404(id)
+
+    if request.method == 'POST':
+        nombre = request.form.get('nombre', '').strip()
+        email = request.form.get('email', '').strip().lower()
+        password = request.form.get('password', '').strip()
+        perfil = request.form.get('perfil', 'editor')
+        estado = request.form.get('estado', 1, type=int)
+
+        if not nombre or not email:
+            flash('Nombre y email son requeridos.', 'error')
+            return render_template('admin/administrator_edit.html', administrator=admin)
+
+        # Check if email is taken by another admin
+        existing = Administrador.query.filter(
+            Administrador.email == email,
+            Administrador.id != id
+        ).first()
+        if existing:
+            flash('El email ya está en uso por otro administrador.', 'error')
+            return render_template('admin/administrator_edit.html', administrator=admin)
+
+        # Prevent self-deactivation
+        if id == session['admin_id'] and estado == 0:
+            flash('No puede desactivar su propia cuenta.', 'error')
+            return render_template('admin/administrator_edit.html', administrator=admin)
+
+        # Prevent self-demotion
+        if id == session['admin_id'] and perfil != 'administrador':
+            flash('No puede cambiar su propio perfil de administrador.', 'error')
+            return render_template('admin/administrator_edit.html', administrator=admin)
+
+        admin.nombre = nombre
+        admin.email = email
+        admin.perfil = perfil
+        admin.estado = estado
+
+        # Update password if provided
+        if password:
+            if len(password) < 6:
+                flash('La contraseña debe tener al menos 6 caracteres.', 'error')
+                return render_template('admin/administrator_edit.html', administrator=admin)
+            admin.set_password(password)
+
+        # Handle photo upload
+        if 'foto' in request.files:
+            file = request.files['foto']
+            if file and file.filename != '' and allowed_file(file.filename):
+                # Delete old photo
+                if admin.foto:
+                    old_path = os.path.join('app', 'static', admin.foto)
+                    if os.path.exists(old_path):
+                        try:
+                            os.remove(old_path)
+                        except:
+                            pass
+
+                filename = secure_filename(file.filename)
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                filename = f'admin_{timestamp}_{filename}'
+
+                upload_dir = os.path.join('app', 'static', 'uploads', 'admins')
+                os.makedirs(upload_dir, exist_ok=True)
+
+                filepath = os.path.join(upload_dir, filename)
+
+                # Resize to 500x500
+                img = Image.open(file)
+                img = img.resize((500, 500), Image.LANCZOS)
+                img.save(filepath, quality=90, optimize=True)
+
+                admin.foto = f'uploads/admins/{filename}'
+
+        db.session.commit()
+
+        flash(f'Administrador {nombre} actualizado exitosamente.', 'success')
+        return redirect(url_for('admin.administrators'))
+
+    return render_template('admin/administrator_edit.html', administrator=admin)
+
+
+@admin_bp.route('/administrators/delete/<int:id>', methods=['POST'])
+@admin_required
+def delete_administrator(id):
+    """Delete administrator."""
+    # Only administrators can delete other administrators
+    current_admin = Administrador.query.get(session['admin_id'])
+    if not current_admin.is_admin():
+        flash('Solo los administradores pueden eliminar usuarios administradores.', 'error')
+        return redirect(url_for('admin.dashboard'))
+
+    # Prevent self-deletion
+    if id == session['admin_id']:
+        flash('No puede eliminar su propia cuenta.', 'error')
+        return redirect(url_for('admin.administrators'))
+
+    admin = Administrador.query.get_or_404(id)
+
+    # Delete photo file
+    if admin.foto:
+        foto_path = os.path.join('app', 'static', admin.foto)
+        if os.path.exists(foto_path):
+            try:
+                os.remove(foto_path)
+            except:
+                pass
+
+    db.session.delete(admin)
+    db.session.commit()
+
+    flash(f'Administrador {admin.nombre} eliminado exitosamente.', 'success')
+    return redirect(url_for('admin.administrators'))
+
+
+@admin_bp.route('/administrators/toggle/<int:id>', methods=['POST'])
+@admin_required
+def toggle_administrator(id):
+    """Toggle administrator status."""
+    # Only administrators can toggle other administrators
+    current_admin = Administrador.query.get(session['admin_id'])
+    if not current_admin.is_admin():
+        return jsonify({'success': False, 'message': 'Permiso denegado'}), 403
+
+    # Prevent self-deactivation
+    if id == session['admin_id']:
+        return jsonify({'success': False, 'message': 'No puede desactivar su propia cuenta'}), 400
+
+    admin = Administrador.query.get_or_404(id)
+    admin.estado = 0 if admin.estado == 1 else 1
+    db.session.commit()
+
+    return jsonify({'success': True, 'estado': admin.estado})
+
+
+# ===========================
+# HELPER FUNCTIONS
+# ===========================
+
+def allowed_file(filename):
+    """Check if file extension is allowed."""
+    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS

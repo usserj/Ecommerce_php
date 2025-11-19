@@ -60,20 +60,57 @@ class Slide(db.Model):
 
 
 class Banner(db.Model):
-    """Banner model."""
+    """Banner model for promotional banners by category/subcategory."""
 
     __tablename__ = 'banner'
 
     id = db.Column(db.Integer, primary_key=True)
-    ruta = db.Column(db.String(255), nullable=False)
-    # categorias, subcategorias, etc.
-    tipo = db.Column(db.String(50), nullable=False)
-    img = db.Column(db.String(255), nullable=False)
-    estado = db.Column(db.Integer, default=1)
+    ruta = db.Column(db.String(255), nullable=False, index=True)  # Route (category/subcategory)
+    tipo = db.Column(db.String(50), nullable=False)  # 'categoria', 'subcategoria', 'general'
+    img = db.Column(db.String(255), nullable=False)  # Image path
+    estado = db.Column(db.Integer, default=1)  # 1=active, 0=inactive
     fecha = db.Column(db.DateTime, default=datetime.utcnow)
 
     def __repr__(self):
-        return f'<Banner {self.ruta}>'
+        return f'<Banner {self.id}: {self.tipo} - {self.ruta}>'
+
+    @property
+    def is_active(self):
+        """Check if banner is active."""
+        return self.estado == 1
+
+    def toggle_status(self):
+        """Toggle banner status."""
+        self.estado = 1 if self.estado == 0 else 0
+        db.session.commit()
+        return self.estado
+
+    @staticmethod
+    def get_by_route(ruta):
+        """Get active banner by route."""
+        return Banner.query.filter_by(ruta=ruta, estado=1).first()
+
+    @staticmethod
+    def get_all_active():
+        """Get all active banners."""
+        return Banner.query.filter_by(estado=1).order_by(Banner.fecha.desc()).all()
+
+    @staticmethod
+    def get_all():
+        """Get all banners."""
+        return Banner.query.order_by(Banner.fecha.desc()).all()
+
+    def to_dict(self):
+        """Convert banner to dictionary."""
+        return {
+            'id': self.id,
+            'ruta': self.ruta,
+            'tipo': self.tipo,
+            'img': self.img,
+            'estado': self.estado,
+            'is_active': self.is_active,
+            'fecha': self.fecha.strftime('%Y-%m-%d %H:%M:%S') if self.fecha else None
+        }
 
 
 class Cabecera(db.Model):
