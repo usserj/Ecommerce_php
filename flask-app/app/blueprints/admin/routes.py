@@ -350,6 +350,34 @@ def orders():
     return render_template('admin/orders.html', orders=orders)
 
 
+@admin_bp.route('/orders/update-status/<int:id>', methods=['POST'])
+@admin_required
+def update_order_status(id):
+    """Update order status."""
+    try:
+        order = Compra.query.get_or_404(id)
+        estado = request.form.get('estado')
+        tracking = request.form.get('tracking', '')
+        
+        if estado:
+            order.estado = estado
+            if tracking:
+                order.tracking = tracking
+            order.fecha_estado = datetime.now()
+            db.session.commit()
+            
+            flash('Estado de orden actualizado correctamente!', 'success')
+        else:
+            flash('Debe seleccionar un estado.', 'error')
+            
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al actualizar estado: {e}', 'error')
+    
+    return redirect(url_for('admin.orders'))
+
+
+
 @admin_bp.route('/analytics')
 @admin_required
 def analytics():

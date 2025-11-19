@@ -3,7 +3,6 @@
 
 {% block content %}
 <div class="container-fluid">
-    <!-- Admin Navigation -->
     <div class="row mb-4">
         <div class="col-12">
             <div class="card shadow-sm">
@@ -58,6 +57,7 @@
                             <th>Método Pago</th>
                             <th>Estado</th>
                             <th>Fecha</th>
+                            <th>Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -69,20 +69,18 @@
                             <td>{{ order.cantidad }}</td>
                             <td>${{ "%.2f"|format(order.pago|float) }}</td>
                             <td>
-                                {% if order.metodo_pago == 'paypal' %}
+                                {% if order.metodo == 'paypal' %}
                                     <i class="fab fa-paypal text-primary"></i> PayPal
-                                {% elif order.metodo_pago == 'paymentez' %}
+                                {% elif order.metodo == 'paymentez' %}
                                     <i class="fas fa-credit-card text-success"></i> Paymentez
-                                {% elif order.metodo_pago == 'datafast' %}
+                                {% elif order.metodo == 'datafast' %}
                                     <i class="fas fa-credit-card text-info"></i> Datafast
-                                {% elif order.metodo_pago == 'deuna' %}
+                                {% elif order.metodo == 'deuna' %}
                                     <i class="fas fa-mobile-alt text-warning"></i> De Una
-                                {% elif order.metodo_pago == 'transferencia' %}
+                                {% elif order.metodo == 'transferencia' or order.metodo == 'transferencia_comprobante' %}
                                     <i class="fas fa-university text-secondary"></i> Transferencia
-                                {% elif order.metodo_pago == 'transferencia_comprobante' %}
-                                    <i class="fas fa-file-upload text-secondary"></i> Transf. Comprobante
                                 {% else %}
-                                    {{ order.metodo_pago }}
+                                    {{ order.metodo }}
                                 {% endif %}
                             </td>
                             <td>
@@ -90,6 +88,10 @@
                                     <span class="badge bg-success">Completado</span>
                                 {% elif order.estado == 'pendiente' %}
                                     <span class="badge bg-warning">Pendiente</span>
+                                {% elif order.estado == 'procesando' %}
+                                    <span class="badge bg-info">Procesando</span>
+                                {% elif order.estado == 'enviado' %}
+                                    <span class="badge bg-primary">Enviado</span>
                                 {% elif order.estado == 'cancelado' %}
                                     <span class="badge bg-danger">Cancelado</span>
                                 {% else %}
@@ -97,13 +99,20 @@
                                 {% endif %}
                             </td>
                             <td>{{ order.fecha.strftime('%d/%m/%Y %H:%M') if order.fecha else 'N/A' }}</td>
+                            <td>
+                                <button class="btn btn-sm btn-warning update-status" 
+                                        data-id="{{ order.id }}"
+                                        data-estado="{{ order.estado }}"
+                                        data-tracking="{{ order.tracking or '' }}">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
 
-            <!-- Pagination -->
             {% if orders.has_prev or orders.has_next %}
             <nav>
                 <ul class="pagination justify-content-center">
@@ -138,4 +147,57 @@
         </div>
     </div>
 </div>
+
+<!-- Update Status Modal -->
+<div class="modal fade" id="statusModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title">Actualizar Estado de Orden</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="statusForm" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Estado *</label>
+                        <select name="estado" class="form-control" required>
+                            <option value="pendiente">Pendiente</option>
+                            <option value="procesando">Procesando</option>
+                            <option value="enviado">Enviado</option>
+                            <option value="entregado">Entregado</option>
+                            <option value="cancelado">Cancelado</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Número de Tracking (opcional)</label>
+                        <input type="text" name="tracking" class="form-control" placeholder="Ej: TRACK123456">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-warning">Actualizar Estado</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelectorAll('.update-status').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const orderId = this.getAttribute('data-id');
+        const currentEstado = this.getAttribute('data-estado');
+        const currentTracking = this.getAttribute('data-tracking');
+        
+        const form = document.getElementById('statusForm');
+        form.action = `/admin/orders/update-status/${orderId}`;
+        form.querySelector('[name="estado"]').value = currentEstado;
+        form.querySelector('[name="tracking"]').value = currentTracking;
+        
+        new bootstrap.Modal(document.getElementById('statusModal')).show();
+    });
+});
+</script>
 {% endblock %}

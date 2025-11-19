@@ -1,119 +1,73 @@
 {% extends "admin/base_admin.html" %}
 {% block title %}Gestión de Usuarios{% endblock %}
-
 {% block content %}
 <div class="container-fluid">
-    <!-- Admin Navigation -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card shadow-sm">
-                <div class="card-body py-2">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <a href="{{ url_for('admin.dashboard') }}" class="btn btn-sm btn-outline-primary me-2">
-                                <i class="fas fa-tachometer-alt"></i> Dashboard
-                            </a>
-                            <a href="{{ url_for('admin.users') }}" class="btn btn-sm btn-primary me-2">
-                                <i class="fas fa-users"></i> Usuarios
-                            </a>
-                            <a href="{{ url_for('admin.products') }}" class="btn btn-sm btn-outline-primary me-2">
-                                <i class="fas fa-box"></i> Productos
-                            </a>
-                            <a href="{{ url_for('admin.orders') }}" class="btn btn-sm btn-outline-primary me-2">
-                                <i class="fas fa-shopping-cart"></i> Pedidos
-                            </a>
-                            <a href="{{ url_for('admin.analytics') }}" class="btn btn-sm btn-outline-primary me-2">
-                                <i class="fas fa-chart-line"></i> Analíticas
-                            </a>
-                            <a href="{{ url_for('admin.settings') }}" class="btn btn-sm btn-outline-success me-2">
-                                <i class="fas fa-cog"></i> Configuración
-                            </a>
-                        </div>
-                        <div>
-                            <span class="me-3"><i class="fas fa-user-shield"></i> {{ session.admin_nombre }}</span>
-                            <a href="{{ url_for('admin.logout') }}" class="btn btn-sm btn-outline-danger">
-                                <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <div class="card shadow">
         <div class="card-header bg-primary text-white">
             <h4 class="mb-0"><i class="fas fa-users"></i> Gestión de Usuarios</h4>
         </div>
         <div class="card-body">
+            <form method="GET" class="row g-3 mb-4">
+                <div class="col-md-8">
+                    <input type="text" name="search" class="form-control" placeholder="Buscar por nombre o email..." value="{{ request.args.get('search', '') }}">
+                </div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> Buscar</button>
+                    <a href="{{ url_for('admin.users') }}" class="btn btn-secondary"><i class="fas fa-redo"></i> Limpiar</a>
+                </div>
+            </form>
             <div class="table-responsive">
                 <table class="table table-striped table-hover">
                     <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Nombre</th>
-                            <th>Email</th>
-                            <th>País</th>
-                            <th>Estado</th>
-                            <th>Fecha Registro</th>
-                            <th>Compras</th>
-                        </tr>
+                        <tr><th>ID</th><th>Nombre</th><th>Email</th><th>Modo</th><th>Fecha Registro</th><th>Verificado</th><th>Acciones</th></tr>
                     </thead>
                     <tbody>
                         {% for user in users.items %}
                         <tr>
                             <td>{{ user.id }}</td>
-                            <td>{{ user.nombre }} {{ user.apellido }}</td>
+                            <td>{{ user.nombre }}</td>
                             <td>{{ user.email }}</td>
-                            <td>{{ user.pais }}</td>
+                            <td><span class="badge bg-info">{{ user.modo }}</span></td>
+                            <td>{{ user.fecha.strftime('%d/%m/%Y') }}</td>
                             <td>
-                                {% if user.estado == 1 %}
-                                    <span class="badge bg-success">Activo</span>
-                                {% else %}
-                                    <span class="badge bg-danger">Inactivo</span>
-                                {% endif %}
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input toggle-user" type="checkbox" data-id="{{ user.id }}" {{ 'checked' if user.verificacion == 0 else '' }}>
+                                </div>
                             </td>
-                            <td>{{ user.fecha.strftime('%d/%m/%Y') if user.fecha else 'N/A' }}</td>
-                            <td>{{ user.compras.count() }}</td>
+                            <td>
+                                <a href="{{ url_for('admin.user_orders', id=user.id) }}" class="btn btn-sm btn-info"><i class="fas fa-shopping-cart"></i> Compras</a>
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
-
-            <!-- Pagination -->
             {% if users.has_prev or users.has_next %}
             <nav>
                 <ul class="pagination justify-content-center">
-                    {% if users.has_prev %}
-                        <li class="page-item">
-                            <a class="page-link" href="{{ url_for('admin.users', page=users.prev_num) }}">
-                                <i class="fas fa-chevron-left"></i> Anterior
-                            </a>
-                        </li>
-                    {% endif %}
-
+                    {% if users.has_prev %}<li class="page-item"><a class="page-link" href="{{ url_for('admin.users', page=users.prev_num, search=request.args.get('search', '')) }}">Anterior</a></li>{% endif %}
                     {% for page_num in users.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
-                        {% if page_num %}
-                            <li class="page-item {% if page_num == users.page %}active{% endif %}">
-                                <a class="page-link" href="{{ url_for('admin.users', page=page_num) }}">{{ page_num }}</a>
-                            </li>
-                        {% else %}
-                            <li class="page-item disabled"><span class="page-link">...</span></li>
-                        {% endif %}
+                        {% if page_num %}<li class="page-item {% if page_num == users.page %}active{% endif %}"><a class="page-link" href="{{ url_for('admin.users', page=page_num, search=request.args.get('search', '')) }}">{{ page_num }}</a></li>
+                        {% else %}<li class="page-item disabled"><span class="page-link">...</span></li>{% endif %}
                     {% endfor %}
-
-                    {% if users.has_next %}
-                        <li class="page-item">
-                            <a class="page-link" href="{{ url_for('admin.users', page=users.next_num) }}">
-                                Siguiente <i class="fas fa-chevron-right"></i>
-                            </a>
-                        </li>
-                    {% endif %}
+                    {% if users.has_next %}<li class="page-item"><a class="page-link" href="{{ url_for('admin.users', page=users.next_num, search=request.args.get('search', '')) }}">Siguiente</a></li>{% endif %}
                 </ul>
             </nav>
             {% endif %}
         </div>
     </div>
 </div>
+{% endblock %}
+{% block extra_js %}
+<script>
+document.querySelectorAll('.toggle-user').forEach(toggle => {
+    toggle.addEventListener('change', function() {
+        const userId = this.getAttribute('data-id');
+        fetch(`/admin/users/toggle/${userId}`, {method: 'POST'})
+        .then(r => r.json())
+        .then(d => { if(!d.success) { this.checked = !this.checked; alert('Error'); } })
+        .catch(() => { this.checked = !this.checked; alert('Error'); });
+    });
+});
+</script>
 {% endblock %}
