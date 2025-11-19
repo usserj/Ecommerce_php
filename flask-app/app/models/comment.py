@@ -25,10 +25,6 @@ class Comentario(db.Model):
     fecha = db.Column(db.DateTime, default=datetime.utcnow)
     fecha_moderacion = db.Column(db.DateTime, nullable=True)  # Moderation date
 
-    # Relationships
-    usuario = db.relationship('User', backref='comentarios_rel', lazy='joined')
-    producto = db.relationship('Producto', backref='comentarios_rel', lazy='joined')
-
     def __repr__(self):
         return f'<Comentario {self.id} - Product {self.id_producto}>'
 
