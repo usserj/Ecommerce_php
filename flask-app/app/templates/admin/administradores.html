@@ -1,0 +1,210 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Gestión de Administradores{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="card shadow">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+            <h4 class="mb-0"><i class="fas fa-user-shield"></i> Gestión de Administradores</h4>
+            <a href="{{ url_for('admin.crear_administrador') }}" class="btn btn-light btn-sm">
+                <i class="fas fa-plus"></i> Crear Administrador
+            </a>
+        </div>
+        <div class="card-body">
+            <!-- Search -->
+            <form method="GET" class="row g-3 mb-4">
+                <div class="col-md-10">
+                    <input type="text" name="search" class="form-control"
+                           placeholder="Buscar por nombre o email..." value="{{ request.args.get('search', '') }}">
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-search"></i> Buscar
+                    </button>
+                </div>
+            </form>
+
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Foto</th>
+                            <th>Nombre</th>
+                            <th>Email</th>
+                            <th>Perfil</th>
+                            <th>Estado</th>
+                            <th>Fecha Registro</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for admin in administradores.items %}
+                        <tr {% if admin.id == session.get('admin_id') %}class="table-info"{% endif %}>
+                            <td>{{ admin.id }}</td>
+                            <td>
+                                {% if admin.foto %}
+                                <img src="{{ url_for('static', filename=admin.foto) }}"
+                                     alt="{{ admin.nombre }}"
+                                     style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
+                                {% else %}
+                                <div style="width: 40px; height: 40px; border-radius: 50%; background: #e9ecef; display: flex; align-items: center; justify-content: center;">
+                                    <i class="fas fa-user text-muted"></i>
+                                </div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <strong>{{ admin.nombre }}</strong>
+                                {% if admin.id == session.get('admin_id') %}
+                                <span class="badge bg-info">Tú</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ admin.email }}</td>
+                            <td>
+                                {% if admin.perfil == 'administrador' %}
+                                <span class="badge bg-danger">Administrador</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Editor</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input toggle-admin" type="checkbox"
+                                           data-id="{{ admin.id }}"
+                                           {{ 'checked' if admin.estado == 1 else '' }}
+                                           {% if admin.id == session.get('admin_id') %}disabled title="No puedes desactivar tu propia cuenta"{% endif %}>
+                                </div>
+                            </td>
+                            <td>{{ admin.fecha.strftime('%d/%m/%Y') if admin.fecha else 'N/A' }}</td>
+                            <td>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <a href="{{ url_for('admin.editar_administrador', id=admin.id) }}"
+                                       class="btn btn-warning" title="Editar">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    {% if admin.id != session.get('admin_id') %}
+                                    <button type="button" class="btn btn-danger delete-admin"
+                                            data-id="{{ admin.id }}"
+                                            data-nombre="{{ admin.nombre }}"
+                                            title="Eliminar">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if administradores.has_prev or administradores.has_next %}
+            <nav>
+                <ul class="pagination justify-content-center">
+                    {% if administradores.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('admin.administradores', page=administradores.prev_num, search=request.args.get('search', '')) }}">
+                            Anterior
+                        </a>
+                    </li>
+                    {% endif %}
+
+                    {% for page_num in administradores.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+                        {% if page_num %}
+                        <li class="page-item {% if page_num == administradores.page %}active{% endif %}">
+                            <a class="page-link" href="{{ url_for('admin.administradores', page=page_num, search=request.args.get('search', '')) }}">
+                                {{ page_num }}
+                            </a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if administradores.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('admin.administradores', page=administradores.next_num, search=request.args.get('search', '')) }}">
+                            Siguiente
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">Confirmar Eliminación</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Está seguro de que desea eliminar al administrador <strong id="adminName"></strong>?</p>
+                <p class="text-danger"><i class="fas fa-exclamation-triangle"></i> Esta acción eliminará también su foto de perfil y no se puede deshacer.</p>
+            </div>
+            <div class="modal-footer">
+                <form id="deleteForm" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-danger">Eliminar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Get CSRF token
+function getCsrfToken() {
+    return document.querySelector('input[name="csrf_token"]')?.value || '{{ csrf_token() }}';
+}
+
+// Toggle admin status
+document.querySelectorAll('.toggle-admin').forEach(toggle => {
+    toggle.addEventListener('change', function() {
+        const adminId = this.getAttribute('data-id');
+        const checkbox = this;
+
+        fetch(`/admin/administradores/toggle/${adminId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            }
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (!d.success) {
+                checkbox.checked = !checkbox.checked;
+                alert(d.message || 'Error al cambiar estado');
+            }
+        })
+        .catch(() => {
+            checkbox.checked = !checkbox.checked;
+            alert('Error de conexión');
+        });
+    });
+});
+
+// Delete admin
+document.querySelectorAll('.delete-admin').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const adminId = this.getAttribute('data-id');
+        const adminName = this.getAttribute('data-nombre');
+
+        document.getElementById('adminName').textContent = adminName;
+        document.getElementById('deleteForm').action = `/admin/administradores/eliminar/${adminId}`;
+
+        new bootstrap.Modal(document.getElementById('deleteModal')).show();
+    });
+});
+</script>
+{% endblock %}

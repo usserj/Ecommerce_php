@@ -1364,6 +1364,240 @@ def toggle_banner(id):
 
 
 # ===========================
+# ADMINISTRATORS MANAGEMENT
+# ===========================
+
+@admin_bp.route('/administradores')
+@admin_required
+def administradores():
+    """Administrators management page."""
+    page = request.args.get('page', 1, type=int)
+    search = request.args.get('search', '')
+
+    query = Administrador.query
+
+    if search:
+        query = query.filter(
+            db.or_(
+                Administrador.nombre.like(f'%{search}%'),
+                Administrador.email.like(f'%{search}%')
+            )
+        )
+
+    administradores = query.order_by(Administrador.fecha.desc()).paginate(
+        page=page, per_page=25, error_out=False
+    )
+
+    return render_template('admin/administradores.html', administradores=administradores)
+
+
+@admin_bp.route('/administradores/crear', methods=['GET', 'POST'])
+@admin_required
+def crear_administrador():
+    """Create new administrator."""
+    if request.method == 'POST':
+        nombre = request.form.get('nombre')
+        email = request.form.get('email')
+        password = request.form.get('password')
+        perfil = request.form.get('perfil', 'editor')
+        estado = int(request.form.get('estado', 1))
+
+        if not nombre or not email or not password:
+            flash('Nombre, email y contraseña son requeridos.', 'error')
+            return redirect(url_for('admin.crear_administrador'))
+
+        # Check if email already exists
+        existing = Administrador.query.filter_by(email=email).first()
+        if existing:
+            flash('El email ya está registrado.', 'error')
+            return redirect(url_for('admin.crear_administrador'))
+
+        # Validate perfil
+        if perfil not in ['administrador', 'editor']:
+            flash('Perfil inválido.', 'error')
+            return redirect(url_for('admin.crear_administrador'))
+
+        # Handle photo upload
+        foto = ''
+        if 'foto' in request.files:
+            file = request.files['foto']
+            if file and file.filename:
+                filename = secure_filename(file.filename)
+                upload_folder = os.path.join('app/static/uploads/admins')
+
+                if not os.path.exists(upload_folder):
+                    os.makedirs(upload_folder)
+
+                filepath = os.path.join(upload_folder, filename)
+
+                # Resize to 300x300
+                try:
+                    img = Image.open(file)
+                    img = img.resize((300, 300), Image.Resampling.LANCZOS)
+                    img.save(filepath)
+                    foto = f'uploads/admins/{filename}'
+                except Exception as e:
+                    flash(f'Error al procesar foto: {e}', 'error')
+                    return redirect(url_for('admin.crear_administrador'))
+
+        # Create administrator
+        admin = Administrador(
+            nombre=nombre,
+            email=email,
+            perfil=perfil,
+            estado=estado,
+            foto=foto
+        )
+        admin.set_password(password)
+
+        db.session.add(admin)
+        db.session.commit()
+
+        flash(f'Administrador "{nombre}" creado exitosamente.', 'success')
+        return redirect(url_for('admin.administradores'))
+
+    return render_template('admin/administrador_form.html', administrador=None)
+
+
+@admin_bp.route('/administradores/editar/<int:id>', methods=['GET', 'POST'])
+@admin_required
+def editar_administrador(id):
+    """Edit administrator."""
+    administrador = Administrador.query.get_or_404(id)
+
+    if request.method == 'POST':
+        nombre = request.form.get('nombre')
+        email = request.form.get('email')
+        password = request.form.get('password')
+        perfil = request.form.get('perfil', 'editor')
+        estado = int(request.form.get('estado', 1))
+
+        if not nombre or not email:
+            flash('Nombre y email son requeridos.', 'error')
+            return redirect(url_for('admin.editar_administrador', id=id))
+
+        # Check if email already exists (except current)
+        existing = Administrador.query.filter(
+            Administrador.email == email,
+            Administrador.id != id
+        ).first()
+        if existing:
+            flash('El email ya está registrado.', 'error')
+            return redirect(url_for('admin.editar_administrador', id=id))
+
+        # Validate perfil
+        if perfil not in ['administrador', 'editor']:
+            flash('Perfil inválido.', 'error')
+            return redirect(url_for('admin.editar_administrador', id=id))
+
+        # Update basic info
+        administrador.nombre = nombre
+        administrador.email = email
+        administrador.perfil = perfil
+        administrador.estado = estado
+
+        # Update password if provided
+        if password:
+            administrador.set_password(password)
+
+        # Handle photo upload (optional on edit)
+        if 'foto' in request.files:
+            file = request.files['foto']
+            if file and file.filename:
+                filename = secure_filename(file.filename)
+                upload_folder = os.path.join('app/static/uploads/admins')
+
+                if not os.path.exists(upload_folder):
+                    os.makedirs(upload_folder)
+
+                filepath = os.path.join(upload_folder, filename)
+
+                # Resize to 300x300
+                try:
+                    img = Image.open(file)
+                    img = img.resize((300, 300), Image.Resampling.LANCZOS)
+                    img.save(filepath)
+                    administrador.foto = f'uploads/admins/{filename}'
+                except Exception as e:
+                    flash(f'Error al procesar foto: {e}', 'error')
+                    return redirect(url_for('admin.editar_administrador', id=id))
+
+        db.session.commit()
+
+        flash(f'Administrador "{nombre}" actualizado exitosamente.', 'success')
+        return redirect(url_for('admin.administradores'))
+
+    return render_template('admin/administrador_form.html', administrador=administrador)
+
+
+@admin_bp.route('/administradores/eliminar/<int:id>', methods=['POST'])
+@admin_required
+def eliminar_administrador(id):
+    """Delete administrator."""
+    administrador = Administrador.query.get_or_404(id)
+
+    # Prevent deleting yourself
+    if administrador.id == session.get('admin_id'):
+        flash('No puedes eliminar tu propia cuenta.', 'error')
+        return redirect(url_for('admin.administradores'))
+
+    # Prevent deleting last administrator
+    total_admins = Administrador.query.filter_by(perfil='administrador', estado=1).count()
+    if administrador.perfil == 'administrador' and administrador.estado == 1 and total_admins <= 1:
+        flash('No se puede eliminar el último administrador activo del sistema.', 'error')
+        return redirect(url_for('admin.administradores'))
+
+    nombre = administrador.nombre
+
+    # Delete photo file
+    if administrador.foto:
+        try:
+            foto_path = os.path.join('app/static', administrador.foto)
+            if os.path.exists(foto_path):
+                os.remove(foto_path)
+        except Exception as e:
+            print(f'Error deleting admin photo: {e}')
+
+    db.session.delete(administrador)
+    db.session.commit()
+
+    flash(f'Administrador "{nombre}" eliminado exitosamente.', 'success')
+    return redirect(url_for('admin.administradores'))
+
+
+@admin_bp.route('/administradores/toggle/<int:id>', methods=['POST'])
+@admin_required
+def toggle_administrador(id):
+    """Toggle administrator status."""
+    try:
+        administrador = Administrador.query.get_or_404(id)
+
+        # Prevent deactivating yourself
+        if administrador.id == session.get('admin_id'):
+            return jsonify({'success': False, 'message': 'No puedes desactivar tu propia cuenta'}), 400
+
+        # Prevent deactivating last active administrator
+        if administrador.perfil == 'administrador' and administrador.estado == 1:
+            total_admins = Administrador.query.filter_by(perfil='administrador', estado=1).count()
+            if total_admins <= 1:
+                return jsonify({
+                    'success': False,
+                    'message': 'No se puede desactivar el último administrador activo'
+                }), 400
+
+        # Toggle status
+        administrador.estado = 0 if administrador.estado == 1 else 1
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'estado': administrador.estado
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+# ===========================
 # COUPONS MANAGEMENT
 # ===========================
 
