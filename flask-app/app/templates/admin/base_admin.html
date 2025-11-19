@@ -375,13 +375,8 @@
                href="{{ url_for('admin.mensajes') }}">
                 <i class="fas fa-envelope"></i>
                 <span>Mensajes</span>
-                {% set mensajes_no_leidos = namespace(count=0) %}
-                {% if session.get('admin_id') %}
-                    {% from 'app.models.message' import Mensaje %}
-                    {% set mensajes_no_leidos.count = Mensaje.contar_no_leidos('admin', session.get('admin_id')) %}
-                    {% if mensajes_no_leidos.count > 0 %}
-                    <span class="badge bg-danger ms-auto">{{ mensajes_no_leidos.count }}</span>
-                    {% endif %}
+                {% if admin_mensajes_no_leidos > 0 %}
+                <span class="badge bg-danger ms-auto">{{ admin_mensajes_no_leidos }}</span>
                 {% endif %}
             </a>
             <a class="nav-link {% if request.endpoint == 'admin.analytics' %}active{% endif %}"

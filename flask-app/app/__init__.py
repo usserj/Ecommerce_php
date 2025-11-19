@@ -126,3 +126,21 @@ def register_context_processors(app):
             'plantilla': plantilla,
             'cart_count': cart_count
         }
+
+    @app.context_processor
+    def inject_admin_data():
+        """Inject admin-specific data into all templates."""
+        from flask import session
+        from app.models.message import Mensaje
+
+        # Get unread messages count for admin
+        mensajes_no_leidos = 0
+        if 'admin_id' in session:
+            try:
+                mensajes_no_leidos = Mensaje.contar_no_leidos('admin', session['admin_id'])
+            except:
+                mensajes_no_leidos = 0
+
+        return {
+            'admin_mensajes_no_leidos': mensajes_no_leidos
+        }
