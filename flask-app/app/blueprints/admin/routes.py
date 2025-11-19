@@ -1,5 +1,5 @@
 """Admin panel routes."""
-from flask import render_template, redirect, url_for, flash, request, session, jsonify, send_file
+from flask import render_template, redirect, url_for, flash, request, session, jsonify, send_file, current_app
 from flask_login import login_required, current_user, login_user, logout_user
 from app.blueprints.admin import admin_bp
 from app.models.admin import Administrador
@@ -13,6 +13,7 @@ from app.models.setting import Slide, Banner, Plantilla
 from app.models.comercio import Comercio
 from app.models.comment import Comentario
 from app.models.coupon import Cupon
+from app.models.wishlist import Deseo
 from app.extensions import db, bcrypt
 from werkzeug.utils import secure_filename
 from functools import wraps
@@ -305,6 +306,65 @@ def user_detail(id):
                          total_comments=total_comments,
                          total_wishlist=total_wishlist,
                          recent_orders=recent_orders)
+
+
+@admin_bp.route('/users/edit/<int:id>', methods=['GET', 'POST'])
+@admin_required
+def edit_user(id):
+    """Edit user from admin."""
+    from werkzeug.utils import secure_filename
+    import os
+
+    user = User.query.get_or_404(id)
+
+    if request.method == 'POST':
+        try:
+            # Update basic fields
+            user.nombre = request.form.get('nombre', '').strip()
+            email_nuevo = request.form.get('email', '').strip()
+
+            # Check if email changed and is unique
+            if email_nuevo != user.email:
+                existing = User.query.filter_by(email=email_nuevo).first()
+                if existing:
+                    flash('El email ya está registrado por otro usuario.', 'error')
+                    return render_template('admin/user_form.html', user=user, edit_mode=True)
+                user.email = email_nuevo
+
+            # Handle photo upload
+            if 'foto' in request.files:
+                file = request.files['foto']
+                if file and file.filename:
+                    filename = secure_filename(file.filename)
+                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                    filename = f"user_{user.id}_{timestamp}_{filename}"
+
+                    upload_folder = os.path.join(current_app.config.get('UPLOAD_FOLDER', 'app/static/uploads'), 'users')
+                    os.makedirs(upload_folder, exist_ok=True)
+                    filepath = os.path.join(upload_folder, filename)
+
+                    # Save and resize image
+                    from PIL import Image
+                    img = Image.open(file)
+                    img.thumbnail((400, 400))
+                    img.save(filepath, optimize=True, quality=85)
+
+                    user.foto = f"uploads/users/{filename}"
+
+            # Change password if provided
+            new_password = request.form.get('new_password', '').strip()
+            if new_password:
+                user.set_password(new_password)
+
+            db.session.commit()
+            flash(f'Usuario "{user.nombre}" actualizado exitosamente.', 'success')
+            return redirect(url_for('admin.users'))
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error al actualizar usuario: {e}', 'error')
+
+    return render_template('admin/user_form.html', user=user, edit_mode=True)
 
 
 @admin_bp.route('/users/delete/<int:id>', methods=['POST'])

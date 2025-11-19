@@ -2,7 +2,7 @@
 
 **Total de funcionalidades pendientes:** 45
 **Prioridad:** Alta (23), Media (15), Baja (7)
-**Estado actual:** 91% migrado (41/45 completadas)
+**Estado actual:** 76% migrado (34/45 completadas)
 
 ---
 
@@ -144,12 +144,26 @@
 
 ---
 
-### 8. Gestión Usuarios desde Admin (2 funcionalidades) ⏳ PENDIENTE
+### 8. Gestión Usuarios desde Admin (2 funcionalidades) ✅ COMPLETADO
 **Tareas:**
-- [ ] Editar usuario desde admin
-- [ ] Eliminar usuario desde admin
+- [x] Editar usuario desde admin
+- [x] Eliminar usuario desde admin
 
-**Tiempo estimado:** 30 minutos
+**Archivos creados/modificados:**
+- ✅ `app/blueprints/admin/routes.py` (edit_user, delete_user)
+- ✅ `app/templates/admin/user_form.html` (formulario de edición)
+- ✅ `app/templates/admin/users.html` (botón editar agregado)
+
+**Funcionalidades:**
+- Formulario completo de edición de usuarios
+- Cambio de nombre, email, foto de perfil
+- Cambio opcional de contraseña
+- Validación de email único
+- Estadísticas del usuario en formulario
+- Eliminación con validación (no permite eliminar si tiene compras)
+- Modal de confirmación para eliminación
+
+**Tiempo real:** 45 minutos
 
 ---
 
@@ -220,9 +234,9 @@
 | Fase | Funcionalidades | Completadas | Pendientes | % Completo |
 |------|----------------|-------------|------------|------------|
 | Fase 1 (Alta) | 23 | 23 | 0 | 100% ✅ |
-| Fase 2 (Media) | 15 | 9 | 6 | 60% 🚀 |
+| Fase 2 (Media) | 15 | 11 | 4 | 73% 🚀 |
 | Fase 3 (Baja) | 7 | 0 | 7 | 0% |
-| **TOTAL** | **45** | **32** | **13** | **71%** ⬆️ |
+| **TOTAL** | **45** | **34** | **11** | **76%** ⬆️ |
 
 ---
 
@@ -247,9 +261,9 @@
 5. ✅ **Personalización de tienda**
 
 ### 🚀 SIGUIENTE - FASE 2 (Media Prioridad)
-6. ⏳ **Tablas dinámicas AJAX** (EN PROGRESO)
+6. ✅ **Tablas dinámicas AJAX** (COMPLETADO)
 7. ⏳ Reportes avanzados
-8. ⏳ Gestión usuarios admin
+8. ✅ **Gestión usuarios admin** (COMPLETADO)
 9. ⏳ Filtros avanzados de órdenes
 10. ⏳ Drag & drop reordenar slides
 
@@ -272,3 +286,4 @@
 
 **Última actualización:** 2025-01-19
 **Actualizado por:** Sistema de migración automática
+**Últimas funcionalidades completadas:** Gestión completa de usuarios desde admin (editar/eliminar)
