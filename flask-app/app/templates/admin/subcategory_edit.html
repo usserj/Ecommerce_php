@@ -1,0 +1,83 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Editar Subcategoría{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="card shadow">
+        <div class="card-header bg-warning text-dark">
+            <h4 class="mb-0"><i class="fas fa-edit"></i> Editar Subcategoría</h4>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('admin.edit_subcategory', id=subcategoria.id) }}">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="subcategoria" class="form-label">Nombre de Subcategoría *</label>
+                            <input type="text" class="form-control" id="subcategoria" name="subcategoria"
+                                   required value="{{ subcategoria.subcategoria }}">
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="id_categoria" class="form-label">Categoría Padre *</label>
+                            <select class="form-control" id="id_categoria" name="id_categoria" required>
+                                <option value="">Seleccione una categoría</option>
+                                {% for cat in categorias %}
+                                <option value="{{ cat.id }}" {% if cat.id == subcategoria.id_categoria %}selected{% endif %}>
+                                    {{ cat.categoria }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="ruta" class="form-label">Ruta (URL única) *</label>
+                            <input type="text" class="form-control" id="ruta" name="ruta"
+                                   required value="{{ subcategoria.ruta }}">
+                            <small class="text-muted">Solo letras minúsculas, números y guiones. Sin espacios.</small>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="estado" class="form-label">Estado</label>
+                            <select class="form-control" id="estado" name="estado">
+                                <option value="1" {% if subcategoria.estado == 1 %}selected{% endif %}>Activo</option>
+                                <option value="0" {% if subcategoria.estado == 0 %}selected{% endif %}>Inactivo</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Información</label>
+                            <div class="alert alert-info mb-0">
+                                <small>
+                                    <strong>Productos:</strong> {{ subcategoria.get_products_count() }}<br>
+                                    <strong>Creada:</strong> {{ subcategoria.fecha.strftime('%d/%m/%Y') }}
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    <a href="{{ url_for('admin.subcategories') }}" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> Cancelar
+                    </a>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-save"></i> Guardar Cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

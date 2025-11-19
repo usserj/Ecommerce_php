@@ -1,0 +1,149 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}{{ 'Editar' if cupon else 'Crear' }} Cupón{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="card shadow">
+        <div class="card-header bg-success text-white">
+            <h4 class="mb-0">
+                <i class="fas fa-ticket-alt"></i>
+                {{ 'Editar Cupón' if cupon else 'Crear Nuevo Cupón' }}
+            </h4>
+        </div>
+        <div class="card-body">
+            <form method="POST">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="codigo" class="form-label">Código del Cupón *</label>
+                            <input type="text" class="form-control text-uppercase" id="codigo" name="codigo"
+                                   required value="{{ cupon.codigo if cupon else '' }}"
+                                   placeholder="Ej: VERANO2024">
+                            <small class="text-muted">Código único que usarán los clientes</small>
+                        </div>
+                    </div>
+
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label for="tipo" class="form-label">Tipo de Descuento *</label>
+                            <select class="form-control" id="tipo" name="tipo" required>
+                                <option value="porcentaje" {% if cupon and cupon.tipo == 'porcentaje' %}selected{% endif %}>
+                                    % Porcentaje
+                                </option>
+                                <option value="fijo" {% if cupon and cupon.tipo == 'fijo' %}selected{% endif %}>
+                                    $ Monto Fijo
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label for="valor" class="form-label">Valor *</label>
+                            <input type="number" class="form-control" id="valor" name="valor"
+                                   step="0.01" min="0" required
+                                   value="{{ cupon.valor if cupon else '' }}"
+                                   placeholder="10">
+                            <small class="text-muted" id="valorHelp">Porcentaje o monto</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="mb-3">
+                            <label for="descripcion" class="form-label">Descripción</label>
+                            <textarea class="form-control" id="descripcion" name="descripcion" rows="2"
+                                      placeholder="Descripción interna del cupón">{{ cupon.descripcion if cupon else '' }}</textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="usos_maximos" class="form-label">Usos Máximos</label>
+                            <input type="number" class="form-control" id="usos_maximos" name="usos_maximos"
+                                   min="0" value="{{ cupon.usos_maximos if cupon else 0 }}">
+                            <small class="text-muted">0 = ilimitado</small>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="monto_minimo" class="form-label">Compra Mínima ($)</label>
+                            <input type="number" class="form-control" id="monto_minimo" name="monto_minimo"
+                                   step="0.01" min="0" value="{{ cupon.monto_minimo if cupon else 0 }}">
+                            <small class="text-muted">Monto mínimo de compra</small>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="estado" class="form-label">Estado</label>
+                            <select class="form-control" id="estado" name="estado">
+                                <option value="1" {% if not cupon or cupon.estado == 1 %}selected{% endif %}>Activo</option>
+                                <option value="0" {% if cupon and cupon.estado == 0 %}selected{% endif %}>Inactivo</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="fecha_inicio" class="form-label">Fecha de Inicio</label>
+                            <input type="datetime-local" class="form-control" id="fecha_inicio" name="fecha_inicio"
+                                   value="{{ cupon.fecha_inicio.strftime('%Y-%m-%dT%H:%M') if cupon and cupon.fecha_inicio else '' }}">
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="fecha_fin" class="form-label">Fecha de Expiración</label>
+                            <input type="datetime-local" class="form-control" id="fecha_fin" name="fecha_fin"
+                                   value="{{ cupon.fecha_fin.strftime('%Y-%m-%dT%H:%M') if cupon and cupon.fecha_fin else '' }}">
+                            <small class="text-muted">Dejar en blanco para sin expiración</small>
+                        </div>
+                    </div>
+                </div>
+
+                {% if cupon %}
+                <div class="alert alert-info">
+                    <strong>Usos actuales:</strong> {{ cupon.usos_actuales }}<br>
+                    <strong>Creado:</strong> {{ cupon.fecha.strftime('%d/%m/%Y %H:%M') }}
+                </div>
+                {% endif %}
+
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    <a href="{{ url_for('admin.coupons') }}" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> Cancelar
+                    </a>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-save"></i> {{ 'Actualizar' if cupon else 'Crear Cupón' }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Update valor help text based on tipo
+document.getElementById('tipo').addEventListener('change', function() {
+    const valorHelp = document.getElementById('valorHelp');
+    if (this.value === 'porcentaje') {
+        valorHelp.textContent = 'Porcentaje (0-100)';
+    } else {
+        valorHelp.textContent = 'Monto fijo en dólares';
+    }
+});
+
+// Auto-uppercase código
+document.getElementById('codigo').addEventListener('input', function() {
+    this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+});
+</script>
+{% endblock %}

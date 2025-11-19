@@ -10,6 +10,7 @@ from app.models.comercio import Comercio
 from app.models.setting import Plantilla, Slide, Banner, Cabecera
 from app.models.notification import Notificacion
 from app.models.visit import VisitaPais, VisitaPersona
+from app.models.coupon import Cupon
 
 __all__ = [
     'User',
@@ -27,5 +28,6 @@ __all__ = [
     'Cabecera',
     'Notificacion',
     'VisitaPais',
-    'VisitaPersona'
+    'VisitaPersona',
+    'Cupon'
 ]

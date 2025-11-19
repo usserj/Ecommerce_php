@@ -721,8 +721,157 @@ def toggle_category(id):
     categoria = Categoria.query.get_or_404(id)
     categoria.estado = 0 if categoria.estado == 1 else 1
     db.session.commit()
-    
+
     return jsonify({'success': True, 'estado': categoria.estado})
+
+
+# ===========================
+# SUBCATEGORIES MANAGEMENT
+# ===========================
+
+@admin_bp.route('/subcategories')
+@admin_required
+def subcategories():
+    """Subcategories management page."""
+    page = request.args.get('page', 1, type=int)
+    search = request.args.get('search', '')
+    categoria_id = request.args.get('categoria', type=int)
+
+    query = Subcategoria.query
+
+    if search:
+        query = query.filter(Subcategoria.subcategoria.contains(search))
+
+    if categoria_id:
+        query = query.filter_by(id_categoria=categoria_id)
+
+    subcategorias = query.order_by(Subcategoria.fecha.desc()).paginate(
+        page=page, per_page=25, error_out=False
+    )
+    categorias = Categoria.query.all()
+
+    return render_template('admin/subcategories.html',
+                          subcategorias=subcategorias,
+                          categorias=categorias)
+
+
+@admin_bp.route('/subcategories/create', methods=['GET', 'POST'])
+@admin_required
+def create_subcategory():
+    """Create new subcategory."""
+    if request.method == 'POST':
+        subcategoria_nombre = request.form.get('subcategoria')
+        ruta = request.form.get('ruta')
+        id_categoria = request.form.get('id_categoria', type=int)
+        estado = request.form.get('estado', 1, type=int)
+
+        if not subcategoria_nombre or not ruta or not id_categoria:
+            flash('Todos los campos son requeridos.', 'error')
+            return redirect(url_for('admin.create_subcategory'))
+
+        # Check if ruta already exists
+        existing = Subcategoria.query.filter_by(ruta=ruta).first()
+        if existing:
+            flash('La ruta ya existe. Use una ruta única.', 'error')
+            return redirect(url_for('admin.create_subcategory'))
+
+        # Verify parent category exists
+        categoria = Categoria.query.get(id_categoria)
+        if not categoria:
+            flash('Categoría padre no válida.', 'error')
+            return redirect(url_for('admin.create_subcategory'))
+
+        subcategoria = Subcategoria(
+            subcategoria=subcategoria_nombre,
+            id_categoria=id_categoria,
+            ruta=ruta,
+            estado=estado
+        )
+
+        db.session.add(subcategoria)
+        db.session.commit()
+
+        flash('Subcategoría creada exitosamente.', 'success')
+        return redirect(url_for('admin.subcategories'))
+
+    categorias = Categoria.query.filter_by(estado=1).all()
+    return render_template('admin/subcategory_create.html', categorias=categorias)
+
+
+@admin_bp.route('/subcategories/edit/<int:id>', methods=['GET', 'POST'])
+@admin_required
+def edit_subcategory(id):
+    """Edit subcategory."""
+    subcategoria = Subcategoria.query.get_or_404(id)
+
+    if request.method == 'POST':
+        subcategoria_nombre = request.form.get('subcategoria')
+        ruta = request.form.get('ruta')
+        id_categoria = request.form.get('id_categoria', type=int)
+        estado = request.form.get('estado', 1, type=int)
+
+        if not subcategoria_nombre or not ruta or not id_categoria:
+            flash('Todos los campos son requeridos.', 'error')
+            return redirect(url_for('admin.edit_subcategory', id=id))
+
+        # Check if ruta already exists (except current)
+        existing = Subcategoria.query.filter(
+            Subcategoria.ruta == ruta,
+            Subcategoria.id != id
+        ).first()
+        if existing:
+            flash('La ruta ya existe. Use una ruta única.', 'error')
+            return redirect(url_for('admin.edit_subcategory', id=id))
+
+        # Verify parent category exists
+        categoria = Categoria.query.get(id_categoria)
+        if not categoria:
+            flash('Categoría padre no válida.', 'error')
+            return redirect(url_for('admin.edit_subcategory', id=id))
+
+        subcategoria.subcategoria = subcategoria_nombre
+        subcategoria.ruta = ruta
+        subcategoria.id_categoria = id_categoria
+        subcategoria.estado = estado
+
+        db.session.commit()
+
+        flash('Subcategoría actualizada exitosamente.', 'success')
+        return redirect(url_for('admin.subcategories'))
+
+    categorias = Categoria.query.all()
+    return render_template('admin/subcategory_edit.html',
+                          subcategoria=subcategoria,
+                          categorias=categorias)
+
+
+@admin_bp.route('/subcategories/delete/<int:id>', methods=['POST'])
+@admin_required
+def delete_subcategory(id):
+    """Delete subcategory."""
+    subcategoria = Subcategoria.query.get_or_404(id)
+
+    # Check if has products
+    if subcategoria.get_products_count() > 0:
+        flash('No se puede eliminar una subcategoría con productos asociados.', 'error')
+        return redirect(url_for('admin.subcategories'))
+
+    db.session.delete(subcategoria)
+    db.session.commit()
+
+    flash('Subcategoría eliminada exitosamente.', 'success')
+    return redirect(url_for('admin.subcategories'))
+
+
+@admin_bp.route('/subcategories/toggle/<int:id>', methods=['POST'])
+@admin_required
+def toggle_subcategory(id):
+    """Toggle subcategory status."""
+    subcategoria = Subcategoria.query.get_or_404(id)
+    subcategoria.estado = 0 if subcategoria.estado == 1 else 1
+    db.session.commit()
+
+    return jsonify({'success': True, 'estado': subcategoria.estado})
 
 
 # ===========================
@@ -857,9 +1006,197 @@ def edit_slide(id):
 def delete_slide(id):
     """Delete slide."""
     slide = Slide.query.get_or_404(id)
-    
+
     db.session.delete(slide)
     db.session.commit()
-    
+
     flash('Slide eliminado exitosamente.', 'success')
     return redirect(url_for('admin.slides'))
+
+
+# ===========================
+# COUPONS MANAGEMENT
+# ===========================
+
+@admin_bp.route('/coupons')
+@admin_required
+def coupons():
+    """Coupons management page."""
+    from app.models.coupon import Cupon
+
+    page = request.args.get('page', 1, type=int)
+    search = request.args.get('search', '')
+
+    query = Cupon.query
+
+    if search:
+        query = query.filter(Cupon.codigo.contains(search.upper()))
+
+    cupones = query.order_by(Cupon.fecha.desc()).paginate(
+        page=page, per_page=25, error_out=False
+    )
+
+    return render_template('admin/coupons.html', cupones=cupones)
+
+
+@admin_bp.route('/coupons/create', methods=['GET', 'POST'])
+@admin_required
+def create_coupon():
+    """Create new coupon."""
+    from app.models.coupon import Cupon
+
+    if request.method == 'POST':
+        codigo = request.form.get('codigo', '').upper()
+        tipo = request.form.get('tipo')
+        valor = float(request.form.get('valor', 0))
+        descripcion = request.form.get('descripcion', '')
+        usos_maximos = int(request.form.get('usos_maximos', 0))
+        monto_minimo = float(request.form.get('monto_minimo', 0))
+        estado = int(request.form.get('estado', 1))
+
+        if not codigo or not tipo or valor <= 0:
+            flash('Código, tipo y valor son requeridos.', 'error')
+            return redirect(url_for('admin.create_coupon'))
+
+        # Validate tipo
+        if tipo not in ['porcentaje', 'fijo']:
+            flash('Tipo de cupón inválido.', 'error')
+            return redirect(url_for('admin.create_coupon'))
+
+        # Validate percentage value
+        if tipo == 'porcentaje' and (valor < 0 or valor > 100):
+            flash('El porcentaje debe estar entre 0 y 100.', 'error')
+            return redirect(url_for('admin.create_coupon'))
+
+        # Check if code already exists
+        existing = Cupon.query.filter_by(codigo=codigo).first()
+        if existing:
+            flash('El código de cupón ya existe.', 'error')
+            return redirect(url_for('admin.create_coupon'))
+
+        # Handle dates
+        fecha_inicio = request.form.get('fecha_inicio')
+        fecha_fin = request.form.get('fecha_fin')
+
+        if fecha_inicio:
+            fecha_inicio = datetime.strptime(fecha_inicio, '%Y-%m-%dT%H:%M')
+        else:
+            fecha_inicio = datetime.utcnow()
+
+        if fecha_fin:
+            fecha_fin = datetime.strptime(fecha_fin, '%Y-%m-%dT%H:%M')
+        else:
+            fecha_fin = None
+
+        cupon = Cupon(
+            codigo=codigo,
+            tipo=tipo,
+            valor=valor,
+            descripcion=descripcion,
+            usos_maximos=usos_maximos,
+            monto_minimo=monto_minimo,
+            fecha_inicio=fecha_inicio,
+            fecha_fin=fecha_fin,
+            estado=estado
+        )
+
+        db.session.add(cupon)
+        db.session.commit()
+
+        flash('Cupón creado exitosamente.', 'success')
+        return redirect(url_for('admin.coupons'))
+
+    return render_template('admin/coupon_form.html', cupon=None)
+
+
+@admin_bp.route('/coupons/edit/<int:id>', methods=['GET', 'POST'])
+@admin_required
+def edit_coupon(id):
+    """Edit coupon."""
+    from app.models.coupon import Cupon
+
+    cupon = Cupon.query.get_or_404(id)
+
+    if request.method == 'POST':
+        codigo = request.form.get('codigo', '').upper()
+        tipo = request.form.get('tipo')
+        valor = float(request.form.get('valor', 0))
+        descripcion = request.form.get('descripcion', '')
+        usos_maximos = int(request.form.get('usos_maximos', 0))
+        monto_minimo = float(request.form.get('monto_minimo', 0))
+        estado = int(request.form.get('estado', 1))
+
+        if not codigo or not tipo or valor <= 0:
+            flash('Código, tipo y valor son requeridos.', 'error')
+            return redirect(url_for('admin.edit_coupon', id=id))
+
+        # Validate tipo
+        if tipo not in ['porcentaje', 'fijo']:
+            flash('Tipo de cupón inválido.', 'error')
+            return redirect(url_for('admin.edit_coupon', id=id))
+
+        # Validate percentage value
+        if tipo == 'porcentaje' and (valor < 0 or valor > 100):
+            flash('El porcentaje debe estar entre 0 y 100.', 'error')
+            return redirect(url_for('admin.edit_coupon', id=id))
+
+        # Check if code already exists (except current)
+        existing = Cupon.query.filter(Cupon.codigo == codigo, Cupon.id != id).first()
+        if existing:
+            flash('El código de cupón ya existe.', 'error')
+            return redirect(url_for('admin.edit_coupon', id=id))
+
+        # Handle dates
+        fecha_inicio = request.form.get('fecha_inicio')
+        fecha_fin = request.form.get('fecha_fin')
+
+        if fecha_inicio:
+            cupon.fecha_inicio = datetime.strptime(fecha_inicio, '%Y-%m-%dT%H:%M')
+
+        if fecha_fin:
+            cupon.fecha_fin = datetime.strptime(fecha_fin, '%Y-%m-%dT%H:%M')
+        else:
+            cupon.fecha_fin = None
+
+        cupon.codigo = codigo
+        cupon.tipo = tipo
+        cupon.valor = valor
+        cupon.descripcion = descripcion
+        cupon.usos_maximos = usos_maximos
+        cupon.monto_minimo = monto_minimo
+        cupon.estado = estado
+
+        db.session.commit()
+
+        flash('Cupón actualizado exitosamente.', 'success')
+        return redirect(url_for('admin.coupons'))
+
+    return render_template('admin/coupon_form.html', cupon=cupon)
+
+
+@admin_bp.route('/coupons/delete/<int:id>', methods=['POST'])
+@admin_required
+def delete_coupon(id):
+    """Delete coupon."""
+    from app.models.coupon import Cupon
+
+    cupon = Cupon.query.get_or_404(id)
+
+    db.session.delete(cupon)
+    db.session.commit()
+
+    flash('Cupón eliminado exitosamente.', 'success')
+    return redirect(url_for('admin.coupons'))
+
+
+@admin_bp.route('/coupons/toggle/<int:id>', methods=['POST'])
+@admin_required
+def toggle_coupon(id):
+    """Toggle coupon status."""
+    from app.models.coupon import Cupon
+
+    cupon = Cupon.query.get_or_404(id)
+    cupon.estado = 0 if cupon.estado == 1 else 1
+    db.session.commit()
+
+    return jsonify({'success': True, 'estado': cupon.estado})
