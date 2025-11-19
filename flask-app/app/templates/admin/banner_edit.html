@@ -1,0 +1,111 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Editar Banner{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="card shadow">
+        <div class="card-header bg-warning text-dark">
+            <h4 class="mb-0"><i class="fas fa-edit"></i> Editar Banner #{{ banner.id }}</h4>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('admin.edit_banner', id=banner.id) }}" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="tipo" class="form-label">Tipo de Banner *</label>
+                            <select class="form-control" id="tipo" name="tipo" required>
+                                <option value="">Seleccione tipo...</option>
+                                <option value="general" {{ 'selected' if banner.tipo == 'general' }}>General</option>
+                                <option value="categoria" {{ 'selected' if banner.tipo == 'categoria' }}>Categoría</option>
+                                <option value="subcategoria" {{ 'selected' if banner.tipo == 'subcategoria' }}>Subcategoría</option>
+                                <option value="oferta" {{ 'selected' if banner.tipo == 'oferta' }}>Oferta Especial</option>
+                                <option value="promocion" {{ 'selected' if banner.tipo == 'promocion' }}>Promoción</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="ruta" class="form-label">Ruta Asociada</label>
+                            <input type="text" class="form-control" id="ruta" name="ruta"
+                                   value="{{ banner.ruta }}" placeholder="Ej: categoria/electronica">
+                            <small class="text-muted">Categoría o subcategoría donde se mostrará</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Current image -->
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="mb-3">
+                            <label class="form-label">Imagen Actual:</label>
+                            <div>
+                                {% if banner.img %}
+                                <img src="{{ url_for('static', filename=banner.img) }}"
+                                     alt="Banner actual" class="img-thumbnail" style="max-width: 500px;">
+                                {% else %}
+                                <p class="text-muted">Sin imagen</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="mb-3">
+                            <label for="img" class="form-label">Nueva Imagen (opcional) (1600 x 550 px)</label>
+                            <input type="file" class="form-control" id="img" name="img"
+                                   accept="image/png,image/jpeg,image/jpg,image/gif">
+                            <small class="text-muted">
+                                Deje vacío para mantener la imagen actual. Tamaño recomendado: 1600 x 550 píxeles
+                            </small>
+                        </div>
+
+                        <!-- Preview -->
+                        <div id="imagePreview" class="mt-2" style="display: none;">
+                            <label>Vista Previa Nueva Imagen:</label>
+                            <div>
+                                <img id="preview" src="" alt="Preview" class="img-thumbnail" style="max-width: 500px;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>Nota:</strong> Si carga una nueva imagen, será redimensionada automáticamente a 1600x550 píxeles.
+                </div>
+
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    <a href="{{ url_for('admin.banners') }}" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> Cancelar
+                    </a>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-save"></i> Actualizar Banner
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Image preview
+document.getElementById('img').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('preview').src = e.target.result;
+            document.getElementById('imagePreview').style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    }
+});
+</script>
+{% endblock %}

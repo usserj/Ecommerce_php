@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Transferencia con Comprobante{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card">
+                <div class="card-header bg-secondary text-white">
+                    <h4 class="mb-0"><i class="fas fa-file-upload"></i> Transferencia con Comprobante</h4>
+                </div>
+                <div class="card-body">
+                    <h5 class="mb-3">Orden: <strong>{{ order_id }}</strong></h5>
+                    <h3 class="text-success mb-4">Total a Transferir: <strong>${{ "%.2f"|format(total) }}</strong></h3>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5 class="mb-3"><i class="fas fa-bank"></i> Cuentas Disponibles:</h5>
+                            {% for bank_key, account in bank_accounts.items() %}
+                            {% if account.cuenta %}
+                            <div class="card border-info mb-2">
+                                <div class="card-body p-2">
+                                    <small><strong>{{ bank_key.replace('_', ' ').title() }}</strong></small>
+                                    <br><small>{{ account.nombre }} - {{ account.cuenta }}</small>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% endfor %}
+                        </div>
+
+                        <div class="col-md-6">
+                            <h5 class="mb-3"><i class="fas fa-upload"></i> Subir Comprobante:</h5>
+                            <form action="{{ url_for('checkout.upload_voucher') }}" method="POST" enctype="multipart/form-data" id="voucherForm">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                <input type="hidden" name="order_id" value="{{ order_id }}">
+                                <div class="mb-3">
+                                    <label class="form-label">Archivo del Comprobante *</label>
+                                    <input type="file" class="form-control" name="comprobante" accept="image/*,application/pdf" required>
+                                    <small class="text-muted">Formatos: JPG, PNG, PDF (Máx. 5MB)</small>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Número de Referencia</label>
+                                    <input type="text" class="form-control" name="referencia" placeholder="Ej: 123456789">
+                                </div>
+                                <button type="submit" class="btn btn-success w-100">
+                                    <i class="fas fa-upload"></i> Subir Comprobante
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info mt-4">
+                        <h6><i class="fas fa-info-circle"></i> Instrucciones:</h6>
+                        <ol>
+                            <li>Realice la transferencia por <strong>${{ "%.2f"|format(total) }}</strong></li>
+                            <li>Tome una foto clara del comprobante</li>
+                            <li>Suba el comprobante usando el formulario</li>
+                            <li>Verificaremos su pago en 24-48 horas</li>
+                        </ol>
+                    </div>
+
+                    <div class="text-center mt-4">
+                        <a href="{{ url_for('main.index') }}" class="btn btn-secondary">
+                            Volver al Inicio
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

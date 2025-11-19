@@ -1,0 +1,51 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Gestión de Administradores{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <div class="card shadow">
+        <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
+            <h4 class="mb-0"><i class="fas fa-user-shield"></i> Gestión de Administradores</h4>
+            <a href="{{ url_for('admin.create_administrator') }}" class="btn btn-light btn-sm"><i class="fas fa-plus"></i> Crear Administrador</a>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead><tr><th>ID</th><th>Foto</th><th>Nombre</th><th>Email</th><th>Perfil</th><th>Estado</th><th>Fecha</th><th>Acciones</th></tr></thead>
+                    <tbody>
+                        {% for adm in administrators %}
+                        <tr>
+                            <td>{{ adm.id }}</td>
+                            <td>
+                                {% if adm.foto %}<img src="{{ url_for('static', filename=adm.foto) }}" class="rounded-circle" style="width: 50px; height: 50px; object-fit: cover;">
+                                {% else %}<div class="bg-secondary rounded-circle d-flex align-items-center justify-content-center text-white" style="width: 50px; height: 50px;">{{ adm.nombre[0].upper() }}</div>{% endif %}
+                            </td>
+                            <td><strong>{{ adm.nombre }}</strong></td>
+                            <td>{{ adm.email }}</td>
+                            <td><span class="badge bg-{{ 'danger' if adm.perfil == 'administrador' else 'info' }}">{{ adm.perfil }}</span></td>
+                            <td><div class="form-check form-switch"><input class="form-check-input toggle-admin" type="checkbox" data-id="{{ adm.id }}" {{ 'checked' if adm.estado == 1 else '' }} {{ 'disabled' if adm.id == session.admin_id }}></div></td>
+                            <td>{{ adm.fecha.strftime('%d/%m/%Y') }}</td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{{ url_for('admin.edit_administrator', id=adm.id) }}" class="btn btn-warning"><i class="fas fa-edit"></i></a>
+                                    {% if adm.id != session.admin_id %}<button class="btn btn-danger delete-admin" data-id="{{ adm.id }}" data-nombre="{{ adm.nombre }}"><i class="fas fa-trash"></i></button>{% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="deleteModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-danger text-white"><h5 class="modal-title">Confirmar Eliminación</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body">¿Eliminar este administrador?</div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><form id="deleteForm" method="POST" style="display: inline;"><button type="submit" class="btn btn-danger">Eliminar</button></form></div></div></div></div>
+{% endblock %}
+{% block scripts %}<script>
+document.querySelectorAll('.toggle-admin').forEach(cb => cb.addEventListener('change', function() {
+    fetch(`/admin/administrators/toggle/${this.dataset.id}`, {method: 'POST'}).then(r => r.json()).then(d => {if(!d.success) this.checked = !this.checked;});
+}));
+document.querySelectorAll('.delete-admin').forEach(btn => btn.addEventListener('click', function() {
+    document.getElementById('deleteForm').action = `/admin/administrators/delete/${this.dataset.id}`;
+    new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}));
+</script>{% endblock %}

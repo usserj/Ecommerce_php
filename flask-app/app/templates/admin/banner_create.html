@@ -1,0 +1,156 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Crear Banner{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="card shadow">
+        <div class="card-header bg-info text-white">
+            <h4 class="mb-0"><i class="fas fa-plus"></i> Crear Nuevo Banner</h4>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('admin.create_banner') }}" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="tipo" class="form-label">Tipo de Banner *</label>
+                            <select class="form-control" id="tipo" name="tipo" required>
+                                <option value="">Seleccione tipo...</option>
+                                <option value="general">General</option>
+                                <option value="categoria">Categoría</option>
+                                <option value="subcategoria">Subcategoría</option>
+                                <option value="oferta">Oferta Especial</option>
+                                <option value="promocion">Promoción</option>
+                            </select>
+                            <small class="text-muted">Tipo de banner a mostrar</small>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="ruta" class="form-label">Ruta Asociada</label>
+                            <input type="text" class="form-control" id="ruta" name="ruta"
+                                   placeholder="Ej: categoria/electronica">
+                            <small class="text-muted">Categoría o subcategoría donde se mostrará (opcional)</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Selector de categoría (helper) -->
+                <div class="row" id="categoriaHelper" style="display: none;">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="categoria_select" class="form-label">Seleccionar Categoría</label>
+                            <select class="form-control" id="categoria_select">
+                                <option value="">Seleccione...</option>
+                                {% for cat in categorias %}
+                                <option value="{{ cat.ruta }}">{{ cat.categoria }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Selector de subcategoría (helper) -->
+                <div class="row" id="subcategoriaHelper" style="display: none;">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="subcategoria_select" class="form-label">Seleccionar Subcategoría</label>
+                            <select class="form-control" id="subcategoria_select">
+                                <option value="">Seleccione...</option>
+                                {% for sub in subcategorias %}
+                                <option value="{{ sub.ruta }}">{{ sub.subcategoria }} ({{ sub.categoria.categoria }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="mb-3">
+                            <label for="img" class="form-label">Imagen del Banner * (1600 x 550 px)</label>
+                            <input type="file" class="form-control" id="img" name="img"
+                                   accept="image/png,image/jpeg,image/jpg,image/gif" required>
+                            <small class="text-muted">
+                                Tamaño recomendado: 1600 x 550 píxeles. Formatos: JPG, PNG, GIF
+                            </small>
+                        </div>
+
+                        <!-- Preview -->
+                        <div id="imagePreview" class="mt-2" style="display: none;">
+                            <label>Vista Previa:</label>
+                            <div>
+                                <img id="preview" src="" alt="Preview" class="img-thumbnail" style="max-width: 500px;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>Nota:</strong> La imagen será redimensionada automáticamente a 1600x550 píxeles.
+                </div>
+
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    <a href="{{ url_for('admin.banners') }}" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> Cancelar
+                    </a>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-save"></i> Crear Banner
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Show/hide category/subcategory selectors based on type
+document.getElementById('tipo').addEventListener('change', function() {
+    const categoriaHelper = document.getElementById('categoriaHelper');
+    const subcategoriaHelper = document.getElementById('subcategoriaHelper');
+
+    categoriaHelper.style.display = 'none';
+    subcategoriaHelper.style.display = 'none';
+
+    if (this.value === 'categoria') {
+        categoriaHelper.style.display = 'block';
+    } else if (this.value === 'subcategoria') {
+        subcategoriaHelper.style.display = 'block';
+    } else if (this.value === 'general') {
+        document.getElementById('ruta').value = 'general';
+    }
+});
+
+// Auto-fill ruta when selecting category
+document.getElementById('categoria_select').addEventListener('change', function() {
+    if (this.value) {
+        document.getElementById('ruta').value = this.value;
+    }
+});
+
+// Auto-fill ruta when selecting subcategory
+document.getElementById('subcategoria_select').addEventListener('change', function() {
+    if (this.value) {
+        document.getElementById('ruta').value = this.value;
+    }
+});
+
+// Image preview
+document.getElementById('img').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('preview').src = e.target.result;
+            document.getElementById('imagePreview').style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    }
+});
+</script>
+{% endblock %}

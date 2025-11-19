@@ -1,0 +1,117 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Editar Slide{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="card shadow">
+        <div class="card-header bg-info text-white">
+            <h4 class="mb-0"><i class="fas fa-edit"></i> Editar Slide</h4>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('admin.edit_slide', id=slide.id) }}" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="nombre" class="form-label">Nombre del Slide *</label>
+                            <input type="text" class="form-control" id="nombre" name="nombre"
+                                   required value="{{ slide.nombre }}">
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="orden" class="form-label">Orden de Aparición</label>
+                            <input type="number" class="form-control" id="orden" name="orden"
+                                   value="{{ slide.orden }}" min="0">
+                            <small class="text-muted">Los slides se ordenan de menor a mayor</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="mb-3">
+                            <label for="imgFondo" class="form-label">Imagen de Fondo (1920x600px recomendado)</label>
+                            <input type="file" class="form-control" id="imgFondo" name="imgFondo"
+                                   accept="image/*">
+                            <small class="text-muted">Dejar vacío para mantener la imagen actual. Se redimensionará automáticamente a 1920x600px</small>
+                        </div>
+                        {% if slide.imgFondo %}
+                        <div class="mb-3">
+                            <label class="form-label">Imagen Actual:</label><br>
+                            <img src="{{ url_for('static', filename=slide.imgFondo) }}"
+                                 alt="{{ slide.nombre }}"
+                                 style="max-width: 400px; height: auto; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <hr>
+                <h5><i class="fas fa-text"></i> Contenido del Slide</h5>
+
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="titulo1" class="form-label">Título 1</label>
+                            <input type="text" class="form-control" id="titulo1" name="titulo1"
+                                   value="{{ slide.titulo1 }}" placeholder="Título principal">
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="titulo2" class="form-label">Título 2</label>
+                            <input type="text" class="form-control" id="titulo2" name="titulo2"
+                                   value="{{ slide.titulo2 }}" placeholder="Subtítulo">
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="titulo3" class="form-label">Título 3</label>
+                            <input type="text" class="form-control" id="titulo3" name="titulo3"
+                                   value="{{ slide.titulo3 }}" placeholder="Descripción adicional">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="boton" class="form-label">Texto del Botón</label>
+                            <input type="text" class="form-control" id="boton" name="boton"
+                                   value="{{ slide.boton }}" placeholder="Ej: Comprar Ahora, Ver Más">
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="url" class="form-label">URL del Botón</label>
+                            <input type="text" class="form-control" id="url" name="url"
+                                   value="{{ slide.url }}" placeholder="Ej: /tienda/categoria/electronica">
+                            <small class="text-muted">Puede ser una ruta relativa o URL completa</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="alert alert-info">
+                    <small>
+                        <strong>Fecha de creación:</strong> {{ slide.fecha.strftime('%d/%m/%Y %H:%M') }}
+                    </small>
+                </div>
+
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                    <a href="{{ url_for('admin.slides') }}" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> Cancelar
+                    </a>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-save"></i> Guardar Cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
