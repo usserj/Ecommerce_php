@@ -356,6 +356,11 @@
                 <i class="fas fa-ticket-alt"></i>
                 <span>Cupones</span>
             </a>
+            <a class="nav-link {% if 'comment' in request.endpoint %}active{% endif %}"
+               href="{{ url_for('admin.comments') }}">
+                <i class="fas fa-comments"></i>
+                <span>Comentarios</span>
+            </a>
             <a class="nav-link {% if 'slide' in request.endpoint %}active{% endif %}"
                href="{{ url_for('admin.slides') }}">
                 <i class="fas fa-images"></i>

@@ -11,6 +11,8 @@ from app.models.visit import VisitaPais, VisitaPersona
 from app.models.categoria import Categoria, Subcategoria
 from app.models.setting import Slide, Banner
 from app.models.comercio import Comercio
+from app.models.comment import Comentario
+from app.models.coupon import Cupon
 from app.extensions import db, bcrypt
 from werkzeug.utils import secure_filename
 from functools import wraps
@@ -1296,3 +1298,143 @@ def toggle_coupon(id):
     db.session.commit()
 
     return jsonify({'success': True, 'estado': cupon.estado})
+
+
+# ===========================
+# Comments Management
+# ===========================
+
+@admin_bp.route('/comments')
+@admin_required
+def comments():
+    """Comments management page."""
+    # Get filter parameters
+    estado_filter = request.args.get('estado', '')
+    calificacion_filter = request.args.get('calificacion', '')
+    producto_filter = request.args.get('producto', '')
+    search_query = request.args.get('search', '')
+
+    # Base query with relationships
+    query = Comentario.query
+
+    # Apply filters
+    if estado_filter:
+        query = query.filter_by(estado=estado_filter)
+
+    if calificacion_filter:
+        query = query.filter(Comentario.calificacion >= float(calificacion_filter))
+
+    if producto_filter:
+        query = query.filter_by(id_producto=int(producto_filter))
+
+    if search_query:
+        query = query.join(Comentario.usuario).filter(
+            db.or_(
+                Comentario.comentario.ilike(f'%{search_query}%'),
+                User.nombre.ilike(f'%{search_query}%')
+            )
+        )
+
+    # Order by date descending
+    comentarios = query.order_by(Comentario.fecha.desc()).all()
+
+    # Get statistics
+    total_comentarios = Comentario.query.count()
+    pendientes = Comentario.query.filter_by(estado=Comentario.ESTADO_PENDIENTE).count()
+    aprobados = Comentario.query.filter_by(estado=Comentario.ESTADO_APROBADO).count()
+    rechazados = Comentario.query.filter_by(estado=Comentario.ESTADO_RECHAZADO).count()
+
+    # Get products for filter dropdown
+    productos = Producto.query.filter_by(estado=1).order_by(Producto.titulo).all()
+
+    return render_template('admin/comments.html',
+                         comentarios=comentarios,
+                         total_comentarios=total_comentarios,
+                         pendientes=pendientes,
+                         aprobados=aprobados,
+                         rechazados=rechazados,
+                         productos=productos,
+                         estado_filter=estado_filter,
+                         calificacion_filter=calificacion_filter,
+                         producto_filter=producto_filter,
+                         search_query=search_query)
+
+
+@admin_bp.route('/comments/approve/<int:id>', methods=['POST'])
+@admin_required
+def approve_comment(id):
+    """Approve comment."""
+    comentario = Comentario.query.get_or_404(id)
+    comentario.aprobar()
+
+    flash(f'Comentario de {comentario.usuario.nombre} aprobado.', 'success')
+    return redirect(url_for('admin.comments'))
+
+
+@admin_bp.route('/comments/reject/<int:id>', methods=['POST'])
+@admin_required
+def reject_comment(id):
+    """Reject comment."""
+    comentario = Comentario.query.get_or_404(id)
+    comentario.rechazar()
+
+    flash(f'Comentario de {comentario.usuario.nombre} rechazado.', 'success')
+    return redirect(url_for('admin.comments'))
+
+
+@admin_bp.route('/comments/delete/<int:id>', methods=['POST'])
+@admin_required
+def delete_comment(id):
+    """Delete comment."""
+    comentario = Comentario.query.get_or_404(id)
+    usuario_nombre = comentario.usuario.nombre
+
+    db.session.delete(comentario)
+    db.session.commit()
+
+    flash(f'Comentario de {usuario_nombre} eliminado permanentemente.', 'success')
+    return redirect(url_for('admin.comments'))
+
+
+@admin_bp.route('/comments/respond/<int:id>', methods=['POST'])
+@admin_required
+def respond_comment(id):
+    """Respond to comment as admin."""
+    comentario = Comentario.query.get_or_404(id)
+    respuesta = request.form.get('respuesta', '').strip()
+
+    if not respuesta:
+        flash('La respuesta no puede estar vacía.', 'error')
+        return redirect(url_for('admin.comments'))
+
+    comentario.respuesta_admin = respuesta
+    comentario.fecha_moderacion = datetime.utcnow()
+
+    # Auto-approve when responding
+    if comentario.estado == Comentario.ESTADO_PENDIENTE:
+        comentario.estado = Comentario.ESTADO_APROBADO
+
+    db.session.commit()
+
+    flash(f'Respuesta publicada en el comentario de {comentario.usuario.nombre}.', 'success')
+    return redirect(url_for('admin.comments'))
+
+
+@admin_bp.route('/comments/toggle/<int:id>', methods=['POST'])
+@admin_required
+def toggle_comment(id):
+    """Toggle comment status (approve/reject)."""
+    comentario = Comentario.query.get_or_404(id)
+
+    if comentario.estado == Comentario.ESTADO_APROBADO:
+        comentario.rechazar()
+        nuevo_estado = 'rechazado'
+    else:
+        comentario.aprobar()
+        nuevo_estado = 'aprobado'
+
+    return jsonify({
+        'success': True,
+        'estado': comentario.estado,
+        'estado_display': nuevo_estado
+    })
