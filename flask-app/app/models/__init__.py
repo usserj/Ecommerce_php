@@ -12,6 +12,8 @@ from app.models.notification import Notificacion
 from app.models.visit import VisitaPais, VisitaPersona
 from app.models.coupon import Cupon
 from app.models.message import Mensaje
+from app.models.chatbot import ConversacionChatbot  # ⭐ Modelo chatbot
+from app.models.analisis_review import AnalisisReview  # ⭐ Modelo análisis reviews
 
 __all__ = [
     'User',
@@ -31,5 +33,7 @@ __all__ = [
     'VisitaPais',
     'VisitaPersona',
     'Cupon',
-    'Mensaje'
+    'Mensaje',
+    'ConversacionChatbot',  # ⭐
+    'AnalisisReview'  # ⭐
 ]

@@ -17,6 +17,11 @@
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 
+    <!-- AI Chatbot CSS -->
+    {% if not request.path.startswith('/admin') %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ai-chatbot.css') }}">
+    {% endif %}
+
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -223,6 +228,21 @@
     <script src="{{ url_for('static', filename='js/wishlist.js') }}"></script>
 
     {% block extra_js %}{% endblock %}
+
+    <!-- AI Chatbot JS -->
+    {% if not request.path.startswith('/admin') %}
+    <script>
+        // Configuración del chatbot (pasada desde Flask a JavaScript)
+        window.CHATBOT_CONFIG = {
+            apiUrl: '{{ url_for("ai.chat") }}',
+            userName: {% if current_user.is_authenticated %}'{{ current_user.nombre }}'{% else %}null{% endif %},
+            userId: {% if current_user.is_authenticated %}{{ current_user.id }}{% else %}null{% endif %},
+            cartCount: {{ cart_count }},
+            storeName: '{{ plantilla.nombre_tienda if plantilla else "Tienda Virtual" }}'
+        };
+    </script>
+    <script src="{{ url_for('static', filename='js/ai-chatbot.js') }}"></script>
+    {% endif %}
 
     <!-- Toast Container for notifications -->
     <div id="toast-container" class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 11"></div>
