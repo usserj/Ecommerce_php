@@ -107,6 +107,21 @@ def dashboard():
     # Top products
     top_products = Producto.query.filter_by(estado=1).order_by(Producto.ventas.desc()).limit(5).all()
 
+    # Chart data - Sales by day (last 7 days)
+    from datetime import timedelta
+    from sqlalchemy import func, cast, Date
+    today = datetime.now().date()
+    week_ago = today - timedelta(days=6)
+    
+    sales_by_day = db.session.query(
+        cast(Compra.fecha, Date).label('date'),
+        func.count(Compra.id).label('count'),
+        func.sum(Compra.pago).label('total')
+    ).filter(Compra.fecha >= week_ago).group_by(cast(Compra.fecha, Date)).all()
+    
+    # Chart data - Visits by country (top 5)
+    top_countries = VisitaPais.query.order_by(VisitaPais.cantidad.desc()).limit(5).all()
+    
     return render_template('admin/dashboard.html',
                          total_users=total_users,
                          total_products=total_products,
@@ -114,7 +129,9 @@ def dashboard():
                          total_visits=total_visits,
                          notifications=notifications,
                          recent_orders=recent_orders,
-                         top_products=top_products)
+                         top_products=top_products,
+                         sales_by_day=sales_by_day,
+                         top_countries=top_countries)
 
 
 @admin_bp.route('/users')
@@ -461,3 +478,129 @@ def settings():
     return render_template('admin/settings.html',
                          config=config,
                          bank_accounts=bank_accounts)
+
+
+@admin_bp.route('/export/users')
+@admin_required
+def export_users():
+    """Export users to Excel."""
+    try:
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, PatternFill
+        
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Usuarios"
+        
+        # Headers
+        headers = ['ID', 'Nombre', 'Email', 'Modo', 'Verificado', 'Fecha Registro']
+        for col, header in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col, value=header)
+            cell.font = Font(bold=True)
+            cell.fill = PatternFill(start_color="667EEA", end_color="667EEA", fill_type="solid")
+        
+        # Data
+        users = User.query.all()
+        for row, user in enumerate(users, 2):
+            ws.cell(row=row, column=1, value=user.id)
+            ws.cell(row=row, column=2, value=user.nombre)
+            ws.cell(row=row, column=3, value=user.email)
+            ws.cell(row=row, column=4, value=user.modo)
+            ws.cell(row=row, column=5, value='Sí' if user.verificacion == 0 else 'No')
+            ws.cell(row=row, column=6, value=user.fecha.strftime('%d/%m/%Y'))
+        
+        # Save to BytesIO
+        output = io.BytesIO()
+        wb.save(output)
+        output.seek(0)
+        
+        return send_file(output, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                        as_attachment=True, download_name=f'usuarios_{datetime.now().strftime("%Y%m%d")}.xlsx')
+    except Exception as e:
+        flash(f'Error al exportar: {e}', 'error')
+        return redirect(url_for('admin.users'))
+
+
+@admin_bp.route('/export/products')
+@admin_required
+def export_products():
+    """Export products to Excel."""
+    try:
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, PatternFill
+        
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Productos"
+        
+        # Headers
+        headers = ['ID', 'Título', 'Categoría', 'Precio', 'Stock', 'Ventas', 'Estado']
+        for col, header in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col, value=header)
+            cell.font = Font(bold=True)
+            cell.fill = PatternFill(start_color="667EEA", end_color="667EEA", fill_type="solid")
+        
+        # Data
+        products = Producto.query.all()
+        for row, p in enumerate(products, 2):
+            ws.cell(row=row, column=1, value=p.id)
+            ws.cell(row=row, column=2, value=p.titulo)
+            ws.cell(row=row, column=3, value=p.categoria.categoria if p.categoria else 'N/A')
+            ws.cell(row=row, column=4, value=float(p.precio))
+            ws.cell(row=row, column=5, value=p.stock)
+            ws.cell(row=row, column=6, value=p.ventas)
+            ws.cell(row=row, column=7, value='Activo' if p.estado == 1 else 'Inactivo')
+        
+        # Save to BytesIO
+        output = io.BytesIO()
+        wb.save(output)
+        output.seek(0)
+        
+        return send_file(output, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                        as_attachment=True, download_name=f'productos_{datetime.now().strftime("%Y%m%d")}.xlsx')
+    except Exception as e:
+        flash(f'Error al exportar: {e}', 'error')
+        return redirect(url_for('admin.products'))
+
+
+@admin_bp.route('/export/orders')
+@admin_required
+def export_orders():
+    """Export orders to Excel."""
+    try:
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, PatternFill
+        
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Pedidos"
+        
+        # Headers
+        headers = ['ID', 'Cliente', 'Producto', 'Cantidad', 'Total', 'Método', 'Estado', 'Fecha']
+        for col, header in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col, value=header)
+            cell.font = Font(bold=True)
+            cell.fill = PatternFill(start_color="667EEA", end_color="667EEA", fill_type="solid")
+        
+        # Data
+        orders = Compra.query.all()
+        for row, o in enumerate(orders, 2):
+            ws.cell(row=row, column=1, value=o.id)
+            ws.cell(row=row, column=2, value=o.usuario.nombre if o.usuario else 'N/A')
+            ws.cell(row=row, column=3, value=o.producto.titulo if o.producto else 'N/A')
+            ws.cell(row=row, column=4, value=o.cantidad)
+            ws.cell(row=row, column=5, value=float(o.pago))
+            ws.cell(row=row, column=6, value=o.metodo)
+            ws.cell(row=row, column=7, value=o.estado)
+            ws.cell(row=row, column=8, value=o.fecha.strftime('%d/%m/%Y %H:%M'))
+        
+        # Save to BytesIO
+        output = io.BytesIO()
+        wb.save(output)
+        output.seek(0)
+        
+        return send_file(output, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                        as_attachment=True, download_name=f'pedidos_{datetime.now().strftime("%Y%m%d")}.xlsx')
+    except Exception as e:
+        flash(f'Error al exportar: {e}', 'error')
+        return redirect(url_for('admin.orders'))

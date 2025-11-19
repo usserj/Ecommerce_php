@@ -65,6 +65,44 @@
         </div>
     </div>
 </div>
+
+    <!-- Charts Row -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fas fa-chart-line"></i> Ventas (Últimos 7 días)</h5>
+                </div>
+                <div class="card-body" style="height: 300px;">
+                    <canvas id="salesChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-globe"></i> Visitas por País (Top 5)</h5>
+                </div>
+                <div class="card-body" style="height: 300px;">
+                    <canvas id="countriesChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0"><i class="fas fa-chart-pie"></i> Top Productos Vendidos</h5>
+                </div>
+                <div class="card-body" style="height: 300px;">
+                    <canvas id="productsChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
 <div class="row">
     <div class="col-md-6">
         <div class="card">
@@ -103,4 +141,61 @@
     </div>
 </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+// Sales Chart
+const salesCtx = document.getElementById('salesChart');
+if (salesCtx) {
+    new Chart(salesCtx, {
+        type: 'line',
+        data: {
+            labels: [{% for day in sales_by_day %}'{{ day.date.strftime("%d/%m") }}'{% if not loop.last %},{% endif %}{% endfor %}],
+            datasets: [{
+                label: 'Ventas',
+                data: [{% for day in sales_by_day %}{{ day.count }}{% if not loop.last %},{% endif %}{% endfor %}],
+                borderColor: 'rgb(75, 192, 192)',
+                tension: 0.1
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
+}
+
+// Countries Chart
+const countriesCtx = document.getElementById('countriesChart');
+if (countriesCtx) {
+    new Chart(countriesCtx, {
+        type: 'bar',
+        data: {
+            labels: [{% for country in top_countries %}'{{ country.pais }}'{% if not loop.last %},{% endif %}{% endfor %}],
+            datasets: [{
+                label: 'Visitas',
+                data: [{% for country in top_countries %}{{ country.cantidad }}{% if not loop.last %},{% endif %}{% endfor %}],
+                backgroundColor: ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#43e97b']
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
+}
+
+// Top Products Chart
+const productsCtx = document.getElementById('productsChart');
+if (productsCtx) {
+    new Chart(productsCtx, {
+        type: 'doughnut',
+        data: {
+            labels: [{% for p in top_products %}'{{ p.titulo[:20] }}'{% if not loop.last %},{% endif %}{% endfor %}],
+            datasets: [{
+                data: [{% for p in top_products %}{{ p.ventas }}{% if not loop.last %},{% endif %}{% endfor %}],
+                backgroundColor: ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#43e97b']
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
+}
+</script>
 {% endblock %}

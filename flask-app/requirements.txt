@@ -51,3 +51,4 @@ passlib==1.7.4
 
 # Production Server
 gunicorn==21.2.0
+openpyxl==3.1.2
