@@ -30,6 +30,13 @@ if __name__ == '__main__':
     from app.utils.db_init import auto_init_database
     auto_init_database(app)
 
+    # Apply pending migrations
+    try:
+        from apply_migration import apply_migration
+        apply_migration()
+    except Exception as e:
+        print(f"⚠️  Migration note: {e}")
+
     app.run(
         host='0.0.0.0',
         port=int(os.environ.get('PORT', 5000)),
