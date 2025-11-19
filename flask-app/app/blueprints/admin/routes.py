@@ -1,5 +1,5 @@
 """Admin panel routes."""
-from flask import render_template, redirect, url_for, flash, request, session
+from flask import render_template, redirect, url_for, flash, request, session, jsonify, send_file
 from flask_login import login_required, current_user, login_user, logout_user
 from app.blueprints.admin import admin_bp
 from app.models.admin import Administrador
@@ -8,8 +8,17 @@ from app.models.product import Producto
 from app.models.order import Compra
 from app.models.notification import Notificacion
 from app.models.visit import VisitaPais, VisitaPersona
+from app.models.categoria import Categoria, Subcategoria
+from app.models.setting import Slide, Banner
+from app.models.comercio import Comercio
 from app.extensions import db, bcrypt
+from werkzeug.utils import secure_filename
 from functools import wraps
+from datetime import datetime
+import os
+import json
+import io
+from PIL import Image
 
 
 def admin_required(f):
@@ -123,9 +132,178 @@ def users():
 def products():
     """Manage products."""
     page = request.args.get('page', 1, type=int)
-    products = Producto.query.paginate(page=page, per_page=25, error_out=False)
+    search = request.args.get('search', '')
+    categoria_id = request.args.get('categoria', type=int)
 
-    return render_template('admin/products.html', products=products)
+    query = Producto.query
+
+    if search:
+        query = query.filter(Producto.titulo.contains(search) | Producto.descripcion.contains(search))
+
+    if categoria_id:
+        query = query.filter_by(id_categoria=categoria_id)
+
+    products = query.order_by(Producto.fecha.desc()).paginate(page=page, per_page=25, error_out=False)
+    categorias = Categoria.query.all()
+
+    return render_template('admin/products.html', products=products, categorias=categorias)
+
+
+@admin_bp.route('/products/create', methods=['GET', 'POST'])
+@admin_required
+def create_product():
+    """Create new product."""
+    if request.method == 'POST':
+        try:
+            # Get form data
+            titulo = request.form.get('titulo')
+            ruta = request.form.get('ruta')
+            id_categoria = request.form.get('id_categoria', type=int)
+            id_subcategoria = request.form.get('id_subcategoria', type=int) or None
+            tipo = request.form.get('tipo', 'fisico')
+            precio = float(request.form.get('precio', 0))
+            stock = int(request.form.get('stock', 0)) if tipo == 'fisico' else 0
+            descripcion = request.form.get('descripcion', '')
+            titular = request.form.get('titular', '')
+
+            # Handle image upload
+            portada = ''
+            if 'portada' in request.files:
+                file = request.files['portada']
+                if file and file.filename:
+                    filename = secure_filename(file.filename)
+                    upload_folder = os.path.join('app/static/uploads/productos')
+                    if not os.path.exists(upload_folder):
+                        os.makedirs(upload_folder)
+
+                    filepath = os.path.join(upload_folder, filename)
+
+                    # Resize image to 1280x720
+                    img = Image.open(file)
+                    img = img.resize((1280, 720), Image.Resampling.LANCZOS)
+                    img.save(filepath)
+
+                    portada = f'uploads/productos/{filename}'
+
+            # Create product
+            producto = Producto(
+                titulo=titulo,
+                ruta=ruta,
+                id_categoria=id_categoria,
+                id_subcategoria=id_subcategoria,
+                tipo=tipo,
+                precio=precio,
+                stock=stock,
+                descripcion=descripcion,
+                titular=titular,
+                portada=portada,
+                estado=1
+            )
+
+            db.session.add(producto)
+            db.session.commit()
+
+            flash('Producto creado exitosamente!', 'success')
+            return redirect(url_for('admin.products'))
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error al crear producto: {e}', 'error')
+
+    categorias = Categoria.query.all()
+    subcategorias = Subcategoria.query.all()
+    return render_template('admin/product_create.html', categorias=categorias, subcategorias=subcategorias)
+
+
+@admin_bp.route('/products/edit/<int:id>', methods=['GET', 'POST'])
+@admin_required
+def edit_product(id):
+    """Edit product."""
+    producto = Producto.query.get_or_404(id)
+
+    if request.method == 'POST':
+        try:
+            producto.titulo = request.form.get('titulo')
+            producto.ruta = request.form.get('ruta')
+            producto.id_categoria = request.form.get('id_categoria', type=int)
+            producto.id_subcategoria = request.form.get('id_subcategoria', type=int) or None
+            producto.tipo = request.form.get('tipo', 'fisico')
+            producto.precio = float(request.form.get('precio', 0))
+            producto.stock = int(request.form.get('stock', 0)) if producto.tipo == 'fisico' else 0
+            producto.stock_minimo = int(request.form.get('stock_minimo', 5))
+            producto.descripcion = request.form.get('descripcion', '')
+            producto.titular = request.form.get('titular', '')
+
+            # Handle offer
+            producto.oferta = 1 if request.form.get('oferta') == '1' else 0
+            if producto.oferta:
+                producto.precioOferta = float(request.form.get('precioOferta', 0))
+                producto.descuentoOferta = int(request.form.get('descuentoOferta', 0))
+                fin_oferta = request.form.get('finOferta')
+                if fin_oferta:
+                    producto.finOferta = datetime.strptime(fin_oferta, '%Y-%m-%d')
+
+            # Handle image upload
+            if 'portada' in request.files:
+                file = request.files['portada']
+                if file and file.filename:
+                    filename = secure_filename(file.filename)
+                    upload_folder = os.path.join('app/static/uploads/productos')
+                    if not os.path.exists(upload_folder):
+                        os.makedirs(upload_folder)
+
+                    filepath = os.path.join(upload_folder, filename)
+
+                    # Resize image to 1280x720
+                    img = Image.open(file)
+                    img = img.resize((1280, 720), Image.Resampling.LANCZOS)
+                    img.save(filepath)
+
+                    producto.portada = f'uploads/productos/{filename}'
+
+            db.session.commit()
+            flash('Producto actualizado exitosamente!', 'success')
+            return redirect(url_for('admin.products'))
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error al actualizar producto: {e}', 'error')
+
+    categorias = Categoria.query.all()
+    subcategorias = Subcategoria.query.all()
+    return render_template('admin/product_edit.html',
+                         producto=producto,
+                         categorias=categorias,
+                         subcategorias=subcategorias)
+
+
+@admin_bp.route('/products/delete/<int:id>', methods=['POST'])
+@admin_required
+def delete_product(id):
+    """Delete product."""
+    try:
+        producto = Producto.query.get_or_404(id)
+        db.session.delete(producto)
+        db.session.commit()
+        flash('Producto eliminado exitosamente!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al eliminar producto: {e}', 'error')
+
+    return redirect(url_for('admin.products'))
+
+
+@admin_bp.route('/products/toggle/<int:id>', methods=['POST'])
+@admin_required
+def toggle_product(id):
+    """Toggle product status."""
+    try:
+        producto = Producto.query.get_or_404(id)
+        producto.estado = 0 if producto.estado == 1 else 1
+        db.session.commit()
+        return jsonify({'success': True, 'estado': producto.estado})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 
 @admin_bp.route('/orders')
