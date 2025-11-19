@@ -197,6 +197,12 @@ class AIChatbot {
             // Preparar contexto
             const context = this.getContext();
 
+            console.log('📤 Enviando mensaje al chatbot:', {
+                url: this.apiUrl,
+                message: message,
+                context: context
+            });
+
             // Llamar a la API
             const response = await fetch(this.apiUrl, {
                 method: 'POST',
@@ -209,7 +215,22 @@ class AIChatbot {
                 })
             });
 
+            console.log('📥 Respuesta del servidor:', {
+                status: response.status,
+                statusText: response.statusText,
+                headers: Object.fromEntries(response.headers.entries())
+            });
+
+            // Verificar si la respuesta es JSON
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                const text = await response.text();
+                console.error('❌ Respuesta no es JSON:', text.substring(0, 500));
+                throw new Error(`El servidor devolvió ${contentType || 'HTML'} en lugar de JSON. Status: ${response.status}`);
+            }
+
             const data = await response.json();
+            console.log('✅ Datos parseados:', data);
 
             // Ocultar indicador
             this.hideTypingIndicator();

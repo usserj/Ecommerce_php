@@ -46,32 +46,68 @@ def chat():
     }
     """
     try:
-        data = request.get_json()
+        # Log de la petición recibida
+        logger.info(f"📥 Petición al chatbot desde {request.remote_addr}")
+        logger.debug(f"Headers: {dict(request.headers)}")
+        logger.debug(f"Content-Type: {request.content_type}")
 
-        if not data or 'message' not in data:
+        # Intentar obtener JSON con manejo de errores
+        try:
+            data = request.get_json(force=True)
+            logger.debug(f"JSON recibido: {data}")
+        except Exception as json_error:
+            logger.error(f"❌ Error al parsear JSON: {json_error}")
+            logger.error(f"Raw data: {request.data}")
             return jsonify({
                 'success': False,
-                'error': 'Mensaje requerido'
+                'error': f'JSON inválido: {str(json_error)}',
+                'debug': {
+                    'content_type': request.content_type,
+                    'raw_data': str(request.data[:200])  # Primeros 200 caracteres
+                }
             }), 400
 
-        user_message = data['message'].strip()
+        if not data:
+            logger.warning("⚠️ Petición sin datos")
+            return jsonify({
+                'success': False,
+                'error': 'No se recibieron datos'
+            }), 400
+
+        if 'message' not in data:
+            logger.warning(f"⚠️ Petición sin campo 'message': {data}")
+            return jsonify({
+                'success': False,
+                'error': 'Campo "message" requerido',
+                'received': list(data.keys())
+            }), 400
+
+        user_message = str(data['message']).strip()
 
         if not user_message:
+            logger.warning("⚠️ Mensaje vacío")
             return jsonify({
                 'success': False,
                 'error': 'Mensaje vacío'
             }), 400
 
+        logger.info(f"💬 Mensaje del usuario: {user_message[:50]}...")
+
         # Obtener session_id
         session_id = get_or_create_session_id()
+        logger.debug(f"Session ID: {session_id}")
 
         # Obtener usuario_id si está logueado
         usuario_id = current_user.id if current_user.is_authenticated else None
+        if usuario_id:
+            logger.debug(f"Usuario autenticado: {usuario_id}")
 
         # Obtener contexto
         context = data.get('context', {})
+        logger.debug(f"Contexto: {context}")
 
         # Llamar al servicio de IA
+        logger.info("🤖 Llamando al servicio de IA...")
         result = ai_service.chatbot_response(
             session_id=session_id,
             user_message=user_message,
@@ -80,27 +116,32 @@ def chat():
         )
 
         if result['success']:
+            logger.info(f"✅ Respuesta generada exitosamente: {result['response'][:50]}...")
             return jsonify({
                 'success': True,
                 'response': result['response'],
                 'timestamp': datetime.now().isoformat()
             })
         else:
-            logger.error(f"Error en chatbot: {result.get('error')}")
+            logger.error(f"❌ Error en chatbot: {result.get('error')}")
             # Retornar success=True con mensaje de fallback
             return jsonify({
                 'success': True,
                 'response': result.get('response', 'Lo siento, estoy teniendo problemas técnicos.'),
-                'timestamp': datetime.now().isoformat()
+                'timestamp': datetime.now().isoformat(),
+                'debug_error': result.get('error')
             })
 
     except Exception as e:
-        logger.exception(f"Error en endpoint /chat: {e}")
+        logger.exception(f"💥 Error crítico en endpoint /chat: {e}")
+        import traceback
         return jsonify({
-            'success': True,  # success=True para que el frontend lo muestre
-            'response': 'Lo siento, ocurrió un error. Por favor intenta de nuevo.',
-            'timestamp': datetime.now().isoformat()
-        })
+            'success': False,
+            'error': f'Error del servidor: {str(e)}',
+            'response': 'Lo siento, ocurrió un error inesperado. Por favor intenta de nuevo.',
+            'timestamp': datetime.now().isoformat(),
+            'traceback': traceback.format_exc() if logger.level <= 10 else None  # Solo en DEBUG
+        }), 500
 
 
 @ai_bp.route('/recomendaciones/<int:producto_id>', methods=['GET'])
