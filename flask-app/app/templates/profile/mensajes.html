@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}Mis Mensajes{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <!-- Page Header -->
+    <div class="mb-4">
+        <h1><i class="fas fa-envelope me-2"></i>Mis Mensajes</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('main.index') }}">Inicio</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('profile.dashboard') }}">Mi Cuenta</a></li>
+                <li class="breadcrumb-item active">Mensajes</li>
+            </ol>
+        </nav>
+    </div>
+
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">
+                <i class="fas fa-inbox"></i>
+                {% if tab == 'recibidos' %}Bandeja de Entrada{% else %}Mensajes Enviados{% endif %}
+                {% if tab == 'recibidos' and no_leidos > 0 %}
+                <span class="badge bg-warning text-dark ms-2">{{ no_leidos }} nuevos</span>
+                {% endif %}
+            </h4>
+            <a href="{{ url_for('profile.nuevo_mensaje') }}" class="btn btn-light btn-sm">
+                <i class="fas fa-plus"></i> Contactar Admin
+            </a>
+        </div>
+        <div class="card-body">
+            <!-- Tabs -->
+            <ul class="nav nav-tabs mb-4">
+                <li class="nav-item">
+                    <a class="nav-link {% if tab == 'recibidos' %}active{% endif %}"
+                       href="{{ url_for('profile.mensajes') }}">
+                        <i class="fas fa-inbox"></i> Recibidos
+                        {% if no_leidos and no_leidos > 0 %}
+                        <span class="badge bg-warning text-dark ms-1">{{ no_leidos }}</span>
+                        {% endif %}
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if tab == 'enviados' %}active{% endif %}"
+                       href="{{ url_for('profile.mensajes_enviados') }}">
+                        <i class="fas fa-paper-plane"></i> Enviados
+                    </a>
+                </li>
+            </ul>
+
+            {% if mensajes %}
+            <div class="list-group">
+                {% for mensaje in mensajes %}
+                <a href="{{ url_for('profile.ver_mensaje', id=mensaje.id) }}"
+                   class="list-group-item list-group-item-action {% if tab == 'recibidos' and not mensaje.leido %}list-group-item-primary{% endif %}">
+                    <div class="d-flex w-100 justify-content-between align-items-start">
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center mb-1">
+                                {% if tab == 'recibidos' %}
+                                    {% if not mensaje.leido %}
+                                    <span class="badge bg-primary me-2">
+                                        <i class="fas fa-circle"></i> Nuevo
+                                    </span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="badge bg-secondary me-2">
+                                        <i class="fas fa-paper-plane"></i> Enviado
+                                    </span>
+                                {% endif %}
+
+                                <h5 class="mb-0">{{ mensaje.asunto }}</h5>
+
+                                {% if mensaje.respuestas.count() > 0 %}
+                                <span class="badge bg-info ms-2">
+                                    <i class="fas fa-comments"></i> {{ mensaje.respuestas.count() }}
+                                </span>
+                                {% endif %}
+                            </div>
+
+                            <p class="mb-1 text-muted">
+                                <strong>
+                                    {% if tab == 'recibidos' %}
+                                    De: {{ mensaje.get_remitente_nombre() }}
+                                    {% else %}
+                                    Para: Admin
+                                    {% endif %}
+                                </strong>
+                            </p>
+
+                            <p class="mb-0 text-muted small">
+                                {{ mensaje.contenido[:150] }}{% if mensaje.contenido|length > 150 %}...{% endif %}
+                            </p>
+                        </div>
+
+                        <div class="text-end ms-3">
+                            <small class="text-muted">
+                                <i class="fas fa-clock"></i>
+                                {{ mensaje.fecha.strftime('%d/%m/%Y') }}<br>
+                                {{ mensaje.fecha.strftime('%H:%M') }}
+                            </small>
+                        </div>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i>
+                {% if tab == 'recibidos' %}
+                No tienes mensajes recibidos.
+                {% else %}
+                No has enviado mensajes.
+                {% endif %}
+            </div>
+            <div class="text-center mt-4">
+                <a href="{{ url_for('profile.nuevo_mensaje') }}" class="btn btn-primary">
+                    <i class="fas fa-envelope"></i> Enviar Mensaje al Administrador
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

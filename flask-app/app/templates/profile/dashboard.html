@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Mi Perfil - Tienda Virtual{% endblock %}
+{% block content %}
+<h2 class="mb-4"><i class="fas fa-user"></i> Mi Perfil</h2>
+<div class="row">
+    <div class="col-md-3">
+        <div class="card"><div class="card-body text-center">
+            {% if current_user.foto %}
+            <img src="{{ url_for('static', filename=current_user.foto) }}" class="rounded-circle mb-3" width="150">
+            {% else %}
+            <i class="fas fa-user-circle fa-5x text-muted mb-3"></i>
+            {% endif %}
+            <h5>{{ current_user.nombre }}</h5>
+            <p class="text-muted">{{ current_user.email }}</p>
+            <a href="{{ url_for('profile.edit') }}" class="btn btn-primary btn-sm">Editar Perfil</a>
+        </div></div>
+        <div class="list-group mt-3">
+            <a href="{{ url_for('profile.dashboard') }}" class="list-group-item list-group-item-action active">Dashboard</a>
+            <a href="{{ url_for('profile.orders') }}" class="list-group-item list-group-item-action">Mis Compras</a>
+            <a href="{{ url_for('profile.wishlist') }}" class="list-group-item list-group-item-action">Lista de Deseos</a>
+            <a href="{{ url_for('profile.mensajes') }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                <span>Mensajes</span>
+                {% if user_mensajes_no_leidos > 0 %}
+                <span class="badge bg-danger rounded-pill">{{ user_mensajes_no_leidos }}</span>
+                {% endif %}
+            </a>
+        </div>
+    </div>
+    <div class="col-md-9">
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <div class="card bg-primary text-white">
+                    <div class="card-body">
+                        <h5><i class="fas fa-shopping-bag"></i> Compras Totales</h5>
+                        <h2>{{ orders|length }}</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card bg-danger text-white">
+                    <div class="card-body">
+                        <h5><i class="fas fa-heart"></i> Lista de Deseos</h5>
+                        <h2>{{ wishlist_count }}</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <a href="{{ url_for('profile.mensajes') }}" class="text-decoration-none">
+                    <div class="card bg-success text-white">
+                        <div class="card-body">
+                            <h5><i class="fas fa-envelope"></i> Mensajes</h5>
+                            <h2>
+                                {{ user_mensajes_no_leidos }}
+                                {% if user_mensajes_no_leidos > 0 %}
+                                <small class="fs-6">nuevos</small>
+                                {% endif %}
+                            </h2>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-header"><h5 class="mb-0">Compras Recientes</h5></div>
+            <div class="card-body">
+                {% if orders %}
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead><tr><th>Producto</th><th>Fecha</th><th>Total</th><th>Método</th></tr></thead>
+                        <tbody>
+                        {% for order in orders %}
+                        <tr>
+                            <td>{{ order.producto.titulo }}</td>
+                            <td>{{ order.fecha.strftime('%d/%m/%Y') }}</td>
+                            <td>${{ "%.2f"|format(order.pago|float) }}</td>
+                            <td><span class="badge bg-info">{{ order.metodo }}</span></td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted">No has realizado compras aún</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

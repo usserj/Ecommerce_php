@@ -1,0 +1,502 @@
+{% extends "base.html" %}
+
+{% block title %}{{ producto.titulo }} - Tienda Virtual{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-6">
+        <!-- Product Gallery -->
+        {% include 'components/product_gallery.html' %}
+    </div>
+
+    <div class="col-md-6">
+        <h2>{{ producto.titulo }}</h2>
+
+        <div class="mb-3">
+            {% set rating = producto.get_average_rating() %}
+            {% for i in range(5) %}
+                {% if i < rating %}
+                <i class="fas fa-star text-warning"></i>
+                {% else %}
+                <i class="far fa-star text-warning"></i>
+                {% endif %}
+            {% endfor %}
+            <span class="text-muted">({{ producto.get_comments_count() }} reseñas)</span>
+        </div>
+
+        <div class="mb-4">
+            {% if producto.is_on_offer() %}
+            <h3 class="text-danger">
+                ${{ "%.2f"|format(producto.get_price()) }}
+                <span class="badge bg-danger">-{{ producto.get_discount_percentage() }}%</span>
+            </h3>
+            <p class="text-muted text-decoration-line-through">${{ "%.2f"|format(producto.precio) }}</p>
+            {% else %}
+            <h3 class="text-primary">${{ "%.2f"|format(producto.precio) }}</h3>
+            {% endif %}
+        </div>
+
+        <p class="lead">{{ producto.titular }}</p>
+
+        <div class="mb-4">
+            <h5>Descripción</h5>
+            <div>{{ producto.descripcion|safe }}</div>
+        </div>
+
+        <!-- Stock Information -->
+        <div class="mb-3">
+            {% if producto.is_virtual() %}
+                <span class="badge bg-info"><i class="fas fa-download"></i> Producto Digital - Stock Ilimitado</span>
+            {% elif producto.agotado() %}
+                <span class="badge bg-danger fs-6"><i class="fas fa-times-circle"></i> Agotado</span>
+            {% elif producto.stock_bajo() %}
+                <span class="badge bg-warning text-dark fs-6"><i class="fas fa-exclamation-triangle"></i> Solo quedan {{ producto.stock }} unidades</span>
+            {% else %}
+                <span class="badge bg-success fs-6"><i class="fas fa-check-circle"></i> En Stock ({{ producto.stock }} disponibles)</span>
+            {% endif %}
+        </div>
+
+        {% if not producto.agotado() or producto.is_virtual() %}
+        <div class="mb-4">
+            <label class="form-label fw-bold">Cantidad:</label>
+            <div class="input-group" style="max-width: 200px;">
+                <button class="btn btn-outline-secondary" type="button" id="decreaseQty">-</button>
+                <input type="number" class="form-control text-center" value="1" min="1"
+                       {% if not producto.is_virtual() %}max="{{ producto.stock }}"{% endif %}
+                       id="quantity">
+                <button class="btn btn-outline-secondary" type="button" id="increaseQty">+</button>
+            </div>
+        </div>
+
+        <div class="d-grid gap-2">
+            <button class="btn btn-primary btn-lg add-to-cart" data-product-id="{{ producto.id }}">
+                <i class="fas fa-cart-plus"></i> Agregar al Carrito
+            </button>
+
+            {% if current_user.is_authenticated %}
+            <button class="btn btn-outline-danger add-to-wishlist" data-product-id="{{ producto.id }}">
+                <i class="far fa-heart"></i> Agregar a Lista de Deseos
+            </button>
+            {% endif %}
+        </div>
+        {% else %}
+        <div class="alert alert-danger" role="alert">
+            <i class="fas fa-exclamation-triangle"></i> <strong>Producto Agotado</strong><br>
+            Este producto no está disponible en este momento. Por favor, revisa más tarde.
+        </div>
+        {% endif %}
+
+        <div class="mt-4">
+            <ul class="list-unstyled">
+                <li><i class="fas fa-check text-success"></i> Envío gratis en compras mayores a $50</li>
+                <li><i class="fas fa-check text-success"></i> Devoluciones gratis hasta 30 días</li>
+                <li><i class="fas fa-check text-success"></i> Garantía de satisfacción</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Related Products -->
+{% if relacionados %}
+<section class="mt-5">
+    <h3 class="mb-4">Productos Relacionados</h3>
+    <div class="row">
+        {% for producto in relacionados %}
+        <div class="col-md-3 col-sm-6 mb-4">
+            {% include 'components/product_card.html' %}
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<!-- Related Products Section -->
+{% if relacionados %}
+<section class="mt-5">
+    <h3 class="mb-4"><i class="fas fa-boxes"></i> Productos Relacionados</h3>
+    <div class="row">
+        {% for prod in relacionados %}
+        <div class="col-md-3 col-sm-6 mb-4">
+            <div class="card h-100 shadow-sm">
+                <a href="{{ url_for('shop.product_detail', ruta=prod.ruta) }}">
+                    <img src="{{ url_for('static', filename=prod.portada or 'img/default-product.jpg') }}"
+                         class="card-img-top" alt="{{ prod.titulo }}"
+                         style="height: 200px; object-fit: cover;">
+                </a>
+                <div class="card-body d-flex flex-column">
+                    <h6 class="card-title">
+                        <a href="{{ url_for('shop.product_detail', ruta=prod.ruta) }}"
+                           class="text-decoration-none text-dark">
+                            {{ prod.titulo[:50] }}{% if prod.titulo|length > 50 %}...{% endif %}
+                        </a>
+                    </h6>
+                    <div class="mt-auto">
+                        {% set precio_final = prod.get_final_price() %}
+                        {% if prod.oferta %}
+                            <p class="mb-1">
+                                <span class="text-danger fw-bold">${{ "%.2f"|format(precio_final) }}</span>
+                                <small class="text-muted text-decoration-line-through ms-2">
+                                    ${{ "%.2f"|format(prod.precio) }}
+                                </small>
+                            </p>
+                        {% else %}
+                            <p class="mb-1 fw-bold text-primary">${{ "%.2f"|format(precio_final) }}</p>
+                        {% endif %}
+
+                        {% if prod.agotado() %}
+                            <span class="badge bg-danger">Agotado</span>
+                        {% elif prod.stock_bajo() %}
+                            <span class="badge bg-warning text-dark">Últimas unidades</span>
+                        {% else %}
+                            <span class="badge bg-success">Disponible</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<!-- AI Recommendations Section -->
+<section class="mt-5" id="ai-recommendations-section">
+    <h4 class="mb-4">
+        <i class="fas fa-lightbulb text-warning"></i> Te podría interesar
+        <small class="text-muted fs-6">(Recomendaciones con IA)</small>
+    </h4>
+
+    <!-- Loading State -->
+    <div id="loading-recomendaciones" class="text-center my-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Cargando...</span>
+        </div>
+        <p class="mt-3 text-muted">Buscando productos perfectos para ti...</p>
+    </div>
+
+    <!-- Recommendations Container -->
+    <div id="productos-recomendados" class="row" style="display: none;"></div>
+
+    <!-- Error State -->
+    <div id="error-recomendaciones" class="alert alert-warning" style="display: none;">
+        <i class="fas fa-exclamation-triangle"></i> No pudimos cargar recomendaciones en este momento.
+    </div>
+</section>
+
+<!-- Comments Section -->
+<section class="mt-5">
+    <h3 class="mb-4">Reseñas de Clientes</h3>
+
+    <!-- Add Comment Form -->
+    {% if current_user.is_authenticated %}
+    <div class="card mb-4 border-primary">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="fas fa-comment-dots"></i> Dejar tu Reseña</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('shop.add_comment', ruta=producto.ruta) }}">
+                <div class="mb-3">
+                    <label for="calificacion" class="form-label">Calificación</label>
+                    <div class="rating-input">
+                        <input type="radio" name="calificacion" value="5" id="star5" required>
+                        <label for="star5" title="5 estrellas">★</label>
+                        <input type="radio" name="calificacion" value="4" id="star4">
+                        <label for="star4" title="4 estrellas">★</label>
+                        <input type="radio" name="calificacion" value="3" id="star3">
+                        <label for="star3" title="3 estrellas">★</label>
+                        <input type="radio" name="calificacion" value="2" id="star2">
+                        <label for="star2" title="2 estrellas">★</label>
+                        <input type="radio" name="calificacion" value="1" id="star1">
+                        <label for="star1" title="1 estrella">★</label>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="comentario" class="form-label">Tu Comentario</label>
+                    <textarea class="form-control" id="comentario" name="comentario" rows="4"
+                              required placeholder="Comparte tu experiencia con este producto..."></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-paper-plane"></i> Publicar Reseña
+                </button>
+            </form>
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i>
+        <a href="{{ url_for('auth.login') }}">Inicia sesión</a> para dejar una reseña de este producto.
+    </div>
+    {% endif %}
+
+    <!-- Comments List -->
+    <h5 class="mb-3">{{ comentarios|length }} Reseñas</h5>
+    {% if comentarios %}
+        {% for comentario in comentarios %}
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="mb-1">{{ comentario.usuario.nombre }}</h6>
+                        <div class="mb-2">
+                            {% for i in range(comentario.get_rating_stars()) %}
+                            <i class="fas fa-star text-warning"></i>
+                            {% endfor %}
+                            {% for i in range(5 - comentario.get_rating_stars()) %}
+                            <i class="far fa-star text-warning"></i>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% if current_user.is_authenticated and current_user.id == comentario.id_usuario %}
+                    <div class="btn-group btn-group-sm" role="group">
+                        <button type="button" class="btn btn-outline-primary edit-comment"
+                                data-id="{{ comentario.id }}"
+                                data-comentario="{{ comentario.comentario }}"
+                                data-calificacion="{{ comentario.calificacion }}">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline-danger delete-comment"
+                                data-id="{{ comentario.id }}">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+                <p class="mb-1">{{ comentario.comentario }}</p>
+                <small class="text-muted">{{ comentario.fecha.strftime('%d/%m/%Y %H:%M') }}</small>
+
+                <!-- Admin Response -->
+                {% if comentario.respuesta_admin %}
+                <div class="mt-3 p-3 bg-light rounded border-start border-primary border-3">
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="fas fa-user-shield text-primary me-2"></i>
+                        <strong class="text-primary">Respuesta del Administrador</strong>
+                    </div>
+                    <p class="mb-0">{{ comentario.respuesta_admin }}</p>
+                    {% if comentario.fecha_moderacion %}
+                    <small class="text-muted">
+                        <i class="fas fa-clock"></i> {{ comentario.fecha_moderacion.strftime('%d/%m/%Y %H:%M') }}
+                    </small>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+    <p class="text-muted">No hay reseñas aún. ¡Sé el primero en dejar una!</p>
+    {% endif %}
+</section>
+
+<!-- Edit Comment Modal -->
+<div class="modal fade" id="editCommentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Editar Comentario</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="editCommentForm" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="editCalificacion" class="form-label">Calificación</label>
+                        <select class="form-control" id="editCalificacion" name="calificacion">
+                            <option value="5">★★★★★ (5 estrellas)</option>
+                            <option value="4">★★★★☆ (4 estrellas)</option>
+                            <option value="3">★★★☆☆ (3 estrellas)</option>
+                            <option value="2">★★☆☆☆ (2 estrellas)</option>
+                            <option value="1">★☆☆☆☆ (1 estrella)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editComentario" class="form-label">Comentario</label>
+                        <textarea class="form-control" id="editComentario" name="comentario" rows="4" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Comment Modal -->
+<div class="modal fade" id="deleteCommentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">Confirmar Eliminación</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Estás seguro de que deseas eliminar tu comentario?</p>
+                <p class="text-danger"><i class="fas fa-exclamation-triangle"></i> Esta acción no se puede deshacer.</p>
+            </div>
+            <div class="modal-footer">
+                <form id="deleteCommentForm" method="POST">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-danger">Eliminar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<style>
+/* Star Rating Input */
+.rating-input {
+    display: flex;
+    flex-direction: row-reverse;
+    justify-content: flex-end;
+    gap: 5px;
+}
+.rating-input input[type="radio"] {
+    display: none;
+}
+.rating-input label {
+    font-size: 2rem;
+    color: #ddd;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+.rating-input label:hover,
+.rating-input label:hover ~ label,
+.rating-input input[type="radio"]:checked ~ label {
+    color: #ffc107;
+}
+</style>
+<script>
+// Quantity controls
+const qtyInput = document.getElementById('quantity');
+if (qtyInput) {
+    document.getElementById('increaseQty').addEventListener('click', function() {
+        qtyInput.value = parseInt(qtyInput.value) + 1;
+    });
+
+    document.getElementById('decreaseQty').addEventListener('click', function() {
+        if (parseInt(qtyInput.value) > 1) {
+            qtyInput.value = parseInt(qtyInput.value) - 1;
+        }
+    });
+}
+
+// Edit comment
+document.querySelectorAll('.edit-comment').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const commentId = this.getAttribute('data-id');
+        const comentario = this.getAttribute('data-comentario');
+        const calificacion = this.getAttribute('data-calificacion');
+
+        document.getElementById('editComentario').value = comentario;
+        document.getElementById('editCalificacion').value = calificacion;
+        document.getElementById('editCommentForm').action = `/tienda/comentario/editar/${commentId}`;
+
+        new bootstrap.Modal(document.getElementById('editCommentModal')).show();
+    });
+});
+
+// Delete comment
+document.querySelectorAll('.delete-comment').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const commentId = this.getAttribute('data-id');
+        document.getElementById('deleteCommentForm').action = `/tienda/comentario/eliminar/${commentId}`;
+        new bootstrap.Modal(document.getElementById('deleteCommentModal')).show();
+    });
+});
+
+// NOTE: Wishlist functionality is now handled by /static/js/wishlist.js (global script)
+// This provides event delegation and works on all pages
+
+// ============================================
+// AI RECOMMENDATIONS
+// ============================================
+(function() {
+    const productoId = {{ producto.id }};
+    const container = document.getElementById('productos-recomendados');
+    const loading = document.getElementById('loading-recomendaciones');
+    const errorDiv = document.getElementById('error-recomendaciones');
+
+    // Llamar a API de recomendaciones
+    fetch(`/api/ai/recomendaciones/${productoId}`)
+        .then(response => response.json())
+        .then(data => {
+            loading.style.display = 'none';
+
+            if (data.success && data.recomendaciones && data.recomendaciones.length > 0) {
+                let html = '';
+
+                data.recomendaciones.forEach(producto => {
+                    html += `
+                        <div class="col-md-3 mb-4">
+                            <div class="card h-100 shadow-sm hover-shadow">
+                                <img src="${producto.imagen}" class="card-img-top" alt="${producto.nombre}" style="height: 200px; object-fit: cover;">
+                                <div class="card-body d-flex flex-column">
+                                    <h6 class="card-title">${producto.nombre}</h6>
+                                    <p class="text-primary fw-bold fs-5 mb-2">$${producto.precio.toFixed(2)}</p>
+                                    <p class="text-muted small flex-grow-1">${producto.razon}</p>
+                                    <a href="/producto/${producto.ruta}" class="btn btn-sm btn-primary w-100 mt-auto">
+                                        <i class="fas fa-eye"></i> Ver Producto
+                                    </a>
+                                </div>
+                                <div class="card-footer bg-light">
+                                    <small class="badge ${producto.tipo === 'complementario' ? 'bg-info' : producto.tipo === 'similar' ? 'bg-success' : 'bg-danger'}">
+                                        ${producto.tipo === 'complementario' ? '📦 Complementario' :
+                                          producto.tipo === 'similar' ? '⭐ Similar' : '🔥 Popular'}
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                container.innerHTML = html;
+                container.style.display = 'flex';
+            } else {
+                // No hay recomendaciones, ocultar toda la sección
+                document.getElementById('ai-recommendations-section').style.display = 'none';
+            }
+        })
+        .catch(error => {
+            console.error('Error al cargar recomendaciones:', error);
+            loading.style.display = 'none';
+            errorDiv.style.display = 'block';
+        });
+})();
+
+// Add to cart
+document.querySelectorAll('.add-to-cart').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const productId = this.getAttribute('data-product-id');
+        const quantity = document.getElementById('quantity') ? parseInt(document.getElementById('quantity').value) : 1;
+
+        fetch('/carrito/agregar', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                producto_id: productId,
+                cantidad: quantity
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Producto agregado al carrito');
+                location.reload();
+            } else {
+                alert(data.message || 'Error al agregar al carrito');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error de conexión');
+        });
+    });
+});
+</script>
+{% endblock %}

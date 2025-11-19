@@ -1,0 +1,184 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Cabeceras SEO{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="page-header mb-4">
+        <h1><i class="fas fa-search me-2"></i>Gestión de Cabeceras SEO</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+                <li class="breadcrumb-item active">Cabeceras SEO</li>
+            </ol>
+        </nav>
+    </div>
+
+    <!-- Statistics Card -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card admin-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Total Cabeceras SEO</h6>
+                            <h3 class="mb-0">{{ total_cabeceras }}</h3>
+                        </div>
+                        <div class="text-primary">
+                            <i class="fas fa-search fa-2x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cabeceras List -->
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h4 class="mb-0"><i class="fas fa-list"></i> Cabeceras SEO Registradas</h4>
+            <a href="{{ url_for('admin.create_seo_header') }}" class="btn btn-light btn-sm">
+                <i class="fas fa-plus"></i> Nueva Cabecera SEO
+            </a>
+        </div>
+        <div class="card-body">
+            {% if cabeceras %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> Las cabeceras SEO permiten personalizar los meta tags (título, descripción, keywords) y Open Graph para cada ruta de tu sitio.
+            </div>
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Ruta</th>
+                            <th>Título</th>
+                            <th>Descripción</th>
+                            <th>Palabras Clave</th>
+                            <th>Portada OG</th>
+                            <th>Fecha</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cabecera in cabeceras %}
+                        <tr>
+                            <td>{{ cabecera.id }}</td>
+                            <td>
+                                <code>{{ cabecera.ruta }}</code>
+                            </td>
+                            <td>
+                                <strong>{{ cabecera.titulo[:40] }}{% if cabecera.titulo|length > 40 %}...{% endif %}</strong>
+                                <br>
+                                <small class="text-muted">{{ cabecera.titulo|length }} caracteres</small>
+                            </td>
+                            <td>
+                                {{ cabecera.descripcion[:60] }}{% if cabecera.descripcion|length > 60 %}...{% endif %}
+                                <br>
+                                <small class="text-muted">{{ cabecera.descripcion|length }} caracteres</small>
+                            </td>
+                            <td>
+                                {% if cabecera.palabrasClaves %}
+                                <small>{{ cabecera.palabrasClaves[:40] }}{% if cabecera.palabrasClaves|length > 40 %}...{% endif %}</small>
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if cabecera.portada %}
+                                <img src="{{ url_for('static', filename=cabecera.portada) }}"
+                                     alt="OG Image"
+                                     style="width: 80px; height: 42px; object-fit: cover; border-radius: 4px;">
+                                <br>
+                                <small class="text-muted">1200x630</small>
+                                {% else %}
+                                <span class="text-muted">Sin imagen</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ cabecera.fecha.strftime('%d/%m/%Y') if cabecera.fecha else 'N/A' }}</td>
+                            <td>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <a href="{{ url_for('admin.edit_seo_header', id=cabecera.id) }}"
+                                       class="btn btn-warning" title="Editar">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <button type="button" class="btn btn-danger delete-header"
+                                            data-id="{{ cabecera.id }}"
+                                            data-ruta="{{ cabecera.ruta }}"
+                                            title="Eliminar">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> No hay cabeceras SEO registradas aún.
+                <a href="{{ url_for('admin.create_seo_header') }}">Crear la primera cabecera SEO</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">Confirmar Eliminación</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Está seguro de que desea eliminar la cabecera SEO para la ruta <code id="headerRoute"></code>?</p>
+                <p class="text-danger"><i class="fas fa-exclamation-triangle"></i> Esta acción no se puede deshacer.</p>
+            </div>
+            <div class="modal-footer">
+                <form id="deleteForm" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-danger">Eliminar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.opacity-50 {
+    opacity: 0.5;
+}
+
+.admin-card {
+    transition: transform 0.2s;
+}
+
+.admin-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Delete header
+document.querySelectorAll('.delete-header').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const headerId = this.getAttribute('data-id');
+        const headerRoute = this.getAttribute('data-ruta');
+
+        document.getElementById('headerRoute').textContent = headerRoute;
+        document.getElementById('deleteForm').action = `/admin/seo-headers/delete/${headerId}`;
+
+        new bootstrap.Modal(document.getElementById('deleteModal')).show();
+    });
+});
+</script>
+{% endblock %}

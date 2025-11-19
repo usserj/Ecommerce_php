@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Editar Perfil{% endblock %}
+{% block content %}
+<h2 class="mb-4">Editar Perfil</h2>
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card">
+            <div class="card-body">
+                <form method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <div class="mb-3">
+                        <label class="form-label">Nombre</label>
+                        <input type="text" class="form-control" name="nombre" value="{{ current_user.nombre }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-control" value="{{ current_user.email }}" disabled>
+                        <small class="text-muted">El email no puede modificarse</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Foto de Perfil</label>
+                        <input type="file" class="form-control" name="foto" accept="image/*">
+                    </div>
+                    <hr>
+                    <h5>Cambiar Contraseña</h5>
+                    <div class="mb-3">
+                        <label class="form-label">Contraseña Actual</label>
+                        <input type="password" class="form-control" name="current_password">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Nueva Contraseña</label>
+                        <input type="password" class="form-control" name="new_password">
+                    </div>
+                    <input type="hidden" name="modoUsuario" value="{{ current_user.modo }}">
+                    <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                    <a href="{{ url_for('profile.dashboard') }}" class="btn btn-secondary">Cancelar</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

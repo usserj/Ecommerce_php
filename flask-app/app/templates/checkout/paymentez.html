@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Pago con Tarjeta - Paymentez{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="fas fa-credit-card"></i> Pago con Tarjeta - Paymentez</h4>
+                </div>
+                <div class="card-body">
+                    <h5 class="mb-3">Orden: {{ order_id }}</h5>
+                    <h3 class="text-success mb-4">Total a Pagar: ${{ "%.2f"|format(total) }}</h3>
+
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Próximamente disponible</strong><br>
+                        La integración con Paymentez/Datafast estará disponible próximamente.
+                        Por favor, contacte al administrador para obtener credenciales de API.
+                    </div>
+
+                    <div class="text-center mt-4">
+                        <a href="{{ url_for('checkout.index') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Volver al Checkout
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

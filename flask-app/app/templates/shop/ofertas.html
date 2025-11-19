@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Ofertas Especiales - Tienda Virtual{% endblock %}
+{% block content %}
+<h2 class="mb-4"><i class="fas fa-fire text-danger"></i> Ofertas Especiales</h2>
+{% if productos.items %}
+<div class="row">
+    {% for producto in productos.items %}
+    <div class="col-md-3 mb-4">
+        {% include 'components/product_card.html' %}
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="alert alert-info">No hay ofertas disponibles en este momento</div>
+{% endif %}
+{% endblock %}

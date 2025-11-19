@@ -1,0 +1,224 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Detalles del Usuario - {{ user.nombre }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="page-header">
+        <h1><i class="fas fa-user me-2"></i>Detalles del Usuario</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('admin.users') }}">Usuarios</a></li>
+                <li class="breadcrumb-item active">{{ user.nombre }}</li>
+            </ol>
+        </nav>
+    </div>
+
+    <div class="row">
+        <!-- User Info Card -->
+        <div class="col-md-4 mb-4">
+            <div class="card admin-card">
+                <div class="card-body text-center">
+                    <div class="avatar-circle bg-primary text-white mx-auto mb-3" style="width: 80px; height: 80px; font-size: 2rem;">
+                        {{ user.nombre[0].upper() if user.nombre else 'U' }}
+                    </div>
+                    <h4>{{ user.nombre }}</h4>
+                    <p class="text-muted mb-3">{{ user.email }}</p>
+
+                    <div class="d-grid gap-2">
+                        {% if user.verificacion == 0 %}
+                            <span class="badge bg-success py-2">
+                                <i class="fas fa-check-circle"></i> Verificado
+                            </span>
+                        {% else %}
+                            <span class="badge bg-warning py-2">
+                                <i class="fas fa-clock"></i> Pendiente Verificación
+                            </span>
+                        {% endif %}
+
+                        {% if user.modo == 'directo' %}
+                            <span class="badge bg-primary py-2">
+                                <i class="fas fa-envelope"></i> Registro Directo
+                            </span>
+                        {% elif user.modo == 'google' %}
+                            <span class="badge bg-danger py-2">
+                                <i class="fab fa-google"></i> Google
+                            </span>
+                        {% elif user.modo == 'facebook' %}
+                            <span class="badge bg-info py-2">
+                                <i class="fab fa-facebook"></i> Facebook
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contact Information -->
+            <div class="card admin-card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-address-card me-2"></i>Información de Contacto</h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <small class="text-muted d-block">Email</small>
+                        <strong>{{ user.email }}</strong>
+                    </div>
+                    {% if user.telefono %}
+                    <div class="mb-3">
+                        <small class="text-muted d-block">Teléfono</small>
+                        <strong>{{ user.telefono }}</strong>
+                    </div>
+                    {% endif %}
+                    {% if user.pais %}
+                    <div class="mb-3">
+                        <small class="text-muted d-block">País</small>
+                        <strong>{{ user.pais }}</strong>
+                    </div>
+                    {% endif %}
+                    {% if user.ciudad %}
+                    <div class="mb-3">
+                        <small class="text-muted d-block">Ciudad</small>
+                        <strong>{{ user.ciudad }}</strong>
+                    </div>
+                    {% endif %}
+                    <div class="mb-0">
+                        <small class="text-muted d-block">Fecha de Registro</small>
+                        <strong>{{ user.fecha.strftime('%d/%m/%Y %H:%M') if user.fecha else 'N/A' }}</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics and Activity -->
+        <div class="col-md-8 mb-4">
+            <!-- Statistics Cards -->
+            <div class="row mb-4">
+                <div class="col-md-3 mb-3">
+                    <div class="card admin-card text-center">
+                        <div class="card-body">
+                            <i class="fas fa-shopping-cart text-primary fa-2x mb-2"></i>
+                            <h3 class="mb-0">{{ total_orders }}</h3>
+                            <small class="text-muted">Compras</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="card admin-card text-center">
+                        <div class="card-body">
+                            <i class="fas fa-dollar-sign text-success fa-2x mb-2"></i>
+                            <h3 class="mb-0">${{ "%.2f"|format(total_spent) }}</h3>
+                            <small class="text-muted">Total Gastado</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="card admin-card text-center">
+                        <div class="card-body">
+                            <i class="fas fa-comments text-info fa-2x mb-2"></i>
+                            <h3 class="mb-0">{{ total_comments }}</h3>
+                            <small class="text-muted">Comentarios</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="card admin-card text-center">
+                        <div class="card-body">
+                            <i class="fas fa-heart text-danger fa-2x mb-2"></i>
+                            <h3 class="mb-0">{{ total_wishlist }}</h3>
+                            <small class="text-muted">Lista de Deseos</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Orders -->
+            <div class="card admin-card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0"><i class="fas fa-shopping-bag me-2"></i>Últimas Compras</h6>
+                    <a href="{{ url_for('admin.user_orders', id=user.id) }}" class="btn btn-sm btn-primary">
+                        Ver Todas <i class="fas fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if recent_orders %}
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Producto</th>
+                                    <th>Total</th>
+                                    <th>Estado</th>
+                                    <th>Fecha</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for order in recent_orders %}
+                                <tr>
+                                    <td><span class="badge bg-secondary">{{ order.id }}</span></td>
+                                    <td>
+                                        <strong>{{ order.producto.titulo[:40] if order.producto else 'N/A' }}</strong>
+                                        {% if order.producto.titulo|length > 40 %}...{% endif %}
+                                    </td>
+                                    <td><strong>${{ "%.2f"|format(order.pago|float) }}</strong></td>
+                                    <td>
+                                        {% if order.estado == 'completado' %}
+                                            <span class="badge bg-success">Completado</span>
+                                        {% elif order.estado == 'pendiente' %}
+                                            <span class="badge bg-warning">Pendiente</span>
+                                        {% elif order.estado == 'procesando' %}
+                                            <span class="badge bg-info">Procesando</span>
+                                        {% elif order.estado == 'enviado' %}
+                                            <span class="badge bg-primary">Enviado</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ order.estado }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td><small>{{ order.fecha.strftime('%d/%m/%Y') if order.fecha else 'N/A' }}</small></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-shopping-bag fa-3x mb-3 d-block opacity-50"></i>
+                        <p class="mb-0">Este usuario no ha realizado compras aún</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="card admin-card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-tools me-2"></i>Acciones</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2 d-md-flex">
+                        <a href="{{ url_for('admin.user_orders', id=user.id) }}" class="btn btn-primary">
+                            <i class="fas fa-shopping-cart"></i> Ver Todas las Compras
+                        </a>
+                        <a href="{{ url_for('admin.users') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Volver a Usuarios
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.avatar-circle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    border-radius: 50%;
+}
+</style>
+{% endblock %}

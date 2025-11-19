@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block title %}Inicio - Tienda Virtual{% endblock %}
+
+{% block content %}
+<!-- Carousel de Slides -->
+{% if slides %}
+<div id="mainCarousel" class="carousel slide mb-5" data-bs-ride="carousel">
+    <div class="carousel-indicators">
+        {% for slide in slides %}
+        <button type="button" data-bs-target="#mainCarousel" data-bs-slide-to="{{ loop.index0 }}"
+                {% if loop.first %}class="active"{% endif %}></button>
+        {% endfor %}
+    </div>
+
+    <div class="carousel-inner">
+        {% for slide in slides %}
+        <div class="carousel-item {% if loop.first %}active{% endif %}">
+            <img src="{{ url_for('static', filename=slide.imgFondo) }}" class="d-block w-100" alt="{{ slide.nombre }}" style="max-height: 500px; object-fit: cover;">
+            <div class="carousel-caption d-none d-md-block bg-dark bg-opacity-50 p-3 rounded">
+                <h2>{{ slide.titulo1 }}</h2>
+                <p>{{ slide.titulo2 }}</p>
+                {% if slide.url %}
+                <a href="{{ slide.url }}" class="btn btn-primary">{{ slide.boton or 'Ver Más' }}</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <button class="carousel-control-prev" type="button" data-bs-target="#mainCarousel" data-bs-slide="prev">
+        <span class="carousel-control-prev-icon"></span>
+    </button>
+    <button class="carousel-control-next" type="button" data-bs-target="#mainCarousel" data-bs-slide="next">
+        <span class="carousel-control-next-icon"></span>
+    </button>
+</div>
+{% endif %}
+
+<!-- Banners Generales -->
+{% include 'components/banner.html' %}
+
+<!-- Productos en Oferta -->
+{% if productos_oferta %}
+<section class="mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-fire text-danger"></i> Ofertas Especiales</h2>
+        <a href="{{ url_for('shop.ofertas') }}" class="btn btn-outline-primary">Ver Todas</a>
+    </div>
+
+    <div class="row">
+        {% for producto in productos_oferta %}
+        <div class="col-md-3 col-sm-6 mb-4">
+            {% include 'components/product_card.html' %}
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<!-- Productos Destacados -->
+{% if productos_destacados %}
+<section class="mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-star text-warning"></i> Productos Destacados</h2>
+        <a href="{{ url_for('shop.index') }}" class="btn btn-outline-primary">Ver Todos</a>
+    </div>
+
+    <div class="row">
+        {% for producto in productos_destacados %}
+        <div class="col-md-3 col-sm-6 mb-4">
+            {% include 'components/product_card.html' %}
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<!-- Features -->
+<section class="my-5">
+    <div class="row text-center">
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <i class="fas fa-shipping-fast fa-3x text-primary mb-3"></i>
+                    <h5>Envío Gratis</h5>
+                    <p class="text-muted">En compras mayores a $50</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <i class="fas fa-shield-alt fa-3x text-success mb-3"></i>
+                    <h5>Pago Seguro</h5>
+                    <p class="text-muted">Protección de datos garantizada</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <i class="fas fa-undo fa-3x text-info mb-3"></i>
+                    <h5>Devoluciones</h5>
+                    <p class="text-muted">30 días para devoluciones</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <i class="fas fa-headset fa-3x text-warning mb-3"></i>
+                    <h5>Soporte 24/7</h5>
+                    <p class="text-muted">Estamos para ayudarte</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

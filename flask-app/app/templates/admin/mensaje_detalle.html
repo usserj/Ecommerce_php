@@ -1,0 +1,177 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}{{ mensaje.asunto }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="page-header mb-4">
+        <h1><i class="fas fa-envelope-open me-2"></i>{{ mensaje.asunto }}</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('admin.mensajes') }}">Mensajes</a></li>
+                <li class="breadcrumb-item active">Detalle</li>
+            </ol>
+        </nav>
+    </div>
+
+    <!-- Actions Bar -->
+    <div class="mb-3">
+        <div class="btn-group" role="group">
+            <a href="{{ url_for('admin.mensajes') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Volver a Mensajes
+            </a>
+            <a href="{{ url_for('admin.responder_mensaje', id=mensaje.id) }}" class="btn btn-outline-success">
+                <i class="fas fa-reply"></i> Responder
+            </a>
+            <button type="button" class="btn btn-outline-danger delete-mensaje"
+                    data-id="{{ mensaje.id }}"
+                    data-asunto="{{ mensaje.asunto }}">
+                <i class="fas fa-trash"></i> Eliminar
+            </button>
+        </div>
+    </div>
+
+    <!-- Conversation Thread -->
+    <div class="row">
+        <div class="col-md-12">
+            {% for msg in conversacion %}
+            <div class="card shadow mb-3 {% if not msg.leido and msg.destinatario_tipo == 'admin' %}border-primary{% endif %}">
+                <div class="card-header {% if loop.first %}bg-primary text-white{% else %}bg-light{% endif %}">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h5 class="mb-1">
+                                <i class="fas fa-user-circle"></i>
+                                {{ msg.get_remitente_nombre() }}
+                                <small class="{% if loop.first %}text-white-50{% else %}text-muted{% endif %}">
+                                    ({{ msg.get_remitente_email() }})
+                                </small>
+                            </h5>
+                            <p class="mb-0 small {% if loop.first %}text-white-50{% else %}text-muted{% endif %}">
+                                <i class="fas fa-arrow-right"></i> Para:
+                                {{ msg.get_destinatario_nombre() }}
+                            </p>
+                        </div>
+                        <div class="text-end">
+                            <span class="badge {% if loop.first %}bg-light text-dark{% else %}bg-secondary{% endif %}">
+                                {{ msg.fecha.strftime('%d/%m/%Y %H:%M') }}
+                            </span>
+                            {% if not msg.leido and msg.destinatario_tipo == 'admin' %}
+                            <span class="badge bg-warning text-dark ms-1">No leído</span>
+                            {% endif %}
+                            {% if msg.leido and msg.fecha_leido %}
+                            <div class="small {% if loop.first %}text-white-50{% else %}text-muted{% endif %} mt-1">
+                                <i class="fas fa-check-double"></i>
+                                Leído: {{ msg.fecha_leido.strftime('%d/%m/%Y %H:%M') }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if loop.first %}
+                    <h6 class="card-subtitle mb-3 text-muted">
+                        <strong>Asunto:</strong> {{ msg.asunto }}
+                    </h6>
+                    {% endif %}
+                    <div class="message-content">
+                        {{ msg.contenido|replace('\n', '<br>')|safe }}
+                    </div>
+                </div>
+                <div class="card-footer bg-light">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">
+                            <i class="fas fa-clock"></i>
+                            Enviado {{ msg.fecha.strftime('%A, %d de %B de %Y a las %H:%M') }}
+                        </small>
+                        {% if not loop.last %}
+                        <span class="badge bg-info">
+                            <i class="fas fa-arrow-down"></i> Conversación continúa
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Quick Reply -->
+    <div class="card shadow border-success">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0"><i class="fas fa-reply"></i> Respuesta Rápida</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('admin.responder_mensaje', id=mensaje.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="mb-3">
+                    <textarea class="form-control" name="contenido" rows="4"
+                              placeholder="Escriba su respuesta aquí..." required></textarea>
+                </div>
+                <div class="d-flex justify-content-end">
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-paper-plane"></i> Enviar Respuesta
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">Confirmar Eliminación</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Está seguro de que desea eliminar el mensaje <strong id="mensajeAsunto"></strong>?</p>
+                <p class="text-danger">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Esta acción eliminará el mensaje completo y todas sus respuestas. No se puede deshacer.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <form id="deleteForm" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-danger">Eliminar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.message-content {
+    font-size: 1rem;
+    line-height: 1.6;
+    padding: 1rem 0;
+}
+
+.card.border-primary {
+    border-width: 2px;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Delete mensaje
+document.querySelectorAll('.delete-mensaje').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const mensajeId = this.getAttribute('data-id');
+        const mensajeAsunto = this.getAttribute('data-asunto');
+
+        document.getElementById('mensajeAsunto').textContent = mensajeAsunto;
+        document.getElementById('deleteForm').action = `/admin/mensajes/${mensajeId}/eliminar`;
+
+        new bootstrap.Modal(document.getElementById('deleteModal')).show();
+    });
+});
+</script>
+{% endblock %}

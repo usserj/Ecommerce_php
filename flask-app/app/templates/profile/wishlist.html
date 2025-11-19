@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Lista de Deseos{% endblock %}
+{% block content %}
+<h2 class="mb-4"><i class="fas fa-heart text-danger"></i> Mi Lista de Deseos</h2>
+{% if products %}
+<div class="row">
+    {% for producto in products %}
+    <div class="col-md-3 mb-4">
+        {% include 'components/product_card.html' %}
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="alert alert-info text-center py-5">
+    <i class="far fa-heart fa-3x mb-3"></i>
+    <h4>Tu lista de deseos está vacía</h4>
+    <a href="{{ url_for('shop.index') }}" class="btn btn-primary">Explorar Productos</a>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,249 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Galería de Imágenes - {{ producto.titulo }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Product Info -->
+    <div class="card shadow mb-4">
+        <div class="card-header bg-info text-white">
+            <h4 class="mb-0">
+                <i class="fas fa-images"></i> Galería de Imágenes: {{ producto.titulo }}
+            </h4>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <strong>ID:</strong> {{ producto.id }}
+                </div>
+                <div class="col-md-3">
+                    <strong>Categoría:</strong> {{ producto.categoria.categoria if producto.categoria else 'N/A' }}
+                </div>
+                <div class="col-md-3">
+                    <strong>Precio:</strong> ${{ "%.2f"|format(producto.precio) }}
+                </div>
+                <div class="col-md-3">
+                    <a href="{{ url_for('admin.edit_product', id=producto.id) }}" class="btn btn-sm btn-warning">
+                        <i class="fas fa-edit"></i> Editar Producto
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload New Images -->
+    <div class="card shadow mb-4">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0"><i class="fas fa-cloud-upload-alt"></i> Subir Nuevas Imágenes</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div class="mb-3">
+                    <label for="images" class="form-label">Seleccionar Imágenes (múltiple)</label>
+                    <input type="file" class="form-control" id="images" name="images"
+                           accept="image/*" multiple required>
+                    <small class="text-muted">
+                        Puedes seleccionar múltiples imágenes. Se redimensionarán automáticamente a 1280x720px.
+                        Formatos: JPG, PNG, WebP
+                    </small>
+                </div>
+
+                <div id="preview-container" class="row mb-3" style="display: none;">
+                    <div class="col-12">
+                        <h6>Vista Previa:</h6>
+                        <div id="preview-images" class="d-flex flex-wrap gap-2"></div>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-success">
+                    <i class="fas fa-upload"></i> Subir Imágenes
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Current Images Gallery -->
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">
+                <i class="fas fa-folder-open"></i> Imágenes Actuales
+                ({{ producto.get_multimedia_list()|length + (1 if producto.portada else 0) }})
+            </h5>
+        </div>
+        <div class="card-body">
+            {% if producto.portada or producto.get_multimedia_list() %}
+            <div class="row g-3">
+                <!-- Cover Image -->
+                {% if producto.portada %}
+                <div class="col-md-3 col-sm-6">
+                    <div class="card h-100">
+                        <div class="position-relative">
+                            <span class="badge bg-primary position-absolute top-0 start-0 m-2">
+                                <i class="fas fa-star"></i> Portada
+                            </span>
+                            <img src="{{ url_for('static', filename=producto.portada) }}"
+                                 class="card-img-top" alt="Portada"
+                                 style="height: 200px; object-fit: cover;">
+                        </div>
+                        <div class="card-body">
+                            <p class="card-text small text-muted mb-0">
+                                <i class="fas fa-file"></i> {{ producto.portada.split('/')[-1] }}
+                            </p>
+                            <small class="text-muted">Imagen principal del producto</small>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Gallery Images -->
+                {% for image in producto.get_multimedia_list() %}
+                <div class="col-md-3 col-sm-6 gallery-image-card" data-image="{{ image }}">
+                    <div class="card h-100">
+                        <div class="position-relative">
+                            <img src="{{ url_for('static', filename=image) }}"
+                                 class="card-img-top" alt="Imagen {{ loop.index }}"
+                                 style="height: 200px; object-fit: cover;">
+                        </div>
+                        <div class="card-body">
+                            <p class="card-text small text-muted mb-2">
+                                <i class="fas fa-file-image"></i> {{ image.split('/')[-1] }}
+                            </p>
+                            <button type="button"
+                                    class="btn btn-sm btn-danger w-100 delete-gallery-image"
+                                    data-image="{{ image }}">
+                                <i class="fas fa-trash"></i> Eliminar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> No hay imágenes en la galería aún.
+                Sube la primera imagen usando el formulario de arriba.
+            </div>
+            {% endif %}
+        </div>
+        <div class="card-footer">
+            <a href="{{ url_for('admin.products') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Volver a Productos
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">Confirmar Eliminación</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Está seguro de que desea eliminar esta imagen de la galería?</p>
+                <div id="imagePreview" class="text-center mb-3"></div>
+                <p class="text-danger"><i class="fas fa-exclamation-triangle"></i> Esta acción no se puede deshacer y el archivo será eliminado del servidor.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirmDelete">Eliminar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Preview selected images before upload
+document.getElementById('images').addEventListener('change', function(e) {
+    const files = e.target.files;
+    const previewContainer = document.getElementById('preview-container');
+    const previewImages = document.getElementById('preview-images');
+
+    if (files.length > 0) {
+        previewImages.innerHTML = '';
+        previewContainer.style.display = 'block';
+
+        Array.from(files).forEach(file => {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = document.createElement('img');
+                img.src = e.target.result;
+                img.className = 'img-thumbnail';
+                img.style.width = '150px';
+                img.style.height = '100px';
+                img.style.objectFit = 'cover';
+                previewImages.appendChild(img);
+            };
+            reader.readAsDataURL(file);
+        });
+    } else {
+        previewContainer.style.display = 'none';
+    }
+});
+
+// Delete gallery image
+let imageToDelete = null;
+
+document.querySelectorAll('.delete-gallery-image').forEach(btn => {
+    btn.addEventListener('click', function() {
+        imageToDelete = this.getAttribute('data-image');
+
+        // Show preview in modal
+        const imagePreview = document.getElementById('imagePreview');
+        imagePreview.innerHTML = `<img src="/static/${imageToDelete}" class="img-fluid" style="max-height: 200px;">`;
+
+        new bootstrap.Modal(document.getElementById('deleteModal')).show();
+    });
+});
+
+document.getElementById('confirmDelete').addEventListener('click', function() {
+    if (!imageToDelete) return;
+
+    const csrf_token = document.querySelector('input[name="csrf_token"]').value;
+
+    fetch(`/admin/products/{{ producto.id }}/gallery/delete/${encodeURIComponent(imageToDelete)}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrf_token
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            // Remove card from DOM
+            const card = document.querySelector(`.gallery-image-card[data-image="${imageToDelete}"]`);
+            if (card) {
+                card.remove();
+            }
+
+            // Close modal
+            bootstrap.Modal.getInstance(document.getElementById('deleteModal')).hide();
+
+            // Show success message
+            const alert = document.createElement('div');
+            alert.className = 'alert alert-success alert-dismissible fade show';
+            alert.innerHTML = `
+                <i class="fas fa-check-circle"></i> ${data.message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.querySelector('.container-fluid').insertBefore(alert, document.querySelector('.container-fluid').firstChild);
+
+            // Reload page after 2 seconds to update counters
+            setTimeout(() => location.reload(), 2000);
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error al eliminar la imagen');
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,319 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Gestión de Usuarios{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="page-header">
+        <h1><i class="fas fa-users me-2"></i>Gestión de Usuarios</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+                <li class="breadcrumb-item active">Usuarios</li>
+            </ol>
+        </nav>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card admin-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Total Usuarios</h6>
+                            <h3 class="mb-0">{{ total_users }}</h3>
+                        </div>
+                        <div class="text-primary">
+                            <i class="fas fa-users fa-2x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card admin-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Verificados</h6>
+                            <h3 class="mb-0">{{ verified_users }}</h3>
+                        </div>
+                        <div class="text-success">
+                            <i class="fas fa-check-circle fa-2x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card admin-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Pendientes</h6>
+                            <h3 class="mb-0">{{ pending_users }}</h3>
+                        </div>
+                        <div class="text-warning">
+                            <i class="fas fa-clock fa-2x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card admin-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Acciones</h6>
+                            <a href="{{ url_for('admin.export_users') }}" class="btn btn-sm btn-primary">
+                                <i class="fas fa-file-excel"></i> Exportar
+                            </a>
+                        </div>
+                        <div class="text-info">
+                            <i class="fas fa-download fa-2x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card admin-card">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-list me-2"></i>Lista de Usuarios</h5>
+        </div>
+        <div class="card-body">
+            <!-- Verification Filter -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                    <select id="verificacionFilter" class="form-control">
+                        <option value="">Todos los estados</option>
+                        <option value="0">Verificados</option>
+                        <option value="1">Pendientes</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Users Table -->
+            <div class="table-responsive">
+                <table id="usersTable" class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>ID</th>
+                            <th>Usuario</th>
+                            <th>Contacto</th>
+                            <th>Modo</th>
+                            <th>Registro</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- DataTables will populate this -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Confirmar Eliminación
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Está seguro de que desea eliminar al usuario <strong id="userName"></strong>?</p>
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Advertencia:</strong> Esta acción eliminará:
+                    <ul class="mb-0 mt-2">
+                        <li>Todos los comentarios del usuario</li>
+                        <li>Su lista de deseos</li>
+                        <li>Datos personales</li>
+                    </ul>
+                    <p class="mb-0 mt-2"><strong>Nota:</strong> Las compras se mantendrán para el historial.</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <form id="deleteUserForm" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash"></i> Eliminar Usuario
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.avatar-circle {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+.opacity-50 {
+    opacity: 0.5;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<!-- DataTables CSS/JS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+
+<script>
+// Get CSRF token
+function getCsrfToken() {
+    return '{{ csrf_token() }}';
+}
+
+// Initialize DataTable
+$(document).ready(function() {
+    const table = $('#usersTable').DataTable({
+        processing: true,
+        serverSide: true,
+        ajax: {
+            url: '{{ url_for("admin.users_ajax") }}',
+            type: 'GET',
+            data: function(d) {
+                d.verificacion_filter = $('#verificacionFilter').val();
+            }
+        },
+        columns: [
+            { data: 'id', width: '5%' },
+            { data: 'usuario', orderable: true, width: '20%' },
+            { data: 'contacto', orderable: false, width: '20%' },
+            { data: 'modo', orderable: true, width: '12%' },
+            { data: 'registro', orderable: true, width: '12%' },
+            {
+                data: null,
+                orderable: false,
+                width: '15%',
+                render: function(data) {
+                    const checked = data.verificacion == 0 ? 'checked' : '';
+                    const label = data.verificacion == 0 ? 'Verificado' : 'Pendiente';
+                    return `<div class="form-check form-switch">
+                        <input class="form-check-input toggle-user" type="checkbox"
+                               data-id="${data.id}" ${checked}
+                               title="${label}">
+                        <label class="form-check-label small">${label}</label>
+                    </div>`;
+                }
+            },
+            {
+                data: null,
+                orderable: false,
+                width: '18%',
+                render: function(data) {
+                    return `
+                        <div class="btn-group btn-group-sm" role="group">
+                            <a href="/admin/users/${data.id}/detail"
+                               class="btn btn-outline-primary"
+                               title="Ver detalles">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            <a href="/admin/users/edit/${data.id}"
+                               class="btn btn-outline-warning"
+                               title="Editar usuario">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <a href="/admin/users/${data.id}/orders"
+                               class="btn btn-outline-info"
+                               title="Ver compras">
+                                <i class="fas fa-shopping-cart"></i>
+                            </a>
+                            <button type="button"
+                                    class="btn btn-outline-danger delete-user"
+                                    data-id="${data.id}"
+                                    data-nombre="${data.usuario.replace(/<[^>]*>/g, '').replace(/^\s+|\s+$/g, '')}"
+                                    title="Eliminar usuario">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    `;
+                }
+            }
+        ],
+        order: [[0, 'desc']],
+        language: {
+            url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json'
+        },
+        pageLength: 25,
+        lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]]
+    });
+
+    // Verification filter change
+    $('#verificacionFilter').on('change', function() {
+        table.ajax.reload();
+    });
+
+    // Toggle user verification status
+    $('#usersTable').on('change', '.toggle-user', function() {
+        const userId = $(this).data('id');
+        const isChecked = this.checked;
+        const label = $(this).next('label');
+
+        fetch(`/admin/users/toggle/${userId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            }
+        })
+        .then(r => r.json())
+        .then(d => {
+            if(d.success) {
+                // verificacion: 0=verified, 1=pending
+                const status = d.verificacion == 0 ? 'Verificado' : 'Pendiente';
+                label.text(status);
+                console.log(`Usuario ${userId} ahora está: ${status}`);
+            } else {
+                this.checked = !isChecked;
+                alert('Error al cambiar estado');
+            }
+        })
+        .catch(() => {
+            this.checked = !isChecked;
+            alert('Error de conexión');
+        });
+    });
+
+    // Delete user confirmation
+    $('#usersTable').on('click', '.delete-user', function() {
+        const userId = $(this).data('id');
+        const userName = $(this).data('nombre');
+
+        document.getElementById('userName').textContent = userName;
+        document.getElementById('deleteUserForm').action = `/admin/users/delete/${userId}`;
+
+        new bootstrap.Modal(document.getElementById('deleteUserModal')).show();
+    });
+
+    // Reload table after successful delete
+    $('#deleteUserForm').on('submit', function() {
+        setTimeout(() => table.ajax.reload(), 500);
+    });
+});
+</script>
+{% endblock %}

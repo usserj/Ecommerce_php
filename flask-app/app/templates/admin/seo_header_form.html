@@ -1,0 +1,262 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}{% if cabecera %}Editar{% else %}Crear{% endif %} Cabecera SEO{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="page-header mb-4">
+        <h1><i class="fas fa-{% if cabecera %}edit{% else %}plus{% endif %} me-2"></i>{% if cabecera %}Editar{% else %}Nueva{% endif %} Cabecera SEO</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('admin.seo_headers') }}">Cabeceras SEO</a></li>
+                <li class="breadcrumb-item active">{% if cabecera %}Editar{% else %}Nueva{% endif %}</li>
+            </ol>
+        </nav>
+    </div>
+
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">
+                <i class="fas fa-{% if cabecera %}edit{% else %}plus{% endif %}"></i>
+                {% if cabecera %}Editar Cabecera SEO{% else %}Nueva Cabecera SEO{% endif %}
+            </h4>
+        </div>
+        <div class="card-body">
+            <form method="POST"
+                  action="{% if cabecera %}{{ url_for('admin.edit_seo_header', id=cabecera.id) }}{% else %}{{ url_for('admin.create_seo_header') }}{% endif %}"
+                  enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <!-- Info Alert -->
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> <strong>Guía SEO:</strong>
+                    <ul class="mb-0 mt-2">
+                        <li><strong>Título:</strong> 50-60 caracteres (se muestra en pestañas y resultados de búsqueda)</li>
+                        <li><strong>Descripción:</strong> 150-160 caracteres (se muestra en resultados de Google)</li>
+                        <li><strong>Palabras clave:</strong> Separadas por comas (3-5 keywords relevantes)</li>
+                        <li><strong>Portada Open Graph:</strong> 1200x630px (para compartir en redes sociales)</li>
+                    </ul>
+                </div>
+
+                <!-- Route Section -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h5 class="border-bottom pb-2 mb-3">
+                            <i class="fas fa-link text-primary"></i> Ruta
+                        </h5>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="mb-3">
+                            <label for="ruta" class="form-label">Ruta / URL *</label>
+                            <input type="text" class="form-control" id="ruta" name="ruta"
+                                   value="{{ cabecera.ruta if cabecera else '' }}"
+                                   required placeholder="Ej: /productos, /categoria/electronicos, /blog/articulo-1">
+                            <small class="text-muted">
+                                Ingresa la ruta completa de la página (comenzando con /). Ejemplos: /inicio, /productos/laptop-hp, /blog/como-comprar
+                            </small>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="my-4">
+
+                <!-- Meta Tags Section -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h5 class="border-bottom pb-2 mb-3">
+                            <i class="fas fa-tags text-success"></i> Meta Tags
+                        </h5>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="mb-3">
+                            <label for="titulo" class="form-label">Título SEO *</label>
+                            <input type="text" class="form-control" id="titulo" name="titulo"
+                                   value="{{ cabecera.titulo if cabecera else '' }}"
+                                   required maxlength="60" placeholder="Ej: Compra Laptops HP - Las Mejores Ofertas 2025">
+                            <div class="d-flex justify-content-between">
+                                <small class="text-muted">Este título aparecerá en pestañas del navegador y resultados de búsqueda.</small>
+                                <small id="tituloCount" class="text-muted">0/60</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="mb-3">
+                            <label for="descripcion" class="form-label">Descripción Meta</label>
+                            <textarea class="form-control" id="descripcion" name="descripcion"
+                                      rows="3" maxlength="160"
+                                      placeholder="Ej: Descubre las mejores laptops HP con descuentos de hasta 40%. Envío gratis. Garantía extendida. Compra ahora y recibe en 24-48h.">{{ cabecera.descripcion if cabecera else '' }}</textarea>
+                            <div class="d-flex justify-content-between">
+                                <small class="text-muted">Descripción que aparece en resultados de Google. Debe ser atractiva y concisa.</small>
+                                <small id="descripcionCount" class="text-muted">0/160</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="mb-3">
+                            <label for="palabras_claves" class="form-label">Palabras Clave (Keywords)</label>
+                            <input type="text" class="form-control" id="palabras_claves" name="palabras_claves"
+                                   value="{{ cabecera.palabrasClaves if cabecera else '' }}"
+                                   placeholder="Ej: laptops hp, computadoras portátiles, notebooks, ofertas tecnología">
+                            <small class="text-muted">Separa las palabras clave con comas. Usa 3-5 keywords relevantes.</small>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="my-4">
+
+                <!-- Open Graph Section -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h5 class="border-bottom pb-2 mb-3">
+                            <i class="fab fa-facebook text-info"></i> Open Graph (Redes Sociales)
+                        </h5>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="mb-3">
+                            <label for="portada" class="form-label">
+                                Imagen de Portada (1200x630px)
+                            </label>
+                            <input type="file" class="form-control" id="portada" name="portada" accept="image/*">
+                            <small class="text-muted">
+                                Imagen que se mostrará cuando se comparta la página en Facebook, Twitter, WhatsApp, etc.
+                                Tamaño recomendado: 1200x630px. Se redimensionará automáticamente.
+                            </small>
+
+                            {% if cabecera and cabecera.portada %}
+                            <div class="mt-3">
+                                <p class="text-muted mb-2"><strong>Imagen actual:</strong></p>
+                                <img src="{{ url_for('static', filename=cabecera.portada) }}"
+                                     alt="{{ cabecera.titulo }}"
+                                     style="max-width: 400px; border-radius: 8px; border: 2px solid #ddd;">
+                                <p class="text-muted small mt-2">Archivo: <code>{{ cabecera.portada }}</code></p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Preview Section -->
+                <hr class="my-4">
+
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h5 class="border-bottom pb-2 mb-3">
+                            <i class="fas fa-eye text-warning"></i> Vista Previa (Google Search Result)
+                        </h5>
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <div style="max-width: 600px;">
+                                    <div class="text-primary mb-1" style="font-size: 20px; font-weight: 400;">
+                                        <span id="previewTitulo">{{ cabecera.titulo if cabecera else 'Tu Título SEO Aquí' }}</span>
+                                    </div>
+                                    <div class="text-success mb-1" style="font-size: 14px;">
+                                        tusitio.com<span id="previewRuta">{{ cabecera.ruta if cabecera else '/tu-ruta' }}</span>
+                                    </div>
+                                    <div class="text-muted" style="font-size: 13px;">
+                                        <span id="previewDescripcion">{{ cabecera.descripcion if cabecera else 'Tu descripción meta aparecerá aquí. Escribe algo atractivo que invite a hacer clic.' }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Buttons -->
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                    <a href="{{ url_for('admin.seo_headers') }}" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> Cancelar
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> {% if cabecera %}Actualizar{% else %}Crear{% endif %} Cabecera SEO
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Character counters and live preview
+document.addEventListener('DOMContentLoaded', function() {
+    const tituloInput = document.getElementById('titulo');
+    const descripcionInput = document.getElementById('descripcion');
+    const rutaInput = document.getElementById('ruta');
+
+    const tituloCount = document.getElementById('tituloCount');
+    const descripcionCount = document.getElementById('descripcionCount');
+
+    const previewTitulo = document.getElementById('previewTitulo');
+    const previewDescripcion = document.getElementById('previewDescripcion');
+    const previewRuta = document.getElementById('previewRuta');
+
+    // Update title
+    tituloInput.addEventListener('input', function() {
+        const count = this.value.length;
+        tituloCount.textContent = `${count}/60`;
+
+        // Color feedback
+        if (count > 60) {
+            tituloCount.classList.add('text-danger');
+            tituloCount.classList.remove('text-muted');
+        } else if (count >= 50) {
+            tituloCount.classList.add('text-success');
+            tituloCount.classList.remove('text-muted', 'text-danger');
+        } else {
+            tituloCount.classList.add('text-muted');
+            tituloCount.classList.remove('text-success', 'text-danger');
+        }
+
+        // Update preview
+        previewTitulo.textContent = this.value || 'Tu Título SEO Aquí';
+    });
+
+    // Update description
+    descripcionInput.addEventListener('input', function() {
+        const count = this.value.length;
+        descripcionCount.textContent = `${count}/160`;
+
+        // Color feedback
+        if (count > 160) {
+            descripcionCount.classList.add('text-danger');
+            descripcionCount.classList.remove('text-muted');
+        } else if (count >= 150) {
+            descripcionCount.classList.add('text-success');
+            descripcionCount.classList.remove('text-muted', 'text-danger');
+        } else {
+            descripcionCount.classList.add('text-muted');
+            descripcionCount.classList.remove('text-success', 'text-danger');
+        }
+
+        // Update preview
+        previewDescripcion.textContent = this.value || 'Tu descripción meta aparecerá aquí. Escribe algo atractivo que invite a hacer clic.';
+    });
+
+    // Update route
+    rutaInput.addEventListener('input', function() {
+        previewRuta.textContent = this.value || '/tu-ruta';
+    });
+
+    // Initialize counters
+    tituloInput.dispatchEvent(new Event('input'));
+    descripcionInput.dispatchEvent(new Event('input'));
+});
+</script>
+{% endblock %}
