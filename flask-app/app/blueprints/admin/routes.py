@@ -913,7 +913,7 @@ def orders_ajax():
             'cliente': cliente_html,
             'producto': producto_html,
             'cantidad': order.cantidad,
-            'total': f'${order.pago:.2f}',
+            'total': f'${float(order.pago):.2f}',
             'metodo': metodo_html,
             'estado': order.estado,
             'estado_html': estado_html,
