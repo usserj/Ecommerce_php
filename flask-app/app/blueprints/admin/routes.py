@@ -234,22 +234,115 @@ def delete_user(id):
 @admin_required
 def products():
     """Manage products."""
-    page = request.args.get('page', 1, type=int)
-    search = request.args.get('search', '')
-    categoria_id = request.args.get('categoria', type=int)
+    categorias = Categoria.query.all()
+    return render_template('admin/products.html', categorias=categorias)
 
+
+@admin_bp.route('/products/ajax')
+@admin_required
+def products_ajax():
+    """AJAX endpoint for DataTables product listing."""
+    # DataTables parameters
+    draw = request.args.get('draw', type=int, default=1)
+    start = request.args.get('start', type=int, default=0)
+    length = request.args.get('length', type=int, default=10)
+    search_value = request.args.get('search[value]', default='')
+    order_column = request.args.get('order[0][column]', type=int, default=0)
+    order_dir = request.args.get('order[0][dir]', default='desc')
+
+    # Category filter from custom parameter
+    categoria_filter = request.args.get('categoria_filter', default='')
+
+    # Base query
     query = Producto.query
 
-    if search:
-        query = query.filter(Producto.titulo.contains(search) | Producto.descripcion.contains(search))
+    # Search filter
+    if search_value:
+        query = query.filter(
+            db.or_(
+                Producto.titulo.like(f'%{search_value}%'),
+                Producto.descripcion.like(f'%{search_value}%'),
+                Producto.ruta.like(f'%{search_value}%')
+            )
+        )
 
-    if categoria_id:
-        query = query.filter_by(id_categoria=categoria_id)
+    # Category filter
+    if categoria_filter:
+        query = query.filter_by(id_categoria=int(categoria_filter))
 
-    products = query.order_by(Producto.fecha.desc()).paginate(page=page, per_page=25, error_out=False)
-    categorias = Categoria.query.all()
+    # Total records
+    total_records = Producto.query.count()
+    filtered_records = query.count()
 
-    return render_template('admin/products.html', products=products, categorias=categorias)
+    # Ordering
+    columns = [
+        Producto.id,
+        Producto.portada,
+        Producto.titulo,
+        Producto.id_categoria,
+        Producto.precio,
+        Producto.stock,
+        Producto.ventas,
+        Producto.estado
+    ]
+
+    if 0 <= order_column < len(columns):
+        order_col = columns[order_column]
+        if order_dir == 'asc':
+            query = query.order_by(order_col.asc())
+        else:
+            query = query.order_by(order_col.desc())
+    else:
+        query = query.order_by(Producto.fecha.desc())
+
+    # Get paginated data
+    productos = query.offset(start).limit(length).all()
+
+    # Format data for DataTables
+    data = []
+    for producto in productos:
+        # Get category name
+        cat_name = producto.categoria.categoria if producto.categoria else 'N/A'
+
+        # Format price
+        precio_html = f'${producto.precio:.2f}'
+        if producto.descuento > 0:
+            precio_html += f'<br><span class="badge bg-warning text-dark">-{producto.descuento}%</span>'
+
+        # Format stock
+        if producto.is_virtual():
+            stock_html = '<span class="badge bg-info">Virtual</span>'
+        elif producto.stock > 10:
+            stock_html = f'<span class="badge bg-success">{producto.stock}</span>'
+        elif producto.stock > 0:
+            stock_html = f'<span class="badge bg-warning text-dark">{producto.stock}</span>'
+        else:
+            stock_html = '<span class="badge bg-danger">Agotado</span>'
+
+        # Image HTML
+        if producto.portada:
+            img_html = f'<img src="/static/{producto.portada}" alt="{producto.titulo}" style="width: 60px; height: 40px; object-fit: cover; border-radius: 4px;">'
+        else:
+            img_html = '<div style="width: 60px; height: 40px; background: #ddd; display: flex; align-items: center; justify-content: center; border-radius: 4px;"><i class="fas fa-image text-muted"></i></div>'
+
+        data.append({
+            'id': producto.id,
+            'imagen': img_html,
+            'titulo': f'<strong>{producto.titulo}</strong><br><small class="text-muted">{producto.ruta}</small>',
+            'categoria': cat_name,
+            'precio': precio_html,
+            'stock': stock_html,
+            'ventas': producto.ventas,
+            'estado': producto.estado,
+            'actions': ''  # Will be rendered by DataTables
+        })
+
+    return jsonify({
+        'draw': draw,
+        'recordsTotal': total_records,
+        'recordsFiltered': filtered_records,
+        'data': data
+    })
 
 
 @admin_bp.route('/products/create', methods=['GET', 'POST'])
