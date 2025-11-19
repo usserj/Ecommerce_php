@@ -394,87 +394,8 @@ document.querySelectorAll('.delete-comment').forEach(btn => {
     });
 });
 
-// Add to wishlist - Wrapped in DOMContentLoaded to ensure elements exist
-document.addEventListener('DOMContentLoaded', function() {
-    const wishlistButtons = document.querySelectorAll('.add-to-wishlist');
-    console.log('Botones de wishlist encontrados:', wishlistButtons.length);
-
-    wishlistButtons.forEach(btn => {
-        console.log('Agregando listener a botón wishlist');
-
-        btn.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-
-            const productId = this.getAttribute('data-product-id');
-            const button = this;
-
-            console.log('Click en wishlist, producto ID:', productId);
-            console.log('Tipo de productId:', typeof productId);
-
-            if (!productId) {
-                console.error('No se encontró product-id en el botón');
-                alert('Error: No se pudo identificar el producto');
-                return;
-            }
-
-            // Deshabilitar botón temporalmente
-            button.disabled = true;
-
-            fetch('/perfil/wishlist/toggle', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify({
-                    producto_id: parseInt(productId)
-                })
-            })
-            .then(response => {
-                console.log('Response status:', response.status);
-                console.log('Response headers:', response.headers);
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                return response.json();
-            })
-            .then(data => {
-                console.log('Response data:', data);
-
-                if (data.success) {
-                    if (data.added) {
-                        button.innerHTML = '<i class="fas fa-heart"></i> En Lista de Deseos';
-                        button.classList.remove('btn-outline-danger');
-                        button.classList.add('btn-danger');
-                    } else {
-                        button.innerHTML = '<i class="far fa-heart"></i> Agregar a Lista de Deseos';
-                        button.classList.remove('btn-danger');
-                        button.classList.add('btn-outline-danger');
-                    }
-                    alert(data.message);
-                } else {
-                    alert(data.message || 'Error al procesar favoritos');
-                }
-            })
-            .catch(error => {
-                console.error('Error completo:', error);
-                alert('Error de conexión: ' + error.message);
-            })
-            .finally(() => {
-                // Rehabilitar botón
-                button.disabled = false;
-            });
-        });
-    });
-
-    // Si no se encontraron botones, verificar si el usuario está autenticado
-    if (wishlistButtons.length === 0) {
-        console.warn('No se encontraron botones de wishlist. El usuario puede no estar autenticado.');
-    }
-});
+// NOTE: Wishlist functionality is now handled by /static/js/wishlist.js (global script)
+// This provides event delegation and works on all pages
 
 // Add to cart
 document.querySelectorAll('.add-to-cart').forEach(btn => {
