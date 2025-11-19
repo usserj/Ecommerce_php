@@ -971,6 +971,301 @@ def analytics():
                          unique_visitors=unique_visitors)
 
 
+# ===========================
+# ADVANCED REPORTS
+# ===========================
+
+@admin_bp.route('/reports')
+@admin_required
+def reports():
+    """Advanced sales reports with charts."""
+    from sqlalchemy import func
+    from datetime import datetime, timedelta
+
+    # Default date range: last 30 days
+    fecha_hasta = datetime.now()
+    fecha_desde = fecha_hasta - timedelta(days=30)
+
+    # Get all products for filter
+    productos = Producto.query.order_by(Producto.titulo).all()
+
+    # Get all users for filter
+    usuarios = User.query.order_by(User.nombre).all()
+
+    # Initial statistics
+    total_ventas = Compra.query.filter(Compra.estado != 'cancelado').count()
+    ingresos_totales = db.session.query(func.sum(Compra.pago)).filter(Compra.estado != 'cancelado').scalar() or 0
+    ticket_promedio = ingresos_totales / total_ventas if total_ventas > 0 else 0
+
+    return render_template('admin/reports.html',
+                         productos=productos,
+                         usuarios=usuarios,
+                         total_ventas=total_ventas,
+                         ingresos_totales=ingresos_totales,
+                         ticket_promedio=ticket_promedio)
+
+
+@admin_bp.route('/reports/data')
+@admin_required
+def reports_data():
+    """AJAX endpoint for chart data."""
+    from sqlalchemy import func
+    from datetime import datetime, timedelta
+
+    # Get filter parameters
+    fecha_desde = request.args.get('fecha_desde', default='')
+    fecha_hasta = request.args.get('fecha_hasta', default='')
+    producto_id = request.args.get('producto_id', default='')
+    usuario_id = request.args.get('usuario_id', default='')
+    metodo = request.args.get('metodo', default='')
+
+    # Build query
+    query = Compra.query.filter(Compra.estado != 'cancelado')
+
+    # Apply filters
+    if fecha_desde:
+        try:
+            fecha_desde_dt = datetime.strptime(fecha_desde, '%Y-%m-%d')
+            query = query.filter(Compra.fecha >= fecha_desde_dt)
+        except ValueError:
+            pass
+
+    if fecha_hasta:
+        try:
+            fecha_hasta_dt = datetime.strptime(fecha_hasta, '%Y-%m-%d')
+            fecha_hasta_dt = fecha_hasta_dt + timedelta(days=1)
+            query = query.filter(Compra.fecha < fecha_hasta_dt)
+        except ValueError:
+            pass
+
+    if producto_id:
+        query = query.filter(Compra.id_producto == int(producto_id))
+
+    if usuario_id:
+        query = query.filter(Compra.id_usuario == int(usuario_id))
+
+    if metodo:
+        query = query.filter(Compra.metodo == metodo)
+
+    # Sales by date
+    ventas_por_fecha = db.session.query(
+        func.date(Compra.fecha).label('fecha'),
+        func.count(Compra.id).label('cantidad'),
+        func.sum(Compra.pago).label('total')
+    ).filter(Compra.estado != 'cancelado')
+
+    # Apply same filters
+    if fecha_desde:
+        try:
+            fecha_desde_dt = datetime.strptime(fecha_desde, '%Y-%m-%d')
+            ventas_por_fecha = ventas_por_fecha.filter(Compra.fecha >= fecha_desde_dt)
+        except ValueError:
+            pass
+
+    if fecha_hasta:
+        try:
+            fecha_hasta_dt = datetime.strptime(fecha_hasta, '%Y-%m-%d')
+            fecha_hasta_dt = fecha_hasta_dt + timedelta(days=1)
+            ventas_por_fecha = ventas_por_fecha.filter(Compra.fecha < fecha_hasta_dt)
+        except ValueError:
+            pass
+
+    if producto_id:
+        ventas_por_fecha = ventas_por_fecha.filter(Compra.id_producto == int(producto_id))
+
+    if usuario_id:
+        ventas_por_fecha = ventas_por_fecha.filter(Compra.id_usuario == int(usuario_id))
+
+    if metodo:
+        ventas_por_fecha = ventas_por_fecha.filter(Compra.metodo == metodo)
+
+    ventas_por_fecha = ventas_por_fecha.group_by(func.date(Compra.fecha)).order_by(func.date(Compra.fecha)).all()
+
+    # Top products
+    top_productos = db.session.query(
+        Producto.titulo,
+        func.count(Compra.id).label('ventas'),
+        func.sum(Compra.pago).label('ingresos')
+    ).join(Compra, Compra.id_producto == Producto.id)\
+     .filter(Compra.estado != 'cancelado')
+
+    if fecha_desde:
+        try:
+            fecha_desde_dt = datetime.strptime(fecha_desde, '%Y-%m-%d')
+            top_productos = top_productos.filter(Compra.fecha >= fecha_desde_dt)
+        except ValueError:
+            pass
+
+    if fecha_hasta:
+        try:
+            fecha_hasta_dt = datetime.strptime(fecha_hasta, '%Y-%m-%d')
+            fecha_hasta_dt = fecha_hasta_dt + timedelta(days=1)
+            top_productos = top_productos.filter(Compra.fecha < fecha_hasta_dt)
+        except ValueError:
+            pass
+
+    top_productos = top_productos.group_by(Producto.titulo)\
+                                 .order_by(func.sum(Compra.pago).desc())\
+                                 .limit(10).all()
+
+    # Sales by payment method
+    ventas_por_metodo = db.session.query(
+        Compra.metodo,
+        func.count(Compra.id).label('cantidad'),
+        func.sum(Compra.pago).label('total')
+    ).filter(Compra.estado != 'cancelado')
+
+    if fecha_desde:
+        try:
+            fecha_desde_dt = datetime.strptime(fecha_desde, '%Y-%m-%d')
+            ventas_por_metodo = ventas_por_metodo.filter(Compra.fecha >= fecha_desde_dt)
+        except ValueError:
+            pass
+
+    if fecha_hasta:
+        try:
+            fecha_hasta_dt = datetime.strptime(fecha_hasta, '%Y-%m-%d')
+            fecha_hasta_dt = fecha_hasta_dt + timedelta(days=1)
+            ventas_por_metodo = ventas_por_metodo.filter(Compra.fecha < fecha_hasta_dt)
+        except ValueError:
+            pass
+
+    ventas_por_metodo = ventas_por_metodo.group_by(Compra.metodo).all()
+
+    # Format data for Chart.js
+    return jsonify({
+        'ventas_por_fecha': {
+            'labels': [str(v.fecha) for v in ventas_por_fecha],
+            'cantidad': [v.cantidad for v in ventas_por_fecha],
+            'ingresos': [float(v.total or 0) for v in ventas_por_fecha]
+        },
+        'top_productos': {
+            'labels': [p.titulo[:30] for p in top_productos],
+            'ventas': [p.ventas for p in top_productos],
+            'ingresos': [float(p.ingresos or 0) for p in top_productos]
+        },
+        'ventas_por_metodo': {
+            'labels': [v.metodo for v in ventas_por_metodo],
+            'cantidad': [v.cantidad for v in ventas_por_metodo],
+            'total': [float(v.total or 0) for v in ventas_por_metodo]
+        },
+        'estadisticas': {
+            'total_ventas': query.count(),
+            'ingresos_totales': float(db.session.query(func.sum(Compra.pago)).filter(Compra.id.in_([c.id for c in query.all()])).scalar() or 0)
+        }
+    })
+
+
+@admin_bp.route('/reports/export')
+@admin_required
+def export_reports():
+    """Export sales report to Excel."""
+    from sqlalchemy import func
+    from datetime import datetime, timedelta
+    import io
+    try:
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, Alignment, PatternFill
+    except ImportError:
+        flash('openpyxl no está instalado. Ejecuta: pip install openpyxl', 'error')
+        return redirect(url_for('admin.reports'))
+
+    # Get filter parameters
+    fecha_desde = request.args.get('fecha_desde', default='')
+    fecha_hasta = request.args.get('fecha_hasta', default='')
+    producto_id = request.args.get('producto_id', default='')
+    usuario_id = request.args.get('usuario_id', default='')
+    metodo = request.args.get('metodo', default='')
+
+    # Build query
+    query = Compra.query.filter(Compra.estado != 'cancelado')\
+                        .join(User, Compra.id_usuario == User.id, isouter=True)\
+                        .join(Producto, Compra.id_producto == Producto.id, isouter=True)
+
+    # Apply filters
+    if fecha_desde:
+        try:
+            fecha_desde_dt = datetime.strptime(fecha_desde, '%Y-%m-%d')
+            query = query.filter(Compra.fecha >= fecha_desde_dt)
+        except ValueError:
+            pass
+
+    if fecha_hasta:
+        try:
+            fecha_hasta_dt = datetime.strptime(fecha_hasta, '%Y-%m-%d')
+            fecha_hasta_dt = fecha_hasta_dt + timedelta(days=1)
+            query = query.filter(Compra.fecha < fecha_hasta_dt)
+        except ValueError:
+            pass
+
+    if producto_id:
+        query = query.filter(Compra.id_producto == int(producto_id))
+
+    if usuario_id:
+        query = query.filter(Compra.id_usuario == int(usuario_id))
+
+    if metodo:
+        query = query.filter(Compra.metodo == metodo)
+
+    ventas = query.order_by(Compra.fecha.desc()).all()
+
+    # Create Excel workbook
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Reporte de Ventas"
+
+    # Header styling
+    header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+    header_font = Font(color="FFFFFF", bold=True)
+    header_alignment = Alignment(horizontal="center", vertical="center")
+
+    # Add headers
+    headers = ['ID', 'Fecha', 'Cliente', 'Email', 'Producto', 'Cantidad', 'Total', 'Método Pago', 'Estado']
+    for col_num, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col_num, value=header)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = header_alignment
+
+    # Add data
+    for row_num, venta in enumerate(ventas, 2):
+        ws.cell(row=row_num, column=1, value=venta.id)
+        ws.cell(row=row_num, column=2, value=venta.fecha.strftime('%Y-%m-%d %H:%M') if venta.fecha else '')
+        ws.cell(row=row_num, column=3, value=venta.usuario.nombre if venta.usuario else venta.email or 'N/A')
+        ws.cell(row=row_num, column=4, value=venta.usuario.email if venta.usuario else venta.email or 'N/A')
+        ws.cell(row=row_num, column=5, value=venta.producto.titulo if venta.producto else 'N/A')
+        ws.cell(row=row_num, column=6, value=venta.cantidad)
+        ws.cell(row=row_num, column=7, value=float(venta.pago))
+        ws.cell(row=row_num, column=8, value=venta.metodo)
+        ws.cell(row=row_num, column=9, value=venta.estado)
+
+    # Adjust column widths
+    ws.column_dimensions['A'].width = 8
+    ws.column_dimensions['B'].width = 18
+    ws.column_dimensions['C'].width = 25
+    ws.column_dimensions['D'].width = 30
+    ws.column_dimensions['E'].width = 40
+    ws.column_dimensions['F'].width = 10
+    ws.column_dimensions['G'].width = 12
+    ws.column_dimensions['H'].width = 18
+    ws.column_dimensions['I'].width = 12
+
+    # Save to BytesIO
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    # Generate filename
+    filename = f'reporte_ventas_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+
+    return send_file(
+        output,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name=filename
+    )
+
+
 @admin_bp.route('/settings', methods=['GET', 'POST'])
 @admin_required
 def settings():

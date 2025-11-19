@@ -1,0 +1,434 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Reportes Avanzados{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="page-header mb-4">
+        <h1><i class="fas fa-chart-line me-2"></i>Reportes Avanzados de Ventas</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+                <li class="breadcrumb-item active">Reportes</li>
+            </ol>
+        </nav>
+    </div>
+
+    <!-- Filters -->
+    <div class="card shadow mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="fas fa-filter"></i> Filtros de Reporte</h5>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label for="fechaDesde" class="form-label">Fecha Desde</label>
+                    <input type="date" id="fechaDesde" class="form-control">
+                </div>
+                <div class="col-md-3">
+                    <label for="fechaHasta" class="form-label">Fecha Hasta</label>
+                    <input type="date" id="fechaHasta" class="form-control">
+                </div>
+                <div class="col-md-3">
+                    <label for="productoFilter" class="form-label">Producto</label>
+                    <select id="productoFilter" class="form-control">
+                        <option value="">Todos los productos</option>
+                        {% for producto in productos %}
+                        <option value="{{ producto.id }}">{{ producto.titulo }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="usuarioFilter" class="form-label">Cliente</label>
+                    <select id="usuarioFilter" class="form-control">
+                        <option value="">Todos los clientes</option>
+                        {% for usuario in usuarios %}
+                        <option value="{{ usuario.id }}">{{ usuario.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="row g-3 mt-2">
+                <div class="col-md-3">
+                    <label for="metodoFilter" class="form-label">Método de Pago</label>
+                    <select id="metodoFilter" class="form-control">
+                        <option value="">Todos los métodos</option>
+                        <option value="paypal">PayPal</option>
+                        <option value="paymentez">Paymentez</option>
+                        <option value="datafast">Datafast</option>
+                        <option value="deuna">De Una</option>
+                        <option value="transferencia">Transferencia</option>
+                    </select>
+                </div>
+                <div class="col-md-9 d-flex align-items-end">
+                    <button type="button" id="applyFilters" class="btn btn-primary me-2">
+                        <i class="fas fa-sync"></i> Actualizar Reportes
+                    </button>
+                    <button type="button" id="clearFilters" class="btn btn-secondary me-2">
+                        <i class="fas fa-times"></i> Limpiar Filtros
+                    </button>
+                    <button type="button" id="exportExcel" class="btn btn-success">
+                        <i class="fas fa-file-excel"></i> Exportar a Excel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card admin-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Total Ventas</h6>
+                            <h3 class="mb-0" id="statTotalVentas">{{ total_ventas }}</h3>
+                        </div>
+                        <div class="text-primary">
+                            <i class="fas fa-shopping-cart fa-2x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card admin-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Ingresos Totales</h6>
+                            <h3 class="mb-0" id="statIngresosTotales">${{ "%.2f"|format(ingresos_totales) }}</h3>
+                        </div>
+                        <div class="text-success">
+                            <i class="fas fa-dollar-sign fa-2x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card admin-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Ticket Promedio</h6>
+                            <h3 class="mb-0" id="statTicketPromedio">${{ "%.2f"|format(ticket_promedio) }}</h3>
+                        </div>
+                        <div class="text-info">
+                            <i class="fas fa-chart-bar fa-2x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="row">
+        <!-- Sales Over Time Chart -->
+        <div class="col-md-12 mb-4">
+            <div class="card shadow">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fas fa-chart-line"></i> Ventas e Ingresos por Fecha</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="salesChart" height="80"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Products Chart -->
+        <div class="col-md-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-trophy"></i> Top 10 Productos por Ingresos</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="topProductsChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Payment Methods Chart -->
+        <div class="col-md-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0"><i class="fas fa-credit-card"></i> Distribución por Método de Pago</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="paymentMethodsChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.opacity-50 {
+    opacity: 0.5;
+}
+
+.admin-card {
+    transition: transform 0.2s;
+}
+
+.admin-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<script>
+let salesChart, topProductsChart, paymentMethodsChart;
+
+// Load report data
+function loadReportData() {
+    const params = new URLSearchParams({
+        fecha_desde: document.getElementById('fechaDesde').value,
+        fecha_hasta: document.getElementById('fechaHasta').value,
+        producto_id: document.getElementById('productoFilter').value,
+        usuario_id: document.getElementById('usuarioFilter').value,
+        metodo: document.getElementById('metodoFilter').value
+    });
+
+    fetch('{{ url_for("admin.reports_data") }}?' + params.toString())
+        .then(response => response.json())
+        .then(data => {
+            updateStatistics(data.estadisticas);
+            updateSalesChart(data.ventas_por_fecha);
+            updateTopProductsChart(data.top_productos);
+            updatePaymentMethodsChart(data.ventas_por_metodo);
+        })
+        .catch(error => {
+            console.error('Error loading report data:', error);
+            alert('Error al cargar los datos del reporte');
+        });
+}
+
+// Update statistics cards
+function updateStatistics(stats) {
+    document.getElementById('statTotalVentas').textContent = stats.total_ventas;
+    document.getElementById('statIngresosTotales').textContent = '$' + stats.ingresos_totales.toFixed(2);
+    const ticketPromedio = stats.total_ventas > 0 ? stats.ingresos_totales / stats.total_ventas : 0;
+    document.getElementById('statTicketPromedio').textContent = '$' + ticketPromedio.toFixed(2);
+}
+
+// Sales over time chart (line)
+function updateSalesChart(data) {
+    const ctx = document.getElementById('salesChart').getContext('2d');
+
+    if (salesChart) {
+        salesChart.destroy();
+    }
+
+    salesChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: data.labels,
+            datasets: [
+                {
+                    label: 'Cantidad de Ventas',
+                    data: data.cantidad,
+                    borderColor: 'rgb(54, 162, 235)',
+                    backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                    yAxisID: 'y',
+                    tension: 0.3
+                },
+                {
+                    label: 'Ingresos ($)',
+                    data: data.ingresos,
+                    borderColor: 'rgb(75, 192, 192)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                    yAxisID: 'y1',
+                    tension: 0.3
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false
+            },
+            scales: {
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    title: {
+                        display: true,
+                        text: 'Cantidad de Ventas'
+                    }
+                },
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    title: {
+                        display: true,
+                        text: 'Ingresos ($)'
+                    },
+                    grid: {
+                        drawOnChartArea: false
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top'
+                }
+            }
+        }
+    });
+}
+
+// Top products chart (horizontal bar)
+function updateTopProductsChart(data) {
+    const ctx = document.getElementById('topProductsChart').getContext('2d');
+
+    if (topProductsChart) {
+        topProductsChart.destroy();
+    }
+
+    topProductsChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: data.labels,
+            datasets: [{
+                label: 'Ingresos ($)',
+                data: data.ingresos,
+                backgroundColor: [
+                    'rgba(255, 99, 132, 0.7)',
+                    'rgba(54, 162, 235, 0.7)',
+                    'rgba(255, 206, 86, 0.7)',
+                    'rgba(75, 192, 192, 0.7)',
+                    'rgba(153, 102, 255, 0.7)',
+                    'rgba(255, 159, 64, 0.7)',
+                    'rgba(199, 199, 199, 0.7)',
+                    'rgba(83, 102, 255, 0.7)',
+                    'rgba(255, 99, 255, 0.7)',
+                    'rgba(99, 255, 132, 0.7)'
+                ],
+                borderColor: [
+                    'rgb(255, 99, 132)',
+                    'rgb(54, 162, 235)',
+                    'rgb(255, 206, 86)',
+                    'rgb(75, 192, 192)',
+                    'rgb(153, 102, 255)',
+                    'rgb(255, 159, 64)',
+                    'rgb(199, 199, 199)',
+                    'rgb(83, 102, 255)',
+                    'rgb(255, 99, 255)',
+                    'rgb(99, 255, 132)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Ingresos ($)'
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Payment methods chart (doughnut)
+function updatePaymentMethodsChart(data) {
+    const ctx = document.getElementById('paymentMethodsChart').getContext('2d');
+
+    if (paymentMethodsChart) {
+        paymentMethodsChart.destroy();
+    }
+
+    paymentMethodsChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: data.labels,
+            datasets: [{
+                label: 'Total ($)',
+                data: data.total,
+                backgroundColor: [
+                    'rgba(54, 162, 235, 0.7)',
+                    'rgba(75, 192, 192, 0.7)',
+                    'rgba(255, 206, 86, 0.7)',
+                    'rgba(153, 102, 255, 0.7)',
+                    'rgba(255, 159, 64, 0.7)',
+                    'rgba(255, 99, 132, 0.7)'
+                ],
+                borderColor: [
+                    'rgb(54, 162, 235)',
+                    'rgb(75, 192, 192)',
+                    'rgb(255, 206, 86)',
+                    'rgb(153, 102, 255)',
+                    'rgb(255, 159, 64)',
+                    'rgb(255, 99, 132)'
+                ],
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+}
+
+// Event listeners
+document.getElementById('applyFilters').addEventListener('click', loadReportData);
+
+document.getElementById('clearFilters').addEventListener('click', function() {
+    document.getElementById('fechaDesde').value = '';
+    document.getElementById('fechaHasta').value = '';
+    document.getElementById('productoFilter').value = '';
+    document.getElementById('usuarioFilter').value = '';
+    document.getElementById('metodoFilter').value = '';
+    loadReportData();
+});
+
+document.getElementById('exportExcel').addEventListener('click', function() {
+    const params = new URLSearchParams({
+        fecha_desde: document.getElementById('fechaDesde').value,
+        fecha_hasta: document.getElementById('fechaHasta').value,
+        producto_id: document.getElementById('productoFilter').value,
+        usuario_id: document.getElementById('usuarioFilter').value,
+        metodo: document.getElementById('metodoFilter').value
+    });
+
+    window.location.href = '{{ url_for("admin.export_reports") }}?' + params.toString();
+});
+
+// Load initial data on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadReportData();
+});
+</script>
+{% endblock %}
