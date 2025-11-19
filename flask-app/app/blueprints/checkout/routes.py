@@ -114,6 +114,10 @@ def process():
             flash(error, 'error')
         return redirect(url_for('cart.index'))
 
+    # Save checkout data in session for PayPal callback
+    session['checkout_direccion'] = direccion
+    session['checkout_pais'] = pais
+
     # Prepare order data
     order_data = {
         'user_id': current_user.id,
@@ -142,6 +146,69 @@ def process():
     else:
         flash('Método de pago no válido.', 'error')
         return redirect(url_for('checkout.index'))
+
+
+@checkout_bp.route('/paypal/execute')
+@login_required
+def paypal_execute():
+    """Execute PayPal payment after user approval."""
+    import paypalrestsdk
+    from app.services.payment_service import configure_paypal, create_order_from_cart
+
+    payment_id = request.args.get('paymentId')
+    payer_id = request.args.get('PayerID')
+
+    if not payment_id or not payer_id:
+        flash('Información de pago incompleta.', 'error')
+        return redirect(url_for('cart.index'))
+
+    try:
+        # Configure PayPal and execute payment
+        configure_paypal()
+        payment = paypalrestsdk.Payment.find(payment_id)
+
+        if payment.execute({"payer_id": payer_id}):
+            # Get cart and create order
+            cart_items = session.get('cart', [])
+
+            if cart_items:
+                # Get user's address (we should save this during checkout, for now use default)
+                direccion = session.get('checkout_direccion', 'Pendiente')
+                pais = session.get('checkout_pais', 'Ecuador')
+
+                # Create order with completed status
+                success, message, orders = create_order_from_cart(
+                    current_user.id,
+                    cart_items,
+                    direccion,
+                    pais,
+                    'paypal',
+                    payment_id,
+                    estado='procesando'
+                )
+
+                if not success:
+                    flash(f'Pago completado pero error al crear orden: {message}', 'warning')
+                    return redirect(url_for('account.orders'))
+
+                # Clear cart
+                session['cart'] = []
+                session.pop('checkout_direccion', None)
+                session.pop('checkout_pais', None)
+                session.modified = True
+
+                flash('¡Pago completado exitosamente!', 'success')
+                return redirect(url_for('checkout.success'))
+            else:
+                flash('Carrito vacío.', 'warning')
+                return redirect(url_for('shop.index'))
+        else:
+            flash(f'Error al procesar el pago: {payment.error}', 'error')
+            return redirect(url_for('cart.index'))
+
+    except Exception as e:
+        flash(f'Error al procesar el pago con PayPal: {str(e)}', 'error')
+        return redirect(url_for('cart.index'))
 
 
 @checkout_bp.route('/success')
@@ -226,7 +293,7 @@ def upload_voucher():
             pais = request.form.get('pais', 'Ecuador')
 
             # Create order
-            order = create_order_from_cart(
+            success, message, orders = create_order_from_cart(
                 current_user.id,
                 cart_items,
                 direccion,
@@ -236,8 +303,9 @@ def upload_voucher():
                 estado='pendiente'
             )
 
-            # Increment new sales counter
-            Notificacion.increment_new_sales()
+            if not success:
+                flash(f'Error al crear la orden: {message}', 'error')
+                return redirect(url_for('checkout.index'))
 
             # TODO: Could add a Message/Log model to track voucher uploads
             # For now, the voucher is saved and the order is created with pending status

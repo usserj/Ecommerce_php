@@ -102,37 +102,81 @@ def process_payu_payment(order_data):
 
 
 def create_order_from_cart(user_id, cart_items, direccion, pais, metodo, payment_id, estado='pendiente'):
-    """Create order records from cart."""
+    """Create order records from cart.
+
+    Returns:
+        tuple: (success: bool, message: str, orders: list or None)
+    """
     from app.models.user import User
     user = User.query.get(user_id)
 
-    for item in cart_items:
-        producto = Producto.query.get(item['id'])
-        if producto:
-            compra = Compra(
-                id_usuario=user_id,
-                id_producto=producto.id,
-                envio=0,  # TODO: Calculate shipping
-                metodo=metodo,
-                email=user.email,
-                direccion=direccion,
-                pais=pais,
-                cantidad=item['cantidad'],
-                detalle=payment_id,
-                pago=float(producto.get_price() * item['cantidad']),
-                estado=estado
-            )
-            db.session.add(compra)
+    if not user:
+        return False, "Usuario no encontrado", None
 
-            # Update product sales only if paid
-            if estado == 'procesando':
-                producto.increment_sales()
+    created_orders = []
 
-    # Update notifications
-    if estado == 'procesando':
-        Notificacion.increment_new_sales()
+    try:
+        # First pass: Validate all stock availability with database locking
+        for item in cart_items:
+            # Use SELECT FOR UPDATE to prevent race conditions
+            producto = Producto.query.with_for_update().get(item['id'])
 
-    db.session.commit()
+            if not producto:
+                db.session.rollback()
+                return False, f"Producto con ID {item['id']} no encontrado", None
+
+            if producto.estado != 1:
+                db.session.rollback()
+                return False, f"El producto '{producto.titulo}' no está disponible", None
+
+            # Validate stock availability
+            if not producto.tiene_stock(item['cantidad']):
+                db.session.rollback()
+                stock_msg = "sin stock" if producto.agotado() else f"solo quedan {producto.stock} unidades"
+                return False, f"El producto '{producto.titulo}' no tiene stock suficiente ({stock_msg})", None
+
+        # Second pass: Create orders and decrement stock
+        for item in cart_items:
+            producto = Producto.query.with_for_update().get(item['id'])
+
+            if producto:
+                # Decrement stock immediately (reserve inventory)
+                if not producto.decrementar_stock(item['cantidad']):
+                    db.session.rollback()
+                    return False, f"Error al decrementar stock del producto '{producto.titulo}'", None
+
+                # Create order record
+                compra = Compra(
+                    id_usuario=user_id,
+                    id_producto=producto.id,
+                    envio=0,  # TODO: Calculate shipping
+                    metodo=metodo,
+                    email=user.email,
+                    direccion=direccion,
+                    pais=pais,
+                    cantidad=item['cantidad'],
+                    detalle=payment_id,
+                    pago=float(producto.get_price() * item['cantidad']),
+                    estado=estado
+                )
+                db.session.add(compra)
+                created_orders.append(compra)
+
+                # Update product sales counter only if paid
+                if estado == 'procesando':
+                    producto.increment_sales()
+
+        # Update notifications
+        if estado == 'procesando':
+            Notificacion.increment_new_sales()
+
+        db.session.commit()
+        return True, "Órdenes creadas exitosamente", created_orders
+
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error creating orders: {e}")
+        return False, f"Error al crear las órdenes: {str(e)}", None
 
 
 # ===========================
@@ -158,7 +202,7 @@ def process_paymentez_payment(order_data):
 
     # Create order with pending status
     order_id = f"ORDER-{order_data['user_id']}-{int(datetime.now().timestamp())}"
-    create_order_from_cart(
+    success, message, orders = create_order_from_cart(
         order_data['user_id'],
         cart_items,
         order_data['direccion'],
@@ -167,6 +211,10 @@ def process_paymentez_payment(order_data):
         order_id,
         estado='pendiente'
     )
+
+    if not success:
+        flash(f'Error al procesar la orden: {message}', 'error')
+        return redirect(url_for('checkout.index'))
 
     # Return payment page with Paymentez checkout
     return render_template('checkout/paymentez.html',
@@ -194,7 +242,7 @@ def process_datafast_payment(order_data):
 
     # Create order with pending status
     order_id = f"ORDER-{order_data['user_id']}-{int(datetime.now().timestamp())}"
-    create_order_from_cart(
+    success, message, orders = create_order_from_cart(
         order_data['user_id'],
         cart_items,
         order_data['direccion'],
@@ -203,6 +251,10 @@ def process_datafast_payment(order_data):
         order_id,
         estado='pendiente'
     )
+
+    if not success:
+        flash(f'Error al procesar la orden: {message}', 'error')
+        return redirect(url_for('checkout.index'))
 
     # Return payment page with Datafast form
     return render_template('checkout/datafast.html',
@@ -234,7 +286,7 @@ def process_deuna_payment(order_data):
 
     # Create order with pending status
     order_id = f"ORDER-{order_data['user_id']}-{int(datetime.now().timestamp())}"
-    create_order_from_cart(
+    success, message, orders = create_order_from_cart(
         order_data['user_id'],
         cart_items,
         order_data['direccion'],
@@ -243,6 +295,10 @@ def process_deuna_payment(order_data):
         order_id,
         estado='pendiente'
     )
+
+    if not success:
+        flash(f'Error al procesar la orden: {message}', 'error')
+        return redirect(url_for('checkout.index'))
 
     # Return payment page with De Una instructions
     return render_template('checkout/deuna.html',
@@ -278,7 +334,7 @@ def process_bank_transfer_payment(order_data):
 
     # Create order with pending status
     order_id = f"ORDER-{order_data['user_id']}-{int(datetime.now().timestamp())}"
-    create_order_from_cart(
+    success, message, orders = create_order_from_cart(
         order_data['user_id'],
         cart_items,
         order_data['direccion'],
@@ -287,6 +343,10 @@ def process_bank_transfer_payment(order_data):
         order_id,
         estado='pendiente'
     )
+
+    if not success:
+        flash(f'Error al procesar la orden: {message}', 'error')
+        return redirect(url_for('checkout.index'))
 
     # Return page with bank account details
     return render_template('checkout/bank_transfer.html',
@@ -322,7 +382,7 @@ def process_transfer_voucher_payment(order_data):
 
     # Create order with pending status
     order_id = f"ORDER-{order_data['user_id']}-{int(datetime.now().timestamp())}"
-    create_order_from_cart(
+    success, message, orders = create_order_from_cart(
         order_data['user_id'],
         cart_items,
         order_data['direccion'],
@@ -331,6 +391,10 @@ def process_transfer_voucher_payment(order_data):
         order_id,
         estado='pendiente'
     )
+
+    if not success:
+        flash(f'Error al procesar la orden: {message}', 'error')
+        return redirect(url_for('checkout.index'))
 
     # Return page with voucher upload form
     return render_template('checkout/transfer_voucher.html',
