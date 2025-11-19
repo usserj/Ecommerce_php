@@ -113,7 +113,7 @@ def verify_email(token):
 @auth_bp.route('/forgot-password', methods=['GET', 'POST'])
 @limiter.limit("3 per hour")
 def forgot_password():
-    """Forgot password."""
+    """Request password reset."""
     if current_user.is_authenticated:
         return redirect(url_for('main.index'))
 
@@ -123,23 +123,59 @@ def forgot_password():
         user = User.query.filter_by(email=form.email.data).first()
 
         if user:
-            # Generate new password
-            import secrets
-            import string
-            new_password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(12))
+            # Generate reset token
+            token = user.generate_reset_token(expiry_minutes=30)
 
-            # Update password
-            user.set_password(new_password)
-            db.session.commit()
+            # Send email with reset link
+            reset_url = url_for('auth.reset_password', token=token, _external=True)
+            send_password_reset_email(user.email, reset_url)
 
-            # Send email with new password
-            send_password_reset_email(user.email, new_password)
-
-            flash('Se ha enviado una nueva contraseña a su email.', 'success')
+            flash('Se han enviado instrucciones para recuperar su contraseña a su email. El enlace expira en 30 minutos.', 'success')
         else:
-            # Don't reveal if email exists
+            # Don't reveal if email exists (security best practice)
             flash('Si el email existe, recibirá instrucciones para recuperar su contraseña.', 'info')
 
         return redirect(url_for('auth.login'))
 
     return render_template('auth/forgot_password.html', form=form)
+
+
+@auth_bp.route('/reset-password/<token>', methods=['GET', 'POST'])
+@limiter.limit("5 per hour")
+def reset_password(token):
+    """Reset password with token."""
+    if current_user.is_authenticated:
+        return redirect(url_for('main.index'))
+
+    # Find user by token
+    user = User.find_by_reset_token(token)
+
+    if not user:
+        flash('El enlace de recuperación es inválido o ha expirado. Por favor solicite uno nuevo.', 'error')
+        return redirect(url_for('auth.forgot_password'))
+
+    if request.method == 'POST':
+        password = request.form.get('password')
+        password_confirm = request.form.get('password_confirm')
+
+        # Validation
+        if not password or not password_confirm:
+            flash('Por favor complete todos los campos.', 'error')
+            return render_template('auth/reset_password.html', token=token)
+
+        if len(password) < 6:
+            flash('La contraseña debe tener al menos 6 caracteres.', 'error')
+            return render_template('auth/reset_password.html', token=token)
+
+        if password != password_confirm:
+            flash('Las contraseñas no coinciden.', 'error')
+            return render_template('auth/reset_password.html', token=token)
+
+        # Update password
+        user.set_password(password)
+        user.clear_reset_token()
+
+        flash('Contraseña actualizada exitosamente. Ahora puede iniciar sesión.', 'success')
+        return redirect(url_for('auth.login'))
+
+    return render_template('auth/reset_password.html', token=token)

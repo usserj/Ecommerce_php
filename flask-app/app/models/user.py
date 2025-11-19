@@ -1,6 +1,7 @@
 """User model."""
 import hashlib
-from datetime import datetime
+import secrets
+from datetime import datetime, timedelta
 from flask_login import UserMixin
 from app.extensions import db, bcrypt
 
@@ -31,6 +32,8 @@ class User(UserMixin, db.Model):
     modo = db.Column(db.String(20), default='directo')  # directo, facebook, google
     verificacion = db.Column(db.Integer, default=1)  # 0=verified, 1=pending
     emailEncriptado = db.Column('emailEncriptado', db.String(255))
+    reset_token = db.Column(db.String(255), nullable=True)  # Password reset token
+    reset_token_expiry = db.Column(db.DateTime, nullable=True)  # Token expiration
     fecha = db.Column(db.DateTime, default=datetime.utcnow)
 
     # Relationships
@@ -119,6 +122,61 @@ class User(UserMixin, db.Model):
         if user:
             user.verificacion = 0
             db.session.commit()
+            return user
+        return None
+
+    def generate_reset_token(self, expiry_minutes=30):
+        """Generate password reset token.
+
+        Args:
+            expiry_minutes: Token validity in minutes (default: 30)
+
+        Returns:
+            str: Reset token
+        """
+        # Generate secure random token
+        token = secrets.token_urlsafe(32)
+
+        # Set token and expiry
+        self.reset_token = token
+        self.reset_token_expiry = datetime.utcnow() + timedelta(minutes=expiry_minutes)
+
+        db.session.commit()
+        return token
+
+    def verify_reset_token(self):
+        """Verify if reset token is valid and not expired.
+
+        Returns:
+            bool: True if token is valid, False otherwise
+        """
+        if not self.reset_token or not self.reset_token_expiry:
+            return False
+
+        # Check if token has expired
+        if datetime.utcnow() > self.reset_token_expiry:
+            return False
+
+        return True
+
+    def clear_reset_token(self):
+        """Clear password reset token after use."""
+        self.reset_token = None
+        self.reset_token_expiry = None
+        db.session.commit()
+
+    @staticmethod
+    def find_by_reset_token(token):
+        """Find user by reset token.
+
+        Args:
+            token: Reset token
+
+        Returns:
+            User: User object if found and token is valid, None otherwise
+        """
+        user = User.query.filter_by(reset_token=token).first()
+        if user and user.verify_reset_token():
             return user
         return None
 
