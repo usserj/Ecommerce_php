@@ -9,7 +9,7 @@ from app.models.order import Compra
 from app.models.notification import Notificacion
 from app.models.visit import VisitaPais, VisitaPersona
 from app.models.categoria import Categoria, Subcategoria
-from app.models.setting import Slide, Banner
+from app.models.setting import Slide, Banner, Plantilla
 from app.models.comercio import Comercio
 from app.models.comment import Comentario
 from app.models.coupon import Cupon
@@ -1995,3 +1995,101 @@ def toggle_comment(id):
         'estado': comentario.estado,
         'estado_display': nuevo_estado
     })
+
+
+# ===========================
+# STORE CUSTOMIZATION
+# ===========================
+
+@admin_bp.route('/personalizacion', methods=['GET', 'POST'])
+@admin_required
+def personalizacion():
+    """Store customization page (logo, colors, favicon, social media, analytics)."""
+    plantilla = Plantilla.get_settings()
+
+    if request.method == 'POST':
+        try:
+            # Basic colors and text
+            plantilla.colorFondo = request.form.get('colorFondo', '#ffffff')
+            plantilla.colorTexto = request.form.get('colorTexto', '#000000')
+            plantilla.barraSuperior = request.form.get('barraSuperior', '')
+            plantilla.textoSuperior = request.form.get('textoSuperior', '')
+
+            # Analytics and tracking
+            plantilla.pixelFacebook = request.form.get('pixelFacebook', '')
+            plantilla.googleAnalytics = request.form.get('googleAnalytics', '')
+            plantilla.apiFacebook = request.form.get('apiFacebook', '')
+
+            # Social Networks
+            redes = {
+                'facebook': request.form.get('facebook', ''),
+                'instagram': request.form.get('instagram', ''),
+                'twitter': request.form.get('twitter', ''),
+                'youtube': request.form.get('youtube', ''),
+                'linkedin': request.form.get('linkedin', ''),
+                'tiktok': request.form.get('tiktok', ''),
+                'whatsapp': request.form.get('whatsapp', '')
+            }
+            plantilla.set_social_networks(redes)
+
+            # Handle logo upload
+            if 'logo' in request.files:
+                file = request.files['logo']
+                if file and file.filename:
+                    filename = secure_filename(file.filename)
+                    upload_folder = os.path.join('app/static/uploads/branding')
+
+                    if not os.path.exists(upload_folder):
+                        os.makedirs(upload_folder)
+
+                    filepath = os.path.join(upload_folder, f'logo_{filename}')
+
+                    # Resize logo to max width 400px maintaining aspect ratio
+                    try:
+                        img = Image.open(file)
+                        max_width = 400
+                        if img.width > max_width:
+                            ratio = max_width / img.width
+                            new_height = int(img.height * ratio)
+                            img = img.resize((max_width, new_height), Image.Resampling.LANCZOS)
+                        img.save(filepath)
+                        plantilla.logo = f'uploads/branding/logo_{filename}'
+                    except Exception as e:
+                        flash(f'Error al procesar logo: {e}', 'error')
+
+            # Handle favicon upload
+            if 'icono' in request.files:
+                file = request.files['icono']
+                if file and file.filename:
+                    filename = secure_filename(file.filename)
+                    upload_folder = os.path.join('app/static/uploads/branding')
+
+                    if not os.path.exists(upload_folder):
+                        os.makedirs(upload_folder)
+
+                    filepath = os.path.join(upload_folder, f'favicon_{filename}')
+
+                    # Resize favicon to 32x32
+                    try:
+                        img = Image.open(file)
+                        img = img.resize((32, 32), Image.Resampling.LANCZOS)
+                        img.save(filepath)
+                        plantilla.icono = f'uploads/branding/favicon_{filename}'
+                    except Exception as e:
+                        flash(f'Error al procesar favicon: {e}', 'error')
+
+            db.session.commit()
+            flash('Personalización actualizada exitosamente!', 'success')
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error al guardar personalización: {e}', 'error')
+
+        return redirect(url_for('admin.personalizacion'))
+
+    # GET request - show form
+    redes = plantilla.get_social_networks()
+
+    return render_template('admin/personalizacion.html',
+                         plantilla=plantilla,
+                         redes=redes)

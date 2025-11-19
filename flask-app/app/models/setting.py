@@ -35,6 +35,40 @@ class Plantilla(db.Model):
             db.session.commit()
         return settings
 
+    def get_logo_url(self):
+        """Get full URL for logo."""
+        if self.logo:
+            if self.logo.startswith('http'):
+                return self.logo
+            return url_for('static', filename=self.logo)
+        return url_for('static', filename='img/logo-default.png')
+
+    def get_favicon_url(self):
+        """Get full URL for favicon."""
+        if self.icono:
+            if self.icono.startswith('http'):
+                return self.icono
+            return url_for('static', filename=self.icono)
+        return url_for('static', filename='img/favicon.ico')
+
+    def get_social_networks(self):
+        """Get social networks as dict."""
+        import json
+        if isinstance(self.redesSociales, dict):
+            return self.redesSociales
+        if isinstance(self.redesSociales, str) and self.redesSociales:
+            try:
+                return json.loads(self.redesSociales)
+            except:
+                return {}
+        return {}
+
+    def set_social_networks(self, networks):
+        """Set social networks from dict."""
+        import json
+        self.redesSociales = json.dumps(networks) if networks else None
+        db.session.commit()
+
 
 class Slide(db.Model):
     """Carousel slide model."""
