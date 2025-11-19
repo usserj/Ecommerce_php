@@ -1113,6 +1113,257 @@ def delete_slide(id):
 
 
 # ===========================
+# BANNERS MANAGEMENT
+# ===========================
+
+@admin_bp.route('/banners')
+@admin_required
+def banners():
+    """Banners management page with DataTables."""
+    categorias = Categoria.query.filter_by(estado=1).all()
+    subcategorias = Subcategoria.query.filter_by(estado=1).all()
+    return render_template('admin/banners.html',
+                         categorias=categorias,
+                         subcategorias=subcategorias)
+
+
+@admin_bp.route('/banners/ajax')
+@admin_required
+def banners_ajax():
+    """AJAX endpoint for DataTables banner listing."""
+    # DataTables parameters
+    draw = request.args.get('draw', type=int, default=1)
+    start = request.args.get('start', type=int, default=0)
+    length = request.args.get('length', type=int, default=10)
+    search_value = request.args.get('search[value]', default='')
+
+    # Base query
+    query = Banner.query
+
+    # Search filter
+    if search_value:
+        query = query.filter(
+            db.or_(
+                Banner.ruta.like(f'%{search_value}%'),
+                Banner.tipo.like(f'%{search_value}%')
+            )
+        )
+
+    # Total records
+    total_records = Banner.query.count()
+    filtered_records = query.count()
+
+    # Get paginated data
+    banners = query.order_by(Banner.fecha.desc()).offset(start).limit(length).all()
+
+    # Format data for DataTables
+    data = []
+    for banner in banners:
+        data.append({
+            'id': banner.id,
+            'img': banner.get_image_url(),
+            'img_filename': banner.img,
+            'tipo': banner.tipo,
+            'ruta': banner.ruta,
+            'estado': banner.estado,
+            'activo': banner.is_active(),
+            'fecha': banner.fecha.strftime('%d/%m/%Y') if banner.fecha else ''
+        })
+
+    return jsonify({
+        'draw': draw,
+        'recordsTotal': total_records,
+        'recordsFiltered': filtered_records,
+        'data': data
+    })
+
+
+@admin_bp.route('/banners/create', methods=['GET', 'POST'])
+@admin_required
+def create_banner():
+    """Create new banner."""
+    if request.method == 'POST':
+        tipo = request.form.get('tipo')
+        ruta = request.form.get('ruta', 'general')
+        estado = int(request.form.get('estado', 1))
+
+        if not tipo:
+            flash('El tipo de banner es requerido.', 'error')
+            return redirect(url_for('admin.create_banner'))
+
+        # Validate tipo
+        if tipo not in ['categorias', 'subcategorias', 'general']:
+            flash('Tipo de banner inválido.', 'error')
+            return redirect(url_for('admin.create_banner'))
+
+        # If general type, force ruta to 'general'
+        if tipo == 'general':
+            ruta = 'general'
+        elif not ruta or ruta == 'general':
+            flash('Debe seleccionar una categoría o subcategoría.', 'error')
+            return redirect(url_for('admin.create_banner'))
+
+        # Handle image upload
+        img_filename = ''
+        if 'img' in request.files:
+            file = request.files['img']
+            if file and file.filename:
+                filename = secure_filename(file.filename)
+                upload_folder = os.path.join('app/static/uploads/banners')
+
+                if not os.path.exists(upload_folder):
+                    os.makedirs(upload_folder)
+
+                filepath = os.path.join(upload_folder, filename)
+
+                # Resize banner image to standard size (1200x400)
+                try:
+                    img = Image.open(file)
+                    img = img.resize((1200, 400), Image.Resampling.LANCZOS)
+                    img.save(filepath)
+                except Exception as e:
+                    flash(f'Error al procesar imagen: {e}', 'error')
+                    return redirect(url_for('admin.create_banner'))
+
+                img_filename = filename
+
+        if not img_filename:
+            flash('La imagen del banner es requerida.', 'error')
+            return redirect(url_for('admin.create_banner'))
+
+        # Create banner
+        banner = Banner(
+            ruta=ruta,
+            tipo=tipo,
+            img=img_filename,
+            estado=estado
+        )
+
+        db.session.add(banner)
+        db.session.commit()
+
+        flash('Banner creado exitosamente.', 'success')
+        return redirect(url_for('admin.banners'))
+
+    # GET request - show form
+    categorias = Categoria.query.filter_by(estado=1).all()
+    subcategorias = Subcategoria.query.filter_by(estado=1).all()
+    return render_template('admin/banner_form.html',
+                         banner=None,
+                         categorias=categorias,
+                         subcategorias=subcategorias)
+
+
+@admin_bp.route('/banners/edit/<int:id>', methods=['GET', 'POST'])
+@admin_required
+def edit_banner(id):
+    """Edit banner."""
+    banner = Banner.query.get_or_404(id)
+
+    if request.method == 'POST':
+        tipo = request.form.get('tipo')
+        ruta = request.form.get('ruta', 'general')
+        estado = int(request.form.get('estado', 1))
+
+        if not tipo:
+            flash('El tipo de banner es requerido.', 'error')
+            return redirect(url_for('admin.edit_banner', id=id))
+
+        # Validate tipo
+        if tipo not in ['categorias', 'subcategorias', 'general']:
+            flash('Tipo de banner inválido.', 'error')
+            return redirect(url_for('admin.edit_banner', id=id))
+
+        # If general type, force ruta to 'general'
+        if tipo == 'general':
+            ruta = 'general'
+        elif not ruta or ruta == 'general':
+            flash('Debe seleccionar una categoría o subcategoría.', 'error')
+            return redirect(url_for('admin.edit_banner', id=id))
+
+        banner.tipo = tipo
+        banner.ruta = ruta
+        banner.estado = estado
+
+        # Handle image upload (optional on edit)
+        if 'img' in request.files:
+            file = request.files['img']
+            if file and file.filename:
+                filename = secure_filename(file.filename)
+                upload_folder = os.path.join('app/static/uploads/banners')
+
+                if not os.path.exists(upload_folder):
+                    os.makedirs(upload_folder)
+
+                filepath = os.path.join(upload_folder, filename)
+
+                # Resize banner image to standard size (1200x400)
+                try:
+                    img = Image.open(file)
+                    img = img.resize((1200, 400), Image.Resampling.LANCZOS)
+                    img.save(filepath)
+                    banner.img = filename
+                except Exception as e:
+                    flash(f'Error al procesar imagen: {e}', 'error')
+                    return redirect(url_for('admin.edit_banner', id=id))
+
+        db.session.commit()
+
+        flash('Banner actualizado exitosamente.', 'success')
+        return redirect(url_for('admin.banners'))
+
+    # GET request - show form
+    categorias = Categoria.query.filter_by(estado=1).all()
+    subcategorias = Subcategoria.query.filter_by(estado=1).all()
+    return render_template('admin/banner_form.html',
+                         banner=banner,
+                         categorias=categorias,
+                         subcategorias=subcategorias)
+
+
+@admin_bp.route('/banners/delete/<int:id>', methods=['POST'])
+@admin_required
+def delete_banner(id):
+    """Delete banner."""
+    banner = Banner.query.get_or_404(id)
+
+    # Delete image file
+    try:
+        img_path = os.path.join('app/static/uploads/banners', banner.img)
+        if os.path.exists(img_path):
+            os.remove(img_path)
+    except Exception as e:
+        print(f'Error deleting banner image: {e}')
+
+    db.session.delete(banner)
+    db.session.commit()
+
+    flash('Banner eliminado exitosamente.', 'success')
+    return redirect(url_for('admin.banners'))
+
+
+@admin_bp.route('/banners/toggle/<int:id>', methods=['POST'])
+@admin_required
+def toggle_banner(id):
+    """Toggle banner status (activate/deactivate)."""
+    try:
+        banner = Banner.query.get_or_404(id)
+
+        if banner.is_active():
+            banner.deactivate()
+        else:
+            banner.activate()
+
+        return jsonify({
+            'success': True,
+            'estado': banner.estado,
+            'activo': banner.is_active()
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+# ===========================
 # COUPONS MANAGEMENT
 # ===========================
 

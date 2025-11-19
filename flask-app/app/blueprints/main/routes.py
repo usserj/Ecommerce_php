@@ -3,7 +3,7 @@ from flask import render_template, request
 from app.blueprints.main import main_bp
 from app.models.product import Producto
 from app.models.categoria import Categoria
-from app.models.setting import Slide
+from app.models.setting import Slide, Banner
 from app.services.analytics_service import track_visit
 
 
@@ -25,10 +25,14 @@ def index():
     # Get slides
     slides = Slide.query.order_by(Slide.orden).all()
 
+    # Get general banners
+    banners = Banner.get_general_banners()
+
     return render_template('main/index.html',
                          productos_destacados=productos_destacados,
                          productos_oferta=productos_oferta,
-                         slides=slides)
+                         slides=slides,
+                         banners=banners)
 
 
 @main_bp.route('/contacto', methods=['GET', 'POST'])

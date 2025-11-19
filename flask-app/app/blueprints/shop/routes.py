@@ -1,9 +1,10 @@
 """Shop/Product catalog routes."""
-from flask import render_template, request, abort
+from flask import render_template, request, abort, redirect, url_for
 from app.blueprints.shop import shop_bp
 from app.models.product import Producto
 from app.models.categoria import Categoria, Subcategoria
 from app.models.comment import Comentario
+from app.models.setting import Banner
 from sqlalchemy import or_
 
 
@@ -17,11 +18,18 @@ def index(ruta=None):
 
     query = Producto.query.filter_by(estado=1)
 
-    # Filter by category
+    # Filter by category and get banners
     categoria = None
+    banners = []
+
     if ruta:
         categoria = Categoria.query.filter_by(ruta=ruta, estado=1).first_or_404()
         query = query.filter_by(id_categoria=categoria.id)
+        # Get category-specific banners
+        banners = Banner.get_banners_for_category(ruta)
+    else:
+        # Get general banners for home/all products page
+        banners = Banner.get_general_banners()
 
     # Sorting
     if sort_by == 'vendidos':
@@ -44,6 +52,7 @@ def index(ruta=None):
                          productos=productos,
                          categorias=categorias,
                          categoria_actual=categoria,
+                         banners=banners,
                          sort_by=sort_by)
 
 

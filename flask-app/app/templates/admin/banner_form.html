@@ -1,0 +1,180 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}{% if banner %}Editar{% else %}Crear{% endif %} Banner{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">
+                <i class="fas fa-{% if banner %}edit{% else %}plus{% endif %}"></i>
+                {% if banner %}Editar{% else %}Crear Nuevo{% endif %} Banner
+            </h4>
+        </div>
+        <div class="card-body">
+            <form method="POST"
+                  action="{% if banner %}{{ url_for('admin.edit_banner', id=banner.id) }}{% else %}{{ url_for('admin.create_banner') }}{% endif %}"
+                  enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> <strong>Tipos de Banners:</strong><br>
+                    - <strong>General:</strong> Se muestra en todas las páginas<br>
+                    - <strong>Categorías:</strong> Se muestra solo en la página de una categoría específica<br>
+                    - <strong>Subcategorías:</strong> Se muestra solo en la página de una subcategoría específica
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="tipo" class="form-label">Tipo de Banner *</label>
+                            <select class="form-select" id="tipo" name="tipo" required>
+                                <option value="">Seleccione el tipo...</option>
+                                <option value="general" {% if banner and banner.tipo == 'general' %}selected{% endif %}>
+                                    General (Mostrar en toda la tienda)
+                                </option>
+                                <option value="categorias" {% if banner and banner.tipo == 'categorias' %}selected{% endif %}>
+                                    Categoría específica
+                                </option>
+                                <option value="subcategorias" {% if banner and banner.tipo == 'subcategorias' %}selected{% endif %}>
+                                    Subcategoría específica
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="estado" class="form-label">Estado</label>
+                            <select class="form-select" id="estado" name="estado">
+                                <option value="1" {% if not banner or banner.estado == 1 %}selected{% endif %}>Activo</option>
+                                <option value="0" {% if banner and banner.estado == 0 %}selected{% endif %}>Inactivo</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Categoría selector (shown when tipo is 'categorias') -->
+                <div class="row" id="categoria-selector" style="display: none;">
+                    <div class="col-md-12">
+                        <div class="mb-3">
+                            <label for="ruta_categoria" class="form-label">Seleccionar Categoría *</label>
+                            <select class="form-select" id="ruta_categoria" name="ruta">
+                                <option value="">Seleccione una categoría...</option>
+                                {% for categoria in categorias %}
+                                <option value="{{ categoria.ruta }}"
+                                        {% if banner and banner.tipo == 'categorias' and banner.ruta == categoria.ruta %}selected{% endif %}>
+                                    {{ categoria.categoria }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Subcategoría selector (shown when tipo is 'subcategorias') -->
+                <div class="row" id="subcategoria-selector" style="display: none;">
+                    <div class="col-md-12">
+                        <div class="mb-3">
+                            <label for="ruta_subcategoria" class="form-label">Seleccionar Subcategoría *</label>
+                            <select class="form-select" id="ruta_subcategoria" name="ruta">
+                                <option value="">Seleccione una subcategoría...</option>
+                                {% for subcategoria in subcategorias %}
+                                <option value="{{ subcategoria.ruta }}"
+                                        data-categoria="{{ subcategoria.id_categoria }}"
+                                        {% if banner and banner.tipo == 'subcategorias' and banner.ruta == subcategoria.ruta %}selected{% endif %}>
+                                    {{ subcategoria.categoria.categoria }} / {{ subcategoria.subcategoria }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <hr>
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="mb-3">
+                            <label for="img" class="form-label">
+                                Imagen del Banner {% if not banner %}*{% endif %} (1200x400px recomendado)
+                            </label>
+                            <input type="file" class="form-control" id="img" name="img"
+                                   accept="image/*" {% if not banner %}required{% endif %}>
+                            <small class="text-muted">Se redimensionará automáticamente a 1200x400px. Formatos: JPG, PNG, WebP</small>
+
+                            {% if banner and banner.img %}
+                            <div class="mt-3">
+                                <p class="text-muted mb-2"><strong>Imagen actual:</strong></p>
+                                <img src="{{ banner.get_image_url() }}" alt="Banner actual"
+                                     style="max-width: 100%; height: auto; border: 1px solid #ddd; border-radius: 4px; padding: 5px;">
+                                <p class="text-muted small mt-2">Archivo: <code>{{ banner.img }}</code></p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                    <a href="{{ url_for('admin.banners') }}" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> Cancelar
+                    </a>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-save"></i> {% if banner %}Actualizar{% else %}Crear{% endif %} Banner
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Show/hide category and subcategory selectors based on tipo
+document.getElementById('tipo').addEventListener('change', function() {
+    const tipo = this.value;
+    const categoriaSelector = document.getElementById('categoria-selector');
+    const subcategoriaSelector = document.getElementById('subcategoria-selector');
+    const rutaCategoria = document.getElementById('ruta_categoria');
+    const rutaSubcategoria = document.getElementById('ruta_subcategoria');
+
+    // Hide all selectors first
+    categoriaSelector.style.display = 'none';
+    subcategoriaSelector.style.display = 'none';
+
+    // Remove required attribute from both
+    rutaCategoria.removeAttribute('required');
+    rutaSubcategoria.removeAttribute('required');
+
+    // Show appropriate selector
+    if (tipo === 'categorias') {
+        categoriaSelector.style.display = 'block';
+        rutaCategoria.setAttribute('required', 'required');
+    } else if (tipo === 'subcategorias') {
+        subcategoriaSelector.style.display = 'block';
+        rutaSubcategoria.setAttribute('required', 'required');
+    }
+});
+
+// Trigger on page load to show correct selector if editing
+document.addEventListener('DOMContentLoaded', function() {
+    const tipoSelect = document.getElementById('tipo');
+    if (tipoSelect.value) {
+        tipoSelect.dispatchEvent(new Event('change'));
+    }
+});
+
+// File input preview (optional enhancement)
+document.getElementById('img').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            // You could add a preview here if needed
+            console.log('File selected:', file.name);
+        };
+        reader.readAsDataURL(file);
+    }
+});
+</script>
+{% endblock %}
