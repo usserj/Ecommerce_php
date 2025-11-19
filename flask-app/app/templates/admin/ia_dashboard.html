@@ -1,0 +1,473 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Panel de IA - Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0">
+            <i class="fas fa-robot text-primary"></i>
+            Panel de Inteligencia Artificial
+        </h1>
+        <button class="btn btn-primary" onclick="verificarAPI()">
+            <i class="fas fa-sync-alt"></i> Verificar API
+        </button>
+    </div>
+
+    <!-- Estado de la API -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm" id="api-status-card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-plug"></i> Estado de la API DeepSeek
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="api-status-loading" class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Verificando...</span>
+                        </div>
+                        <p class="mt-2 text-muted">Verificando conexión con DeepSeek...</p>
+                    </div>
+
+                    <div id="api-status-content" style="display: none;">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="text-center p-3 border rounded">
+                                    <div id="status-indicator" class="mb-2">
+                                        <i class="fas fa-circle fa-2x"></i>
+                                    </div>
+                                    <strong id="status-text">Verificando...</strong>
+                                </div>
+                            </div>
+                            <div class="col-md-9">
+                                <table class="table table-sm mb-0">
+                                    <tr>
+                                        <th style="width: 200px;">API Key:</th>
+                                        <td><code id="api-key-display"></code></td>
+                                    </tr>
+                                    <tr>
+                                        <th>URL de la API:</th>
+                                        <td><code id="api-url-display"></code></td>
+                                    </tr>
+                                    <tr>
+                                        <th>Modelo:</th>
+                                        <td><code id="api-model-display"></code></td>
+                                    </tr>
+                                    <tr>
+                                        <th>Cache TTL:</th>
+                                        <td><code id="api-cache-display"></code></td>
+                                    </tr>
+                                    <tr>
+                                        <th>Última verificación:</th>
+                                        <td id="last-check-time">-</td>
+                                    </tr>
+                                </table>
+
+                                <div id="api-error-message" class="alert alert-danger mt-3" style="display: none;">
+                                    <strong>Error:</strong> <span id="error-text"></span>
+                                </div>
+
+                                <div id="api-success-message" class="alert alert-success mt-3" style="display: none;">
+                                    <strong>✅ Conexión exitosa!</strong> La API de DeepSeek está funcionando correctamente.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Funcionalidades Disponibles -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h4 class="mb-3">
+                <i class="fas fa-cogs"></i> Funcionalidades de IA
+            </h4>
+        </div>
+
+        <!-- Chatbot -->
+        <div class="col-md-6 col-lg-4 mb-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="rounded-circle bg-primary text-white p-3 me-3">
+                            <i class="fas fa-comments fa-2x"></i>
+                        </div>
+                        <div>
+                            <h5 class="mb-0">Chatbot 24/7</h5>
+                            <small class="text-muted">Asistente de ventas</small>
+                        </div>
+                    </div>
+                    <p class="text-muted small mb-3">
+                        Widget de chat inteligente en todas las páginas de la tienda.
+                        Responde preguntas sobre productos, envíos, pagos y más.
+                    </p>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="badge bg-success">Activo</span>
+                        <a href="{{ url_for('admin.ia_conversaciones') }}" class="btn btn-sm btn-outline-primary">
+                            Ver conversaciones
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recomendaciones -->
+        <div class="col-md-6 col-lg-4 mb-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="rounded-circle bg-info text-white p-3 me-3">
+                            <i class="fas fa-lightbulb fa-2x"></i>
+                        </div>
+                        <div>
+                            <h5 class="mb-0">Recomendaciones</h5>
+                            <small class="text-muted">Productos inteligentes</small>
+                        </div>
+                    </div>
+                    <p class="text-muted small mb-3">
+                        Sugerencias personalizadas de productos complementarios,
+                        similares y frecuentemente comprados juntos.
+                    </p>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="badge bg-success">Activo</span>
+                        <button class="btn btn-sm btn-outline-info" onclick="probarRecomendaciones()">
+                            Probar ahora
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Generador de Descripciones -->
+        <div class="col-md-6 col-lg-4 mb-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="rounded-circle bg-warning text-white p-3 me-3">
+                            <i class="fas fa-pen-fancy fa-2x"></i>
+                        </div>
+                        <div>
+                            <h5 class="mb-0">Descripciones</h5>
+                            <small class="text-muted">Generación automática</small>
+                        </div>
+                    </div>
+                    <p class="text-muted small mb-3">
+                        Crea descripciones optimizadas para SEO de forma automática
+                        para tus productos.
+                    </p>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="badge bg-success">Activo</span>
+                        <a href="{{ url_for('admin.ia_generador') }}" class="btn btn-sm btn-outline-warning">
+                            Generar ahora
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Análisis de Reviews -->
+        <div class="col-md-6 col-lg-4 mb-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="rounded-circle bg-danger text-white p-3 me-3">
+                            <i class="fas fa-chart-line fa-2x"></i>
+                        </div>
+                        <div>
+                            <h5 class="mb-0">Análisis Reviews</h5>
+                            <small class="text-muted">Sentimientos</small>
+                        </div>
+                    </div>
+                    <p class="text-muted small mb-3">
+                        Análisis de sentimientos, calidad y aspectos positivos/negativos
+                        de los comentarios de productos.
+                    </p>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="badge bg-success">Activo</span>
+                        <a href="{{ url_for('admin.analisis_reviews') }}" class="btn btn-sm btn-outline-danger">
+                            Ver análisis
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Búsqueda Inteligente -->
+        <div class="col-md-6 col-lg-4 mb-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="rounded-circle bg-success text-white p-3 me-3">
+                            <i class="fas fa-search fa-2x"></i>
+                        </div>
+                        <div>
+                            <h5 class="mb-0">Búsqueda IA</h5>
+                            <small class="text-muted">Lenguaje natural</small>
+                        </div>
+                    </div>
+                    <p class="text-muted small mb-3">
+                        Búsqueda avanzada con procesamiento de lenguaje natural.
+                        Entiende intenciones y contexto.
+                    </p>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="badge bg-success">Activo</span>
+                        <button class="btn btn-sm btn-outline-success" onclick="probarBusqueda()">
+                            Probar búsqueda
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Estadísticas -->
+        <div class="col-md-6 col-lg-4 mb-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="rounded-circle bg-secondary text-white p-3 me-3">
+                            <i class="fas fa-chart-bar fa-2x"></i>
+                        </div>
+                        <div>
+                            <h5 class="mb-0">Estadísticas</h5>
+                            <small class="text-muted">Uso de IA</small>
+                        </div>
+                    </div>
+                    <p class="text-muted small mb-3">
+                        Métricas de uso, conversaciones guardadas, análisis realizados
+                        y rendimiento general.
+                    </p>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="badge bg-info">Disponible</span>
+                        <a href="{{ url_for('admin.ia_estadisticas') }}" class="btn btn-sm btn-outline-secondary">
+                            Ver estadísticas
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Acciones Rápidas -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">
+                        <i class="fas fa-bolt"></i> Acciones Rápidas
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-2">
+                            <button class="btn btn-outline-primary w-100" onclick="limpiarCache()">
+                                <i class="fas fa-broom"></i> Limpiar Cache
+                            </button>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <button class="btn btn-outline-info w-100" onclick="probarChatbot()">
+                                <i class="fas fa-robot"></i> Probar Chatbot
+                            </button>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <button class="btn btn-outline-warning w-100" onclick="analizarTodosProductos()">
+                                <i class="fas fa-sync"></i> Analizar Todo
+                            </button>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <a href="/api/ai/health" class="btn btn-outline-success w-100" target="_blank">
+                                <i class="fas fa-heartbeat"></i> Health Check
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para probar chatbot -->
+<div class="modal fade" id="chatbotTestModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-robot"></i> Probar Chatbot
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="test-chat-messages" class="border rounded p-3 mb-3" style="height: 300px; overflow-y: auto; background: #f8f9fa;">
+                    <!-- Mensajes aquí -->
+                </div>
+                <div class="input-group">
+                    <input type="text" id="test-chat-input" class="form-control" placeholder="Escribe un mensaje de prueba...">
+                    <button class="btn btn-primary" onclick="enviarMensajePrueba()">
+                        <i class="fas fa-paper-plane"></i> Enviar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    verificarAPI();
+});
+
+function verificarAPI() {
+    const loading = document.getElementById('api-status-loading');
+    const content = document.getElementById('api-status-content');
+
+    loading.style.display = 'block';
+    content.style.display = 'none';
+
+    fetch('/api/ai/health')
+        .then(response => response.json())
+        .then(data => {
+            loading.style.display = 'none';
+            content.style.display = 'block';
+
+            const statusIndicator = document.getElementById('status-indicator');
+            const statusText = document.getElementById('status-text');
+            const errorMsg = document.getElementById('api-error-message');
+            const successMsg = document.getElementById('api-success-message');
+
+            // Mostrar configuración
+            document.getElementById('api-key-display').textContent =
+                data.config.api_key.substring(0, 15) + '...' + data.config.api_key.slice(-4);
+            document.getElementById('api-url-display').textContent = data.config.api_url;
+            document.getElementById('api-model-display').textContent = data.config.model;
+            document.getElementById('api-cache-display').textContent = data.config.cache_ttl + ' segundos';
+            document.getElementById('last-check-time').textContent = new Date().toLocaleString();
+
+            if (data.status === 'healthy') {
+                statusIndicator.innerHTML = '<i class="fas fa-circle fa-2x text-success"></i>';
+                statusText.textContent = 'Conectado';
+                statusText.className = 'text-success';
+                errorMsg.style.display = 'none';
+                successMsg.style.display = 'block';
+            } else {
+                statusIndicator.innerHTML = '<i class="fas fa-circle fa-2x text-danger"></i>';
+                statusText.textContent = 'Desconectado';
+                statusText.className = 'text-danger';
+                successMsg.style.display = 'none';
+                errorMsg.style.display = 'block';
+                document.getElementById('error-text').textContent = data.message || 'Error desconocido';
+            }
+        })
+        .catch(error => {
+            loading.style.display = 'none';
+            content.style.display = 'block';
+
+            document.getElementById('status-indicator').innerHTML = '<i class="fas fa-circle fa-2x text-danger"></i>';
+            document.getElementById('status-text').textContent = 'Error';
+            document.getElementById('status-text').className = 'text-danger';
+            document.getElementById('api-error-message').style.display = 'block';
+            document.getElementById('error-text').textContent = error.message;
+        });
+}
+
+function probarChatbot() {
+    const modal = new bootstrap.Modal(document.getElementById('chatbotTestModal'));
+    modal.show();
+}
+
+function enviarMensajePrueba() {
+    const input = document.getElementById('test-chat-input');
+    const message = input.value.trim();
+
+    if (!message) return;
+
+    const chatDiv = document.getElementById('test-chat-messages');
+
+    // Agregar mensaje del usuario
+    chatDiv.innerHTML += `
+        <div class="mb-2 text-end">
+            <span class="badge bg-primary">${message}</span>
+        </div>
+    `;
+
+    input.value = '';
+    chatDiv.scrollTop = chatDiv.scrollHeight;
+
+    // Enviar a la API
+    fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            message: message,
+            context: {}
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            chatDiv.innerHTML += `
+                <div class="mb-2">
+                    <span class="badge bg-secondary">${data.response}</span>
+                </div>
+            `;
+        } else {
+            chatDiv.innerHTML += `
+                <div class="mb-2">
+                    <span class="badge bg-danger">Error: ${data.error || 'Desconocido'}</span>
+                </div>
+            `;
+        }
+        chatDiv.scrollTop = chatDiv.scrollHeight;
+    })
+    .catch(error => {
+        chatDiv.innerHTML += `
+            <div class="mb-2">
+                <span class="badge bg-danger">Error de conexión: ${error.message}</span>
+            </div>
+        `;
+        chatDiv.scrollTop = chatDiv.scrollHeight;
+    });
+}
+
+function limpiarCache() {
+    if (confirm('¿Estás seguro de que deseas limpiar el cache de IA?')) {
+        alert('Funcionalidad en desarrollo');
+    }
+}
+
+function probarRecomendaciones() {
+    const productoId = prompt('Ingresa el ID de un producto para obtener recomendaciones:');
+    if (productoId) {
+        window.open(`/api/ai/recomendaciones/${productoId}`, '_blank');
+    }
+}
+
+function probarBusqueda() {
+    const query = prompt('Ingresa una consulta de búsqueda:');
+    if (query) {
+        fetch('/api/ai/busqueda-inteligente', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ query: query })
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(JSON.stringify(data, null, 2));
+        });
+    }
+}
+
+function analizarTodosProductos() {
+    if (confirm('Esto puede tardar varios minutos. ¿Continuar?')) {
+        alert('Funcionalidad en desarrollo');
+    }
+}
+</script>
+{% endblock %}

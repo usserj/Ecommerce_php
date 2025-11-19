@@ -3419,3 +3419,112 @@ def analisis_reviews_detalle(producto_id):
                          producto=producto,
                          analisis=analisis,
                          comentarios=comentarios)
+
+# ==========================================
+# RUTAS DE INTELIGENCIA ARTIFICIAL
+# ==========================================
+
+@admin_bp.route('/ia/dashboard')
+@admin_required
+def ia_dashboard():
+    """Panel principal de funcionalidades de IA."""
+    return render_template('admin/ia_dashboard.html')
+
+
+@admin_bp.route('/ia/conversaciones')
+@admin_required
+def ia_conversaciones():
+    """Ver todas las conversaciones del chatbot."""
+    from app.models.chatbot import ConversacionChatbot
+
+    page = request.args.get('page', 1, type=int)
+    per_page = 50
+
+    # Obtener conversaciones agrupadas por session_id
+    conversaciones = ConversacionChatbot.query.order_by(
+        ConversacionChatbot.fecha.desc()
+    ).paginate(page=page, per_page=per_page, error_out=False)
+
+    # Estadísticas
+    total_mensajes = ConversacionChatbot.query.count()
+    total_sesiones = db.session.query(
+        ConversacionChatbot.session_id
+    ).distinct().count()
+
+    return render_template('admin/ia_conversaciones.html',
+                         conversaciones=conversaciones,
+                         total_mensajes=total_mensajes,
+                         total_sesiones=total_sesiones)
+
+
+@admin_bp.route('/ia/generador')
+@admin_required
+def ia_generador():
+    """Generador de descripciones de productos."""
+    productos = Producto.query.filter_by(estado=1).all()
+    return render_template('admin/ia_generador.html',
+                         productos=productos)
+
+
+@admin_bp.route('/ia/generar-descripcion/<int:producto_id>', methods=['POST'])
+@admin_required
+def ia_generar_descripcion(producto_id):
+    """Generar descripción para un producto."""
+    from app.services.ai_service import ai_service
+
+    producto = Producto.query.get_or_404(producto_id)
+
+    data = request.get_json()
+    tipo = data.get('tipo', 'corta')  # corta o larga
+
+    result = ai_service.generar_descripcion_producto(
+        nombre=producto.nombre,
+        categoria=producto.categoria.nombre if producto.categoria else '',
+        precio=float(producto.precio),
+        tipo_descripcion=tipo
+    )
+
+    return jsonify(result)
+
+
+@admin_bp.route('/ia/analizar-reviews/<int:producto_id>', methods=['POST'])
+@admin_required
+def ia_analizar_reviews_producto(producto_id):
+    """Analizar reviews de un producto específico."""
+    from app.services.ai_service import ai_service
+
+    resultado = ai_service.analizar_reviews(producto_id=producto_id)
+
+    if resultado:
+        flash(f'Análisis completado exitosamente para el producto.', 'success')
+    else:
+        flash('Error al analizar reviews. Verifica que el producto tenga comentarios.', 'error')
+
+    return redirect(url_for('admin.analisis_reviews_detalle', producto_id=producto_id))
+
+
+@admin_bp.route('/ia/estadisticas')
+@admin_required
+def ia_estadisticas():
+    """Estadísticas de uso de IA."""
+    from app.models.chatbot import ConversacionChatbot
+    from app.models.analisis_review import AnalisisReview
+
+    # Estadísticas de chatbot
+    stats_chatbot = ConversacionChatbot.get_estadisticas() if hasattr(ConversacionChatbot, 'get_estadisticas') else {
+        'total_mensajes': ConversacionChatbot.query.count(),
+        'total_sesiones': db.session.query(ConversacionChatbot.session_id).distinct().count(),
+        'total_usuarios': ConversacionChatbot.query.filter(
+            ConversacionChatbot.usuario_id.isnot(None)
+        ).distinct(ConversacionChatbot.usuario_id).count()
+    }
+
+    # Estadísticas de análisis
+    stats_analisis = AnalisisReview.get_estadisticas_generales() if hasattr(AnalisisReview, 'get_estadisticas_generales') else {
+        'total_analisis': AnalisisReview.query.count(),
+        'productos_analizados': db.session.query(AnalisisReview.producto_id).distinct().count()
+    }
+
+    return render_template('admin/ia_estadisticas.html',
+                         stats_chatbot=stats_chatbot,
+                         stats_analisis=stats_analisis)

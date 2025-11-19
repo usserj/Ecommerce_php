@@ -384,6 +384,40 @@
                 <i class="fas fa-chart-line"></i>
                 <span>Analíticas</span>
             </a>
+
+            <!-- Menú de Inteligencia Artificial -->
+            <hr class="my-3">
+            <div class="px-3 mb-2">
+                <small class="text-muted text-uppercase">Inteligencia Artificial</small>
+            </div>
+            <a class="nav-link {% if 'ia_dashboard' in request.endpoint %}active{% endif %}"
+               href="{{ url_for('admin.ia_dashboard') }}">
+                <i class="fas fa-robot text-primary"></i>
+                <span>Panel de IA</span>
+                <span class="badge bg-primary ms-auto">Nuevo</span>
+            </a>
+            <a class="nav-link {% if 'ia_conversaciones' in request.endpoint %}active{% endif %}"
+               href="{{ url_for('admin.ia_conversaciones') }}">
+                <i class="fas fa-comments"></i>
+                <span>Conversaciones</span>
+            </a>
+            <a class="nav-link {% if 'ia_generador' in request.endpoint %}active{% endif %}"
+               href="{{ url_for('admin.ia_generador') }}">
+                <i class="fas fa-pen-fancy"></i>
+                <span>Generar Descripciones</span>
+            </a>
+            <a class="nav-link {% if request.endpoint == 'admin.analisis_reviews' %}active{% endif %}"
+               href="{{ url_for('admin.analisis_reviews') }}">
+                <i class="fas fa-chart-pie"></i>
+                <span>Análisis de Reviews</span>
+            </a>
+            <a class="nav-link {% if 'ia_estadisticas' in request.endpoint %}active{% endif %}"
+               href="{{ url_for('admin.ia_estadisticas') }}">
+                <i class="fas fa-chart-bar"></i>
+                <span>Estadísticas IA</span>
+            </a>
+
+            <hr class="my-3">
             <a class="nav-link {% if request.endpoint == 'admin.settings' %}active{% endif %}"
                href="{{ url_for('admin.settings') }}">
                 <i class="fas fa-cog"></i>

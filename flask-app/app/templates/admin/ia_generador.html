@@ -1,0 +1,160 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Generador de Descripciones IA - Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0">
+            <i class="fas fa-pen-fancy"></i> Generador de Descripciones con IA
+        </h1>
+        <a href="{{ url_for('admin.ia_dashboard') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Volver
+        </a>
+    </div>
+
+    <div class="row">
+        <!-- Formulario de generación -->
+        <div class="col-md-6">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Generar Descripción</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">Seleccionar Producto</label>
+                        <select class="form-select" id="producto-select">
+                            <option value="">-- Seleccionar --</option>
+                            {% for producto in productos %}
+                            <option value="{{ producto.id }}"
+                                    data-nombre="{{ producto.nombre }}"
+                                    data-categoria="{{ producto.categoria.nombre if producto.categoria else '' }}"
+                                    data-precio="{{ producto.precio }}">
+                                {{ producto.nombre }} - ${{ producto.precio }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Tipo de Descripción</label>
+                        <div class="btn-group w-100" role="group">
+                            <input type="radio" class="btn-check" name="tipo" id="tipo-corta" value="corta" checked>
+                            <label class="btn btn-outline-primary" for="tipo-corta">Corta (SEO)</label>
+
+                            <input type="radio" class="btn-check" name="tipo" id="tipo-larga" value="larga">
+                            <label class="btn btn-outline-primary" for="tipo-larga">Larga (Detallada)</label>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary w-100" onclick="generarDescripcion()">
+                        <i class="fas fa-magic"></i> Generar Descripción
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Resultado -->
+        <div class="col-md-6">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Resultado</h5>
+                </div>
+                <div class="card-body">
+                    <div id="resultado-loading" style="display: none;" class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p class="mt-2">Generando descripción con IA...</p>
+                    </div>
+
+                    <div id="resultado-content" style="display: none;">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Descripción Generada:</label>
+                            <textarea id="descripcion-generada" class="form-control" rows="10" readonly></textarea>
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-success" onclick="copiarDescripcion()">
+                                <i class="fas fa-copy"></i> Copiar al Portapapeles
+                            </button>
+                            <button class="btn btn-outline-primary" onclick="aplicarAlProducto()">
+                                <i class="fas fa-save"></i> Aplicar al Producto
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="resultado-placeholder" class="text-center text-muted py-5">
+                        <i class="fas fa-file-alt fa-3x mb-3"></i>
+                        <p>Selecciona un producto y genera una descripción</p>
+                    </div>
+
+                    <div id="resultado-error" style="display: none;" class="alert alert-danger">
+                        <strong>Error:</strong> <span id="error-message"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentProductId = null;
+
+function generarDescripcion() {
+    const select = document.getElementById('producto-select');
+    const productoId = select.value;
+
+    if (!productoId) {
+        alert('Por favor selecciona un producto');
+        return;
+    }
+
+    currentProductId = productoId;
+
+    const tipo = document.querySelector('input[name="tipo"]:checked').value;
+
+    // Mostrar loading
+    document.getElementById('resultado-placeholder').style.display = 'none';
+    document.getElementById('resultado-content').style.display = 'none';
+    document.getElementById('resultado-error').style.display = 'none';
+    document.getElementById('resultado-loading').style.display = 'block';
+
+    fetch(`/admin/ia/generar-descripcion/${productoId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ tipo: tipo })
+    })
+    .then(response => response.json())
+    .then(data => {
+        document.getElementById('resultado-loading').style.display = 'none';
+
+        if (data.success) {
+            document.getElementById('descripcion-generada').value = data.descripcion;
+            document.getElementById('resultado-content').style.display = 'block';
+        } else {
+            document.getElementById('error-message').textContent = data.error || 'Error desconocido';
+            document.getElementById('resultado-error').style.display = 'block';
+        }
+    })
+    .catch(error => {
+        document.getElementById('resultado-loading').style.display = 'none';
+        document.getElementById('error-message').textContent = error.message;
+        document.getElementById('resultado-error').style.display = 'block';
+    });
+}
+
+function copiarDescripcion() {
+    const textarea = document.getElementById('descripcion-generada');
+    textarea.select();
+    document.execCommand('copy');
+    alert('Descripción copiada al portapapeles');
+}
+
+function aplicarAlProducto() {
+    if (confirm('¿Deseas aplicar esta descripción al producto seleccionado?')) {
+        alert('Funcionalidad en desarrollo');
+        // TODO: Implementar guardado automático
+    }
+}
+</script>
+{% endblock %}
