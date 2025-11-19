@@ -21,7 +21,7 @@
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <h6 class="text-muted mb-1">Total Usuarios</h6>
-                            <h3 class="mb-0">{{ users.total }}</h3>
+                            <h3 class="mb-0">{{ total_users }}</h3>
                         </div>
                         <div class="text-primary">
                             <i class="fas fa-users fa-2x opacity-50"></i>
@@ -36,7 +36,7 @@
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <h6 class="text-muted mb-1">Verificados</h6>
-                            <h3 class="mb-0">{{ users.items | selectattr('verificacion', 'equalto', 0) | list | length }}</h3>
+                            <h3 class="mb-0">{{ verified_users }}</h3>
                         </div>
                         <div class="text-success">
                             <i class="fas fa-check-circle fa-2x opacity-50"></i>
@@ -51,7 +51,7 @@
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <h6 class="text-muted mb-1">Pendientes</h6>
-                            <h3 class="mb-0">{{ users.items | selectattr('verificacion', 'equalto', 1) | list | length }}</h3>
+                            <h3 class="mb-0">{{ pending_users }}</h3>
                         </div>
                         <div class="text-warning">
                             <i class="fas fa-clock fa-2x opacity-50"></i>
@@ -84,32 +84,20 @@
             <h5 class="mb-0"><i class="fas fa-list me-2"></i>Lista de Usuarios</h5>
         </div>
         <div class="card-body">
-            <!-- Search and Filters -->
-            <form method="GET" class="row g-3 mb-4">
-                <div class="col-md-6">
-                    <input type="text" name="search" class="form-control"
-                           placeholder="Buscar por nombre, email o teléfono..."
-                           value="{{ request.args.get('search', '') }}">
-                </div>
+            <!-- Verification Filter -->
+            <div class="row g-3 mb-4">
                 <div class="col-md-3">
-                    <select name="verificacion" class="form-control">
+                    <select id="verificacionFilter" class="form-control">
                         <option value="">Todos los estados</option>
-                        <option value="0" {% if request.args.get('verificacion') == '0' %}selected{% endif %}>Verificados</option>
-                        <option value="1" {% if request.args.get('verificacion') == '1' %}selected{% endif %}>Pendientes</option>
+                        <option value="0">Verificados</option>
+                        <option value="1">Pendientes</option>
                     </select>
                 </div>
-                <div class="col-md-3">
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-search"></i> Buscar
-                    </button>
-                    <a href="{{ url_for('admin.users') }}" class="btn btn-secondary">
-                        <i class="fas fa-redo"></i> Limpiar
-                    </a>
-                </div>
-            </form>
+            </div>
+
             <!-- Users Table -->
             <div class="table-responsive">
-                <table class="table table-hover align-middle">
+                <table id="usersTable" class="table table-hover align-middle">
                     <thead class="table-light">
                         <tr>
                             <th>ID</th>
@@ -122,112 +110,10 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for user in users.items %}
-                        <tr>
-                            <td><span class="badge bg-secondary">{{ user.id }}</span></td>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <div class="avatar-circle bg-primary text-white me-2">
-                                        {{ user.nombre[0].upper() if user.nombre else 'U' }}
-                                    </div>
-                                    <div>
-                                        <strong>{{ user.nombre }}</strong>
-                                        {% if user.pais %}
-                                        <br><small class="text-muted">
-                                            <i class="fas fa-map-marker-alt"></i> {{ user.pais }}
-                                        </small>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            </td>
-                            <td>
-                                <div>
-                                    <i class="fas fa-envelope text-muted me-1"></i>
-                                    <small>{{ user.email }}</small>
-                                </div>
-                                {% if user.telefono %}
-                                <div>
-                                    <i class="fas fa-phone text-muted me-1"></i>
-                                    <small>{{ user.telefono }}</small>
-                                </div>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if user.modo == 'directo' %}
-                                    <span class="badge bg-primary">
-                                        <i class="fas fa-envelope"></i> Directo
-                                    </span>
-                                {% elif user.modo == 'google' %}
-                                    <span class="badge bg-danger">
-                                        <i class="fab fa-google"></i> Google
-                                    </span>
-                                {% elif user.modo == 'facebook' %}
-                                    <span class="badge bg-info">
-                                        <i class="fab fa-facebook"></i> Facebook
-                                    </span>
-                                {% else %}
-                                    <span class="badge bg-secondary">{{ user.modo }}</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                <small>{{ user.fecha.strftime('%d/%m/%Y') if user.fecha else 'N/A' }}</small>
-                            </td>
-                            <td>
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input toggle-user" type="checkbox"
-                                           data-id="{{ user.id }}"
-                                           {{ 'checked' if user.verificacion == 0 else '' }}
-                                           title="{{ 'Verificado' if user.verificacion == 0 else 'Pendiente' }}">
-                                    <label class="form-check-label small">
-                                        {{ 'Verificado' if user.verificacion == 0 else 'Pendiente' }}
-                                    </label>
-                                </div>
-                            </td>
-                            <td>
-                                <div class="btn-group btn-group-sm" role="group">
-                                    <a href="{{ url_for('admin.user_detail', id=user.id) }}"
-                                       class="btn btn-outline-primary"
-                                       title="Ver detalles">
-                                        <i class="fas fa-eye"></i>
-                                    </a>
-                                    <a href="{{ url_for('admin.user_orders', id=user.id) }}"
-                                       class="btn btn-outline-info"
-                                       title="Ver compras">
-                                        <i class="fas fa-shopping-cart"></i>
-                                    </a>
-                                    <button type="button"
-                                            class="btn btn-outline-danger delete-user"
-                                            data-id="{{ user.id }}"
-                                            data-nombre="{{ user.nombre }}"
-                                            title="Eliminar usuario">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr>
-                            <td colspan="7" class="text-center text-muted py-4">
-                                <i class="fas fa-users fa-3x mb-3 d-block"></i>
-                                No se encontraron usuarios
-                            </td>
-                        </tr>
-                        {% endfor %}
+                        <!-- DataTables will populate this -->
                     </tbody>
                 </table>
             </div>
-            {% if users.has_prev or users.has_next %}
-            <nav>
-                <ul class="pagination justify-content-center">
-                    {% if users.has_prev %}<li class="page-item"><a class="page-link" href="{{ url_for('admin.users', page=users.prev_num, search=request.args.get('search', '')) }}">Anterior</a></li>{% endif %}
-                    {% for page_num in users.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
-                        {% if page_num %}<li class="page-item {% if page_num == users.page %}active{% endif %}"><a class="page-link" href="{{ url_for('admin.users', page=page_num, search=request.args.get('search', '')) }}">{{ page_num }}</a></li>
-                        {% else %}<li class="page-item disabled"><span class="page-link">...</span></li>{% endif %}
-                    {% endfor %}
-                    {% if users.has_next %}<li class="page-item"><a class="page-link" href="{{ url_for('admin.users', page=users.next_num, search=request.args.get('search', '')) }}">Siguiente</a></li>{% endif %}
-                </ul>
-            </nav>
-            {% endif %}
         </div>
     </div>
 </div>
@@ -291,18 +177,97 @@
 {% endblock %}
 
 {% block extra_js %}
+<!-- DataTables CSS/JS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+
 <script>
 // Get CSRF token
 function getCsrfToken() {
     return '{{ csrf_token() }}';
 }
 
-// Toggle user verification status
-document.querySelectorAll('.toggle-user').forEach(toggle => {
-    toggle.addEventListener('change', function() {
-        const userId = this.getAttribute('data-id');
+// Initialize DataTable
+$(document).ready(function() {
+    const table = $('#usersTable').DataTable({
+        processing: true,
+        serverSide: true,
+        ajax: {
+            url: '{{ url_for("admin.users_ajax") }}',
+            type: 'GET',
+            data: function(d) {
+                d.verificacion_filter = $('#verificacionFilter').val();
+            }
+        },
+        columns: [
+            { data: 'id', width: '5%' },
+            { data: 'usuario', orderable: true, width: '20%' },
+            { data: 'contacto', orderable: false, width: '20%' },
+            { data: 'modo', orderable: true, width: '12%' },
+            { data: 'registro', orderable: true, width: '12%' },
+            {
+                data: null,
+                orderable: false,
+                width: '15%',
+                render: function(data) {
+                    const checked = data.verificacion == 0 ? 'checked' : '';
+                    const label = data.verificacion == 0 ? 'Verificado' : 'Pendiente';
+                    return `<div class="form-check form-switch">
+                        <input class="form-check-input toggle-user" type="checkbox"
+                               data-id="${data.id}" ${checked}
+                               title="${label}">
+                        <label class="form-check-label small">${label}</label>
+                    </div>`;
+                }
+            },
+            {
+                data: null,
+                orderable: false,
+                width: '16%',
+                render: function(data) {
+                    return `
+                        <div class="btn-group btn-group-sm" role="group">
+                            <a href="/admin/users/${data.id}/detail"
+                               class="btn btn-outline-primary"
+                               title="Ver detalles">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            <a href="/admin/users/${data.id}/orders"
+                               class="btn btn-outline-info"
+                               title="Ver compras">
+                                <i class="fas fa-shopping-cart"></i>
+                            </a>
+                            <button type="button"
+                                    class="btn btn-outline-danger delete-user"
+                                    data-id="${data.id}"
+                                    data-nombre="${data.usuario.replace(/<[^>]*>/g, '').replace(/^\s+|\s+$/g, '')}"
+                                    title="Eliminar usuario">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    `;
+                }
+            }
+        ],
+        order: [[0, 'desc']],
+        language: {
+            url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json'
+        },
+        pageLength: 25,
+        lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]]
+    });
+
+    // Verification filter change
+    $('#verificacionFilter').on('change', function() {
+        table.ajax.reload();
+    });
+
+    // Toggle user verification status
+    $('#usersTable').on('change', '.toggle-user', function() {
+        const userId = $(this).data('id');
         const isChecked = this.checked;
-        const label = this.nextElementSibling;
+        const label = $(this).next('label');
 
         fetch(`/admin/users/toggle/${userId}`, {
             method: 'POST',
@@ -316,7 +281,7 @@ document.querySelectorAll('.toggle-user').forEach(toggle => {
             if(d.success) {
                 // verificacion: 0=verified, 1=pending
                 const status = d.verificacion == 0 ? 'Verificado' : 'Pendiente';
-                label.textContent = status;
+                label.text(status);
                 console.log(`Usuario ${userId} ahora está: ${status}`);
             } else {
                 this.checked = !isChecked;
@@ -328,18 +293,21 @@ document.querySelectorAll('.toggle-user').forEach(toggle => {
             alert('Error de conexión');
         });
     });
-});
 
-// Delete user confirmation
-document.querySelectorAll('.delete-user').forEach(btn => {
-    btn.addEventListener('click', function() {
-        const userId = this.getAttribute('data-id');
-        const userName = this.getAttribute('data-nombre');
+    // Delete user confirmation
+    $('#usersTable').on('click', '.delete-user', function() {
+        const userId = $(this).data('id');
+        const userName = $(this).data('nombre');
 
         document.getElementById('userName').textContent = userName;
         document.getElementById('deleteUserForm').action = `/admin/users/delete/${userId}`;
 
         new bootstrap.Modal(document.getElementById('deleteUserModal')).show();
+    });
+
+    // Reload table after successful delete
+    $('#deleteUserForm').on('submit', function() {
+        setTimeout(() => table.ajax.reload(), 500);
     });
 });
 </script>

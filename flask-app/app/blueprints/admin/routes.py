@@ -140,17 +140,119 @@ def dashboard():
 @admin_required
 def users():
     """Manage users."""
-    page = request.args.get('page', 1, type=int)
-    search = request.args.get('search', '')
+    # Get statistics for cards
+    total_users = User.query.count()
+    verified_users = User.query.filter_by(verificacion=0).count()
+    pending_users = User.query.filter_by(verificacion=1).count()
 
+    return render_template('admin/users.html',
+                         total_users=total_users,
+                         verified_users=verified_users,
+                         pending_users=pending_users)
+
+
+@admin_bp.route('/users/ajax')
+@admin_required
+def users_ajax():
+    """AJAX endpoint for DataTables user listing."""
+    # DataTables parameters
+    draw = request.args.get('draw', type=int, default=1)
+    start = request.args.get('start', type=int, default=0)
+    length = request.args.get('length', type=int, default=10)
+    search_value = request.args.get('search[value]', default='')
+    order_column = request.args.get('order[0][column]', type=int, default=0)
+    order_dir = request.args.get('order[0][dir]', default='desc')
+
+    # Custom filters
+    verificacion_filter = request.args.get('verificacion_filter', default='')
+
+    # Base query
     query = User.query
 
-    if search:
-        query = query.filter(User.nombre.contains(search) | User.email.contains(search))
+    # Search filter
+    if search_value:
+        query = query.filter(
+            db.or_(
+                User.nombre.like(f'%{search_value}%'),
+                User.email.like(f'%{search_value}%'),
+                User.telefono.like(f'%{search_value}%') if hasattr(User, 'telefono') else False
+            )
+        )
 
-    users = query.order_by(User.fecha.desc()).paginate(page=page, per_page=25, error_out=False)
+    # Verification filter
+    if verificacion_filter != '':
+        query = query.filter_by(verificacion=int(verificacion_filter))
 
-    return render_template('admin/users.html', users=users)
+    # Total records
+    total_records = User.query.count()
+    filtered_records = query.count()
+
+    # Ordering
+    columns = [
+        User.id,
+        User.nombre,
+        User.email,
+        User.modo,
+        User.fecha,
+        User.verificacion
+    ]
+
+    if 0 <= order_column < len(columns):
+        order_col = columns[order_column]
+        if order_dir == 'asc':
+            query = query.order_by(order_col.asc())
+        else:
+            query = query.order_by(order_col.desc())
+    else:
+        query = query.order_by(User.fecha.desc())
+
+    # Get paginated data
+    users = query.offset(start).limit(length).all()
+
+    # Format data for DataTables
+    data = []
+    for user in users:
+        # User column with avatar
+        inicial = user.nombre[0].upper() if user.nombre else 'U'
+        user_html = f'''<div class="d-flex align-items-center">
+            <div class="avatar-circle bg-primary text-white me-2">{inicial}</div>
+            <div>
+                <strong>{user.nombre}</strong>'''
+        if hasattr(user, 'pais') and user.pais:
+            user_html += f'<br><small class="text-muted"><i class="fas fa-map-marker-alt"></i> {user.pais}</small>'
+        user_html += '</div></div>'
+
+        # Contact column
+        contact_html = f'<div><i class="fas fa-envelope text-muted me-1"></i><small>{user.email}</small></div>'
+        if hasattr(user, 'telefono') and user.telefono:
+            contact_html += f'<div><i class="fas fa-phone text-muted me-1"></i><small>{user.telefono}</small></div>'
+
+        # Mode badge
+        if user.modo == 'directo':
+            modo_html = '<span class="badge bg-primary"><i class="fas fa-envelope"></i> Directo</span>'
+        elif user.modo == 'google':
+            modo_html = '<span class="badge bg-danger"><i class="fab fa-google"></i> Google</span>'
+        elif user.modo == 'facebook':
+            modo_html = '<span class="badge bg-info"><i class="fab fa-facebook"></i> Facebook</span>'
+        else:
+            modo_html = f'<span class="badge bg-secondary">{user.modo}</span>'
+
+        data.append({
+            'id': user.id,
+            'usuario': user_html,
+            'contacto': contact_html,
+            'modo': modo_html,
+            'registro': user.fecha.strftime('%d/%m/%Y') if user.fecha else 'N/A',
+            'verificacion': user.verificacion,
+            'actions': ''  # Will be rendered by DataTables
+        })
+
+    return jsonify({
+        'draw': draw,
+        'recordsTotal': total_records,
+        'recordsFiltered': filtered_records,
+        'data': data
+    })
 
 
 
