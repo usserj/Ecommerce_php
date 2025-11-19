@@ -9,7 +9,7 @@ from app.models.order import Compra
 from app.models.notification import Notificacion
 from app.models.visit import VisitaPais, VisitaPersona
 from app.models.categoria import Categoria, Subcategoria
-from app.models.setting import Slide, Banner, Plantilla
+from app.models.setting import Slide, Banner, Plantilla, Cabecera
 from app.models.comercio import Comercio
 from app.models.comment import Comentario
 from app.models.coupon import Cupon
@@ -1264,6 +1264,168 @@ def export_reports():
         as_attachment=True,
         download_name=filename
     )
+
+
+# ===========================
+# SEO HEADERS MANAGEMENT
+# ===========================
+
+@admin_bp.route('/seo-headers')
+@admin_required
+def seo_headers():
+    """List all SEO headers."""
+    cabeceras = Cabecera.query.order_by(Cabecera.fecha.desc()).all()
+    total_cabeceras = Cabecera.query.count()
+
+    return render_template('admin/seo_headers.html',
+                         cabeceras=cabeceras,
+                         total_cabeceras=total_cabeceras)
+
+
+@admin_bp.route('/seo-headers/create', methods=['GET', 'POST'])
+@admin_required
+def create_seo_header():
+    """Create new SEO header."""
+    if request.method == 'POST':
+        try:
+            ruta = request.form.get('ruta', '').strip()
+            titulo = request.form.get('titulo', '').strip()
+            descripcion = request.form.get('descripcion', '').strip()
+            palabras_claves = request.form.get('palabras_claves', '').strip()
+
+            # Validate required fields
+            if not ruta or not titulo:
+                flash('La ruta y el título son obligatorios.', 'error')
+                return render_template('admin/seo_header_form.html')
+
+            # Check if route already exists
+            existing = Cabecera.query.filter_by(ruta=ruta).first()
+            if existing:
+                flash(f'Ya existe una cabecera SEO para la ruta "{ruta}".', 'error')
+                return render_template('admin/seo_header_form.html')
+
+            # Handle image upload
+            portada_path = ''
+            if 'portada' in request.files:
+                file = request.files['portada']
+                if file and file.filename:
+                    filename = secure_filename(file.filename)
+                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                    filename = f"seo_{timestamp}_{filename}"
+
+                    upload_folder = os.path.join(current_app.config.get('UPLOAD_FOLDER', 'app/static/uploads'), 'seo')
+                    os.makedirs(upload_folder, exist_ok=True)
+                    filepath = os.path.join(upload_folder, filename)
+
+                    # Save and resize image
+                    from PIL import Image
+                    img = Image.open(file)
+                    img.thumbnail((1200, 630))  # Open Graph recommended size
+                    img.save(filepath, optimize=True, quality=85)
+
+                    portada_path = f"uploads/seo/{filename}"
+
+            # Create cabecera
+            cabecera = Cabecera(
+                ruta=ruta,
+                titulo=titulo,
+                descripcion=descripcion,
+                palabrasClaves=palabras_claves,
+                portada=portada_path
+            )
+
+            db.session.add(cabecera)
+            db.session.commit()
+
+            flash(f'Cabecera SEO para "{ruta}" creada exitosamente.', 'success')
+            return redirect(url_for('admin.seo_headers'))
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error al crear cabecera SEO: {e}', 'error')
+
+    return render_template('admin/seo_header_form.html')
+
+
+@admin_bp.route('/seo-headers/edit/<int:id>', methods=['GET', 'POST'])
+@admin_required
+def edit_seo_header(id):
+    """Edit SEO header."""
+    cabecera = Cabecera.query.get_or_404(id)
+
+    if request.method == 'POST':
+        try:
+            ruta = request.form.get('ruta', '').strip()
+            titulo = request.form.get('titulo', '').strip()
+            descripcion = request.form.get('descripcion', '').strip()
+            palabras_claves = request.form.get('palabras_claves', '').strip()
+
+            # Validate required fields
+            if not ruta or not titulo:
+                flash('La ruta y el título son obligatorios.', 'error')
+                return render_template('admin/seo_header_form.html', cabecera=cabecera)
+
+            # Check if route already exists (excluding current)
+            existing = Cabecera.query.filter(Cabecera.ruta == ruta, Cabecera.id != id).first()
+            if existing:
+                flash(f'Ya existe otra cabecera SEO para la ruta "{ruta}".', 'error')
+                return render_template('admin/seo_header_form.html', cabecera=cabecera)
+
+            # Update fields
+            cabecera.ruta = ruta
+            cabecera.titulo = titulo
+            cabecera.descripcion = descripcion
+            cabecera.palabrasClaves = palabras_claves
+
+            # Handle image upload
+            if 'portada' in request.files:
+                file = request.files['portada']
+                if file and file.filename:
+                    filename = secure_filename(file.filename)
+                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                    filename = f"seo_{timestamp}_{filename}"
+
+                    upload_folder = os.path.join(current_app.config.get('UPLOAD_FOLDER', 'app/static/uploads'), 'seo')
+                    os.makedirs(upload_folder, exist_ok=True)
+                    filepath = os.path.join(upload_folder, filename)
+
+                    # Save and resize image
+                    from PIL import Image
+                    img = Image.open(file)
+                    img.thumbnail((1200, 630))
+                    img.save(filepath, optimize=True, quality=85)
+
+                    cabecera.portada = f"uploads/seo/{filename}"
+
+            db.session.commit()
+
+            flash(f'Cabecera SEO para "{ruta}" actualizada exitosamente.', 'success')
+            return redirect(url_for('admin.seo_headers'))
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error al actualizar cabecera SEO: {e}', 'error')
+
+    return render_template('admin/seo_header_form.html', cabecera=cabecera)
+
+
+@admin_bp.route('/seo-headers/delete/<int:id>', methods=['POST'])
+@admin_required
+def delete_seo_header(id):
+    """Delete SEO header."""
+    try:
+        cabecera = Cabecera.query.get_or_404(id)
+        ruta = cabecera.ruta
+
+        db.session.delete(cabecera)
+        db.session.commit()
+
+        flash(f'Cabecera SEO para "{ruta}" eliminada exitosamente.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al eliminar cabecera SEO: {e}', 'error')
+
+    return redirect(url_for('admin.seo_headers'))
 
 
 @admin_bp.route('/settings', methods=['GET', 'POST'])
