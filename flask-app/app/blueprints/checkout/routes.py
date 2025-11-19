@@ -236,15 +236,11 @@ def upload_voucher():
                 estado='pendiente'
             )
 
-            # Store voucher info (you might want to add a field to the order model)
-            # For now, we'll add it as a notification
-            notif = Notificacion(
-                tipo='comprobante_subido',
-                contenido=f'Usuario {current_user.nombre} subió comprobante. Orden: {order_id}, Referencia: {referencia}, Archivo: {filename}',
-                fecha=datetime.now()
-            )
-            db.session.add(notif)
-            db.session.commit()
+            # Increment new sales counter
+            Notificacion.increment_new_sales()
+
+            # TODO: Could add a Message/Log model to track voucher uploads
+            # For now, the voucher is saved and the order is created with pending status
 
             # Clear cart
             session['cart'] = []

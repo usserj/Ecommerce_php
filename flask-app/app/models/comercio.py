@@ -43,6 +43,14 @@ class Comercio(db.Model):
     # Bank accounts for transfers (JSON string)
     cuentasBancarias = db.Column(db.Text)  # JSON with bank account details
 
+    # SMTP Email Configuration
+    mailServer = db.Column(db.String(100), default='smtp.gmail.com')
+    mailPort = db.Column(db.Integer, default=587)
+    mailUseTLS = db.Column(db.Boolean, default=True)
+    mailUsername = db.Column(db.String(255))
+    mailPassword = db.Column(db.Text)
+    mailDefaultSender = db.Column(db.String(255))
+
     def __repr__(self):
         return f'<Comercio {self.id}>'
 
@@ -115,3 +123,14 @@ class Comercio(db.Model):
             except (json.JSONDecodeError, TypeError):
                 return {}
         return {}
+
+    def get_smtp_config(self):
+        """Get SMTP email configuration."""
+        return {
+            'server': self.mailServer,
+            'port': self.mailPort,
+            'use_tls': self.mailUseTLS,
+            'username': self.mailUsername,
+            'password': self.mailPassword,
+            'default_sender': self.mailDefaultSender
+        }

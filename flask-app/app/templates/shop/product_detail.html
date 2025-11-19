@@ -396,9 +396,12 @@ document.querySelectorAll('.delete-comment').forEach(btn => {
 
 // Add to wishlist
 document.querySelectorAll('.add-to-wishlist').forEach(btn => {
-    btn.addEventListener('click', function() {
+    btn.addEventListener('click', function(e) {
+        e.preventDefault();
         const productId = this.getAttribute('data-product-id');
         const button = this;
+
+        console.log('Agregando a wishlist, producto:', productId);
 
         fetch('/perfil/wishlist/toggle', {
             method: 'POST',
@@ -406,11 +409,15 @@ document.querySelectorAll('.add-to-wishlist').forEach(btn => {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                producto_id: productId
+                producto_id: parseInt(productId)
             })
         })
-        .then(response => response.json())
+        .then(response => {
+            console.log('Response status:', response.status);
+            return response.json();
+        })
         .then(data => {
+            console.log('Response data:', data);
             if (data.success) {
                 if (data.added) {
                     button.innerHTML = '<i class="fas fa-heart"></i> En Lista de Deseos';
@@ -427,8 +434,8 @@ document.querySelectorAll('.add-to-wishlist').forEach(btn => {
             }
         })
         .catch(error => {
-            console.error('Error:', error);
-            alert('Error de conexión');
+            console.error('Error completo:', error);
+            alert('Error de conexión. Revisa la consola para detalles.');
         });
     });
 });

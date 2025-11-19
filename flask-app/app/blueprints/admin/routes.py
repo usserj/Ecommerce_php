@@ -332,9 +332,26 @@ def delete_product(id):
     """Delete product."""
     try:
         producto = Producto.query.get_or_404(id)
+
+        # Check if product has orders
+        if producto.compras.count() > 0:
+            flash(f'No se puede eliminar "{producto.titulo}" porque tiene {producto.compras.count()} compra(s) asociada(s). Desactívelo en su lugar.', 'error')
+            return redirect(url_for('admin.products'))
+
+        # Check if product has comments
+        if producto.comentarios.count() > 0:
+            flash(f'No se puede eliminar "{producto.titulo}" porque tiene {producto.comentarios.count()} comentario(s). Desactívelo en su lugar.', 'error')
+            return redirect(url_for('admin.products'))
+
+        # Check if product is in wishlists
+        if producto.deseos.count() > 0:
+            flash(f'No se puede eliminar "{producto.titulo}" porque está en {producto.deseos.count()} lista(s) de deseos. Desactívelo en su lugar.', 'error')
+            return redirect(url_for('admin.products'))
+
+        # Safe to delete
         db.session.delete(producto)
         db.session.commit()
-        flash('Producto eliminado exitosamente!', 'success')
+        flash(f'Producto "{producto.titulo}" eliminado exitosamente!', 'success')
     except Exception as e:
         db.session.rollback()
         flash(f'Error al eliminar producto: {e}', 'error')
@@ -417,6 +434,25 @@ def settings():
     from app.models.comercio import Comercio
     import json
 
+    # Auto-migrate: Add SMTP columns if they don't exist
+    try:
+        migrations = [
+            "ALTER TABLE comercio ADD COLUMN IF NOT EXISTS mailServer VARCHAR(100) DEFAULT 'smtp.gmail.com'",
+            "ALTER TABLE comercio ADD COLUMN IF NOT EXISTS mailPort INT DEFAULT 587",
+            "ALTER TABLE comercio ADD COLUMN IF NOT EXISTS mailUseTLS BOOLEAN DEFAULT TRUE",
+            "ALTER TABLE comercio ADD COLUMN IF NOT EXISTS mailUsername VARCHAR(255)",
+            "ALTER TABLE comercio ADD COLUMN IF NOT EXISTS mailPassword TEXT",
+            "ALTER TABLE comercio ADD COLUMN IF NOT EXISTS mailDefaultSender VARCHAR(255)"
+        ]
+        for migration in migrations:
+            try:
+                db.session.execute(db.text(migration))
+            except Exception:
+                pass  # Column already exists
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+
     config = Comercio.get_config()
 
     if request.method == 'POST':
@@ -445,6 +481,14 @@ def settings():
             # De Una settings
             config.modoDeUna = request.form.get('modoDeUna', 'test')
             config.apiKeyDeUna = request.form.get('apiKeyDeUna', '')
+
+            # SMTP Email settings
+            config.mailServer = request.form.get('mailServer', 'smtp.gmail.com')
+            config.mailPort = int(request.form.get('mailPort', 587))
+            config.mailUseTLS = request.form.get('mailUseTLS') == 'true'
+            config.mailUsername = request.form.get('mailUsername', '')
+            config.mailPassword = request.form.get('mailPassword', '')
+            config.mailDefaultSender = request.form.get('mailDefaultSender', '')
 
             # Bank accounts (save as JSON)
             bank_accounts = {}
