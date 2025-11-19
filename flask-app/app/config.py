@@ -114,9 +114,9 @@ class Config:
     # Currency API
     CURRENCY_API_KEY = os.environ.get('CURRENCY_API_KEY')
 
-    # DeepSeek AI Configuration
+    # DeepSeek AI Configuration (https://api.deepseek.com)
     DEEPSEEK_API_KEY = os.environ.get('DEEPSEEK_API_KEY', 'sk-5967b2b9feb7438dadd1059f600094c9')
-    DEEPSEEK_API_URL = os.environ.get('DEEPSEEK_API_URL', 'https://api.deepseek.com/v1/chat/completions')
+    DEEPSEEK_API_URL = os.environ.get('DEEPSEEK_API_URL', 'https://api.deepseek.com/chat/completions')  # Sin /v1
     DEEPSEEK_MODEL = os.environ.get('DEEPSEEK_MODEL', 'deepseek-chat')
     DEEPSEEK_CACHE_TTL = int(os.environ.get('DEEPSEEK_CACHE_TTL', 3600))  # 1 hora
 
