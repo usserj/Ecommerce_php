@@ -1,0 +1,346 @@
+================================================================================
+                   MATRIZ COMPLETA DE RUTAS - BACKEND VS FRONTEND
+================================================================================
+
+Legend:
+  ✓ = Implementado y funcional
+  ✗ = No existe
+  ⚠ = Parcial/Incompleto
+  ◐ = Necesita mejoras visuales
+
+================================================================================
+                          1. SISTEMA DE MENSAJERÍA
+================================================================================
+
+ADMIN ROUTES (IMPLEMENTADAS):
+────────────────────────────────────────────────────────────────────────────
+  ✓ GET  /admin/mensajes
+        → Listado de mensajes recibidos por admin
+        → Template: admin/mensajes.html (EXISTS)
+        
+  ✓ GET  /admin/mensajes/enviados
+        → Listado de mensajes enviados por admin
+        → Template: admin/mensajes.html (EXISTS)
+        
+  ✓ GET  /admin/mensajes/nuevo
+        → Formulario para enviar nuevo mensaje
+        → Template: admin/mensaje_form.html (EXISTS)
+        
+  ✓ POST /admin/mensajes/nuevo
+        → Crear nuevo mensaje desde admin
+        
+  ✓ GET  /admin/mensajes/<id>
+        → Ver detalle del mensaje
+        → Template: admin/mensaje_detalle.html (EXISTS)
+        
+  ✓ GET  /admin/mensajes/<id>/responder
+        → Formulario para responder
+        
+  ✓ POST /admin/mensajes/<id>/responder
+        → Guardar respuesta del admin
+        
+  ✓ POST /admin/mensajes/<id>/eliminar
+        → Eliminar mensaje
+        
+  ✓ POST /admin/mensajes/marcar-leido/<id>
+        → Marcar como leído (AJAX)
+
+
+USER ROUTES (FALTANTES - CRÍTICO):
+────────────────────────────────────────────────────────────────────────────
+  ✗ GET  /perfil/mensajes
+        → Listado de mensajes recibidos por usuario
+        → Template: FALTA /templates/profile/mensajes.html
+        
+  ✗ GET  /perfil/mensajes/<id>
+        → Ver detalle del mensaje + cadena conversación
+        → Template: FALTA /templates/profile/mensaje_detalle.html
+        
+  ✗ GET  /perfil/mensajes/nuevo
+        → Formulario para enviar nuevo mensaje al admin
+        → Template: FALTA /templates/profile/mensaje_form.html
+        
+  ✗ POST /perfil/mensajes/nuevo
+        → Crear nuevo mensaje por usuario
+        
+  ✗ POST /perfil/mensajes/<id>/responder
+        → Responder a un mensaje del admin
+        
+  ✗ POST /perfil/mensajes/<id>/eliminar
+        → Eliminar mensaje recibido
+
+
+IMPACTO: Los usuarios no pueden iniciar conversaciones con el admin.
+         El admin tampoco puede ver respuestas de usuarios.
+
+================================================================================
+                        2. SISTEMA DE COMENTARIOS
+================================================================================
+
+USER ROUTES (IMPLEMENTADAS):
+────────────────────────────────────────────────────────────────────────────
+  ✓ POST /tienda/producto/<ruta>/comentar
+        → Crear comentario (con validación de compra)
+        → Template: shop/product_detail.html (EXISTS)
+        
+  ✓ POST /tienda/comentario/editar/<id>
+        → Editar comentario propio
+        
+  ✓ POST /tienda/comentario/eliminar/<id>
+        → Eliminar comentario propio
+
+
+ADMIN ROUTES (IMPLEMENTADAS):
+────────────────────────────────────────────────────────────────────────────
+  ✓ GET  /admin/comments
+        → Listar todos los comentarios
+        → Template: admin/comments.html (EXISTS)
+        
+  ✓ POST /admin/comments/approve/<id>
+        → Aprobar comentario
+        
+  ✓ POST /admin/comments/reject/<id>
+        → Rechazar comentario
+        
+  ✓ POST /admin/comments/delete/<id>
+        → Eliminar comentario
+        
+  ✓ POST /admin/comments/respond/<id>
+        → Guardar respuesta del admin
+        
+  ✓ POST /admin/comments/toggle/<id>
+        → Cambiar estado (AJAX)
+
+
+USER FRONTEND (PARCIAL):
+────────────────────────────────────────────────────────────────────────────
+  ✓ Formulario para crear comentario (product_detail.html, línea 167-199)
+  ✓ Modal editar comentario (product_detail.html, línea 251-282)
+  ✓ Modal confirmar eliminación (product_detail.html, línea 285-303)
+  ⚠ Mostrar calificación en estrellas (SÍ se muestra)
+  ✗ Mostrar estado de moderación (NO se muestra)
+  ✗ Mostrar respuesta_admin (NO se muestra)
+
+
+PROBLEMA ESPECÍFICO:
+────────────────────────────────────────────────────────────────────────────
+En product_detail.html línea 210-244:
+  - Se renderiza el comentario
+  - Se muestra la calificación (rating)
+  - Se muestran botones editar/eliminar (si es propietario)
+  
+  PERO:
+  - Campo respuesta_admin NO se renderiza
+  - Estado del comentario (pendiente/aprobado/rechazado) NO se muestra
+  - El usuario NO sabe si su comentario está moderado
+
+
+IMPACTO: Los usuarios no ven respuestas del admin a sus comentarios.
+         Falta feedback visual del estado de moderación.
+
+================================================================================
+                          3. SISTEMA DE CUPONES
+================================================================================
+
+ADMIN ROUTES (IMPLEMENTADAS):
+────────────────────────────────────────────────────────────────────────────
+  ✓ GET  /admin/coupons
+        → Listar cupones
+        → Template: admin/coupons.html (EXISTS)
+        
+  ✓ GET  /admin/coupons/create
+        → Formulario crear cupón
+        
+  ✓ POST /admin/coupons/create
+        → Crear cupón
+        
+  ✓ GET  /admin/coupons/edit/<id>
+        → Formulario editar cupón
+        
+  ✓ POST /admin/coupons/edit/<id>
+        → Guardar cambios de cupón
+        
+  ✓ POST /admin/coupons/delete/<id>
+        → Eliminar cupón
+        
+  ✓ POST /admin/coupons/toggle/<id>
+        → Activar/desactivar cupón (AJAX)
+
+
+USER ROUTES (IMPLEMENTADAS):
+────────────────────────────────────────────────────────────────────────────
+  ✓ POST /checkout/validate-coupon
+        → Validar código de cupón
+        → Llamada AJAX desde checkout.html
+        
+  ✓ Template: checkout.html (línea 175-186)
+        → UI para ingresar código
+        → Validación JavaScript
+        → Cálculo de descuento dinámico
+        → Remover cupón aplicado
+
+
+FUNCIONALIDADES EN FRONTEND:
+────────────────────────────────────────────────────────────────────────────
+  ✓ Input para código de cupón
+  ✓ Botón aplicar (con spinner loading)
+  ✓ Mostrar descuento calculado
+  ✓ Actualizar total dinámicamente
+  ✓ Botón remover cupón
+  ✓ Mensajes de error/éxito
+  ✓ Presionar Enter para aplicar
+
+
+CONCLUSIÓN: Sistema completamente funcional. ✓ NO NECESITA CAMBIOS
+
+================================================================================
+                          4. SISTEMA DE WISHLIST
+================================================================================
+
+USER ROUTES (IMPLEMENTADAS):
+────────────────────────────────────────────────────────────────────────────
+  ✓ GET  /perfil/wishlist
+        → Ver lista de deseos del usuario
+        → Template: profile/wishlist.html (EXISTS)
+        
+  ✓ POST /perfil/wishlist/toggle
+        → Agregar/remover producto de deseos
+        → Llamada AJAX desde múltiples lugares
+
+
+FRONTEND TEMPLATES (IMPLEMENTADAS):
+────────────────────────────────────────────────────────────────────────────
+  ✓ profile/wishlist.html
+        → Listado de productos en wishlist
+        → Botones para remover
+        
+  ✓ shop/product_detail.html (línea 76-79)
+        → Botón "Agregar a Lista de Deseos"
+        
+  ✓ components/product_card.html
+        → Botón corazón para agregar/remover
+
+
+FUNCIONALIDADES:
+────────────────────────────────────────────────────────────────────────────
+  ✓ Ver lista de deseos en perfil
+  ✓ Agregar/remover desde product detail
+  ✓ Agregar/remover desde cards de productos
+  ✓ Toggle AJAX sin recarga página
+  ✓ Contador en dashboard (/perfil)
+  ✓ Validación: usuario debe estar autenticado
+  ✓ Validación: no duplicados
+
+
+CONCLUSIÓN: Sistema completamente funcional. ✓ NO NECESITA CAMBIOS
+
+================================================================================
+                        5. SISTEMA DE NOTIFICACIONES
+================================================================================
+
+BACKEND MODEL (INCOMPLETO):
+────────────────────────────────────────────────────────────────────────────
+  ✓ Modelo Notificacion existe
+    - Campo: nuevosUsuarios
+    - Campo: nuevasVentas
+    - Campo: nuevasVisitas
+    - Métodos: get_counters(), reset_counters()
+    
+  ⚠ PERO: Es SOLO para contadores ADMIN
+         NO es un sistema de notificaciones de usuario
+         NO hay tabla de eventos/notificaciones por usuario
+         NO hay sistema de alerts
+
+
+USER ROUTES (NO EXISTEN):
+────────────────────────────────────────────────────────────────────────────
+  ✗ GET  /perfil/notificaciones
+        → Ver notificaciones del usuario
+        
+  ✗ GET  /perfil/notificaciones/<id>
+        → Ver detalle de notificación
+        
+  ✗ POST /perfil/notificaciones/<id>/marcar-leido
+        → Marcar como leída
+
+
+FRONTEND (NO EXISTE):
+────────────────────────────────────────────────────────────────────────────
+  ✗ Template para notificaciones
+  ✗ Icono/badge en navbar
+  ✗ Popup/dropdown de notificaciones
+  ✗ Sistema de notificaciones push
+
+
+EVENTOS QUE DEBERÍAN GENERAR NOTIFICACIONES:
+────────────────────────────────────────────────────────────────────────────
+  - Nueva respuesta del admin a comentario
+  - Nuevo mensaje del admin
+  - Cambio de estado de pedido
+  - Nuevo producto en wishlist disponible
+  - Descuento aplicable a productos en wishlist
+
+
+CONCLUSIÓN: Feature incompleta. BAJA PRIORIDAD. 8-10 horas para implementar.
+
+================================================================================
+                        6. OTROS SISTEMAS
+================================================================================
+
+CONTACTO (PARCIAL):
+────────────────────────────────────────────────────────────────────────────
+  ✓ GET  /contacto
+        → Formulario de contacto
+        → Template: main/contacto.html (EXISTS)
+        
+  ✓ POST /contacto
+        → Enviar mensaje de contacto
+        
+  ✗ NO hay modelo Contacto definido explícitamente
+     Se guarda como Mensaje? No está claro en el código.
+
+
+ÓRDENES/COMPRAS (IMPLEMENTADAS):
+────────────────────────────────────────────────────────────────────────────
+  ✓ GET  /perfil/orders
+        → Ver historial de compras del usuario
+        
+  ✓ Checkout completo con múltiples métodos de pago
+
+
+CARRITO (IMPLEMENTADO):
+────────────────────────────────────────────────────────────────────────────
+  ✓ GET  /carrito
+        → Ver carrito
+        
+  ✓ POST /carrito/agregar
+        → Agregar producto (AJAX)
+        
+  ✓ POST /carrito/actualizar
+        → Actualizar cantidad
+        
+  ✓ POST /carrito/eliminar
+        → Remover producto
+
+================================================================================
+                      RESUMEN ESTADÍSTICO DE RUTAS
+================================================================================
+
+IMPLEMENTADAS Y FUNCIONALES:
+  Admin Rutas: 80+ rutas
+  User Rutas: 30+ rutas
+  Total: 110+ rutas
+
+IMPLEMENTADAS PERO INCOMPLETAS:
+  Comentarios (falta mostrar respuestas): 1 template
+  Notificaciones (modelo básico): 0 rutas user
+
+COMPLETAMENTE FALTANTES:
+  Mensajería Usuario: 5 rutas + 3 templates
+
+RESUELTOS (SIN CAMBIOS NECESARIOS):
+  Cupones: Completo y funcional
+  Wishlist: Completo y funcional
+  Órdenes: Completo y funcional
+
+================================================================================

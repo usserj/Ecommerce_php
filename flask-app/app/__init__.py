@@ -132,15 +132,25 @@ def register_context_processors(app):
         """Inject admin-specific data into all templates."""
         from flask import session
         from app.models.message import Mensaje
+        from flask_login import current_user
 
         # Get unread messages count for admin
-        mensajes_no_leidos = 0
+        admin_mensajes_no_leidos = 0
         if 'admin_id' in session:
             try:
-                mensajes_no_leidos = Mensaje.contar_no_leidos('admin', session['admin_id'])
+                admin_mensajes_no_leidos = Mensaje.contar_no_leidos('admin', session['admin_id'])
             except:
-                mensajes_no_leidos = 0
+                admin_mensajes_no_leidos = 0
+
+        # Get unread messages count for user
+        user_mensajes_no_leidos = 0
+        if current_user.is_authenticated:
+            try:
+                user_mensajes_no_leidos = Mensaje.contar_no_leidos('user', current_user.id)
+            except:
+                user_mensajes_no_leidos = 0
 
         return {
-            'admin_mensajes_no_leidos': mensajes_no_leidos
+            'admin_mensajes_no_leidos': admin_mensajes_no_leidos,
+            'user_mensajes_no_leidos': user_mensajes_no_leidos
         }

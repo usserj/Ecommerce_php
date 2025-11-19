@@ -101,6 +101,15 @@
                             <li><a class="dropdown-item" href="{{ url_for('profile.dashboard') }}">Mi Perfil</a></li>
                             <li><a class="dropdown-item" href="{{ url_for('profile.orders') }}">Mis Compras</a></li>
                             <li><a class="dropdown-item" href="{{ url_for('profile.wishlist') }}">Lista de Deseos</a></li>
+                            <li>
+                                <a class="dropdown-item d-flex justify-content-between align-items-center"
+                                   href="{{ url_for('profile.mensajes') }}">
+                                    <span><i class="fas fa-envelope me-2"></i>Mensajes</span>
+                                    {% if user_mensajes_no_leidos > 0 %}
+                                    <span class="badge bg-danger rounded-pill">{{ user_mensajes_no_leidos }}</span>
+                                    {% endif %}
+                                </a>
+                            </li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}">Cerrar Sesión</a></li>
                         </ul>
