@@ -697,12 +697,145 @@ def delete_gallery_image(id, image):
 @admin_required
 def orders():
     """Manage orders."""
-    page = request.args.get('page', 1, type=int)
-    orders = Compra.query.order_by(Compra.fecha.desc()).paginate(
-        page=page, per_page=25, error_out=False
-    )
+    # Get statistics for cards
+    from sqlalchemy import func
+    total_orders = Compra.query.count()
+    total_revenue = db.session.query(func.sum(Compra.pago)).scalar() or 0
+    pending_orders = Compra.query.filter_by(estado='pendiente').count()
+    completed_orders = Compra.query.filter_by(estado='completado').count()
 
-    return render_template('admin/orders.html', orders=orders)
+    return render_template('admin/orders.html',
+                         total_orders=total_orders,
+                         total_revenue=total_revenue,
+                         pending_orders=pending_orders,
+                         completed_orders=completed_orders)
+
+
+@admin_bp.route('/orders/ajax')
+@admin_required
+def orders_ajax():
+    """AJAX endpoint for DataTables order listing."""
+    # DataTables parameters
+    draw = request.args.get('draw', type=int, default=1)
+    start = request.args.get('start', type=int, default=0)
+    length = request.args.get('length', type=int, default=10)
+    search_value = request.args.get('search[value]', default='')
+    order_column = request.args.get('order[0][column]', type=int, default=0)
+    order_dir = request.args.get('order[0][dir]', default='desc')
+
+    # Custom filters
+    metodo_filter = request.args.get('metodo_filter', default='')
+    estado_filter = request.args.get('estado_filter', default='')
+
+    # Base query with joins
+    query = Compra.query.join(User, Compra.id_usuario == User.id, isouter=True)\
+                        .join(Producto, Compra.id_producto == Producto.id, isouter=True)
+
+    # Search filter
+    if search_value:
+        query = query.filter(
+            db.or_(
+                User.nombre.like(f'%{search_value}%'),
+                User.email.like(f'%{search_value}%'),
+                Producto.titulo.like(f'%{search_value}%'),
+                Compra.email.like(f'%{search_value}%'),
+                Compra.tracking.like(f'%{search_value}%') if hasattr(Compra, 'tracking') else False
+            )
+        )
+
+    # Method filter
+    if metodo_filter:
+        query = query.filter(Compra.metodo == metodo_filter)
+
+    # Status filter
+    if estado_filter:
+        query = query.filter(Compra.estado == estado_filter)
+
+    # Total records
+    total_records = Compra.query.count()
+    filtered_records = query.count()
+
+    # Ordering
+    columns = [
+        Compra.id,
+        User.nombre,
+        Producto.titulo,
+        Compra.cantidad,
+        Compra.pago,
+        Compra.metodo,
+        Compra.estado,
+        Compra.fecha
+    ]
+
+    if 0 <= order_column < len(columns):
+        order_col = columns[order_column]
+        if order_dir == 'asc':
+            query = query.order_by(order_col.asc())
+        else:
+            query = query.order_by(order_col.desc())
+    else:
+        query = query.order_by(Compra.fecha.desc())
+
+    # Get paginated data
+    orders = query.offset(start).limit(length).all()
+
+    # Format data for DataTables
+    data = []
+    for order in orders:
+        # Cliente column
+        if order.usuario:
+            cliente_html = f'<strong>{order.usuario.nombre}</strong><br><small class="text-muted">{order.usuario.email}</small>'
+        else:
+            cliente_html = f'<small class="text-muted">{order.email or "N/A"}</small>'
+
+        # Producto column
+        if order.producto:
+            producto_html = f'{order.producto.titulo[:40]}{"..." if len(order.producto.titulo) > 40 else ""}'
+        else:
+            producto_html = 'N/A'
+
+        # Método de pago
+        metodo_icons = {
+            'paypal': '<i class="fab fa-paypal text-primary"></i> PayPal',
+            'paymentez': '<i class="fas fa-credit-card text-success"></i> Paymentez',
+            'datafast': '<i class="fas fa-credit-card text-info"></i> Datafast',
+            'deuna': '<i class="fas fa-mobile-alt text-warning"></i> De Una',
+            'transferencia': '<i class="fas fa-university text-secondary"></i> Transferencia',
+            'transferencia_comprobante': '<i class="fas fa-university text-secondary"></i> Transferencia'
+        }
+        metodo_html = metodo_icons.get(order.metodo, order.metodo)
+
+        # Estado badge
+        estado_badges = {
+            'completado': 'bg-success',
+            'pendiente': 'bg-warning',
+            'procesando': 'bg-info',
+            'enviado': 'bg-primary',
+            'entregado': 'bg-success',
+            'cancelado': 'bg-danger'
+        }
+        estado_class = estado_badges.get(order.estado, 'bg-secondary')
+        estado_html = f'<span class="badge {estado_class}">{order.estado.capitalize()}</span>'
+
+        data.append({
+            'id': order.id,
+            'cliente': cliente_html,
+            'producto': producto_html,
+            'cantidad': order.cantidad,
+            'total': f'${order.pago:.2f}',
+            'metodo': metodo_html,
+            'estado': order.estado,
+            'estado_html': estado_html,
+            'fecha': order.fecha.strftime('%d/%m/%Y %H:%M') if order.fecha else 'N/A',
+            'tracking': order.tracking if hasattr(order, 'tracking') else ''
+        })
+
+    return jsonify({
+        'draw': draw,
+        'recordsTotal': total_records,
+        'recordsFiltered': filtered_records,
+        'data': data
+    })
 
 
 @admin_bp.route('/orders/update-status/<int:id>', methods=['POST'])
