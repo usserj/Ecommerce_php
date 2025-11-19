@@ -122,11 +122,43 @@ def dashboard():
 def users():
     """Manage users."""
     page = request.args.get('page', 1, type=int)
-    users = User.query.paginate(page=page, per_page=25, error_out=False)
+    search = request.args.get('search', '')
+
+    query = User.query
+
+    if search:
+        query = query.filter(User.nombre.contains(search) | User.email.contains(search))
+
+    users = query.order_by(User.fecha.desc()).paginate(page=page, per_page=25, error_out=False)
 
     return render_template('admin/users.html', users=users)
 
 
+
+@admin_bp.route('/users/toggle/<int:id>', methods=['POST'])
+@admin_required
+def toggle_user(id):
+    """Toggle user verification status."""
+    try:
+        user = User.query.get_or_404(id)
+        user.verificacion = 0 if user.verificacion == 1 else 1
+        db.session.commit()
+        return jsonify({'success': True, 'verificacion': user.verificacion})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@admin_bp.route('/users/<int:id>/orders')
+@admin_required
+def user_orders(id):
+    """View user's order history."""
+    user = User.query.get_or_404(id)
+    page = request.args.get('page', 1, type=int)
+    orders = Compra.query.filter_by(id_usuario=id).order_by(Compra.fecha.desc()).paginate(
+        page=page, per_page=25, error_out=False
+    )
+
+    return render_template('admin/user_orders.html', user=user, orders=orders)
 @admin_bp.route('/products')
 @admin_required
 def products():
