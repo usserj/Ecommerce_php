@@ -224,7 +224,7 @@
             userName: {% if current_user.is_authenticated %}'{{ current_user.nombre }}'{% else %}null{% endif %},
             userId: {% if current_user.is_authenticated %}{{ current_user.id }}{% else %}null{% endif %},
             cartCount: {{ cart_count }},
-            storeName: '{{ plantilla.nombre_tienda if plantilla and plantilla.nombre_tienda else "Tienda Virtual" }}'
+            storeName: 'Tienda Virtual'
         };
     </script>
     <script src="{{ url_for('static', filename='js/ai-chatbot.js') }}"></script>
