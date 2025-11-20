@@ -67,6 +67,9 @@ class AIChatbot {
                                 </p>
                             </div>
                         </div>
+                        <button id="chatbot-clear" class="chatbot-clear-btn" title="Limpiar historial">
+                            <i class="fas fa-trash"></i>
+                        </button>
                         <button id="chatbot-close" class="chatbot-close-btn">
                             <i class="fas fa-times"></i>
                         </button>
@@ -117,6 +120,11 @@ class AIChatbot {
         // Cerrar chatbot
         document.getElementById('chatbot-close').addEventListener('click', () => {
             this.closeChat();
+        });
+
+        // Limpiar historial
+        document.getElementById('chatbot-clear').addEventListener('click', () => {
+            this.clearHistory();
         });
 
         // Enviar mensaje
@@ -202,6 +210,14 @@ class AIChatbot {
                 message: message,
                 context: context
             });
+
+            // VERIFICAR QUE LA URL ES CORRECTA
+            if (!this.apiUrl || this.apiUrl === 'undefined') {
+                console.error('❌ ERROR: apiUrl no está configurada correctamente');
+                throw new Error('URL del chatbot no configurada');
+            }
+
+            console.log('🔗 URL completa del API:', this.apiUrl);
 
             // Llamar a la API
             const response = await fetch(this.apiUrl, {
@@ -421,6 +437,31 @@ class AIChatbot {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    clearHistory() {
+        /**
+         * Limpia el historial de conversación
+         */
+        if (confirm('¿Estás seguro de que quieres borrar el historial de conversación?')) {
+            // Limpiar de sessionStorage
+            sessionStorage.removeItem('chatbot_history');
+
+            // Limpiar del objeto
+            this.conversationHistory = [];
+
+            // Limpiar UI
+            const messagesContainer = document.getElementById('chatbot-messages');
+            messagesContainer.innerHTML = '';
+
+            // Mostrar mensaje de bienvenida nuevamente
+            this.addWelcomeMessage();
+
+            // Mostrar sugerencias
+            document.getElementById('chatbot-suggestions').style.display = 'flex';
+
+            console.log('✅ Historial del chatbot limpiado');
+        }
     }
 }
 
