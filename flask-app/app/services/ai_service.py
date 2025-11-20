@@ -14,14 +14,18 @@ import requests
 import json
 import hashlib
 import logging
+import re
+from typing import Optional, Dict, List, Any
 from datetime import datetime, timedelta
 from functools import wraps
 from flask import current_app
+from sqlalchemy import func
 from app.extensions import db
 from app.models.product import Producto
 from app.models.comment import Comentario
 from app.models.categoria import Categoria
 from app.models.order import Compra
+from app.models.user import User
 
 logger = logging.getLogger(__name__)
 
@@ -221,165 +225,149 @@ class DeepSeekService:
     # FUNCIONALIDAD 1: CHATBOT
     # ==========================================
 
+    # ==========================================
+    # FUNCIONALIDAD 1: CHATBOT AVANZADO
+    # ==========================================
+
     def chatbot_response(self, session_id: str, user_message: str,
                         context: dict = None, usuario_id: int = None) -> dict:
         """
-        Genera respuesta del chatbot de ventas
+        Chatbot AVANZADO con detección de intención y function calling
+
+        Capacidades:
+        1. Detecta la intención del usuario (buscar, rastrear, reclamo, etc.)
+        2. Ejecuta funciones específicas según la intención
+        3. Enriquece el contexto con datos del usuario
+        4. Genera respuesta inteligente con DeepSeek
 
         Args:
             session_id: ID único de sesión
             user_message: Mensaje del usuario
-            context: Contexto adicional (productos en página, carrito, etc.)
+            context: Contexto adicional (productos, carrito, etc.)
             usuario_id: ID del usuario si está logueado
 
         Returns:
-            dict: {
-                'success': bool,
-                'response': str,
-                'error': str
-            }
+            dict: {'success': bool, 'response': str, 'error': str, 'intencion': str}
         """
         try:
             from app.models.setting import Plantilla
             from app.models.chatbot import ConversacionChatbot
+            from app.services.chatbot_tools import ejecutar_funcion
 
-            # Obtener info de la tienda
-            plantilla = Plantilla.query.first()
+            logger.info(f"🤖 Procesando mensaje: '{user_message[:50]}...'")
 
-            # Obtener historial de conversación
+            # 1. DETECCIÓN DE INTENCIÓN
+            intencion = self._detectar_intencion(user_message)
+            logger.info(f"🎯 Intención detectada: {intencion}")
+
+            # 2. ENRIQUECIMIENTO DE CONTEXTO
+            contexto_enriquecido = self._enriquecer_contexto(
+                usuario_id=usuario_id,
+                context=context or {},
+                user_message=user_message
+            )
+
+            # 3. EJECUCIÓN DE FUNCIONES (si aplica)
+            resultado_funcion = None
+            funcion_ejecutada = None
+
+            if intencion == 'BUSCAR_PRODUCTO':
+                query = self._extraer_query_busqueda(user_message)
+                if query:
+                    logger.info(f"🔍 Buscando productos: '{query}'")
+                    resultado_funcion = ejecutar_funcion('buscar_productos', {
+                        'query': query,
+                        'limit': 5
+                    })
+                    funcion_ejecutada = 'buscar_productos'
+
+            elif intencion == 'RASTREAR_PEDIDO':
+                if usuario_id:
+                    logger.info(f"📦 Rastreando pedido para usuario {usuario_id}")
+                    resultado_funcion = ejecutar_funcion('rastrear_pedido', {
+                        'usuario_id': usuario_id
+                    })
+                    funcion_ejecutada = 'rastrear_pedido'
+                else:
+                    resultado_funcion = {'error': 'Necesitas iniciar sesión para rastrear tu pedido'}
+
+            elif intencion == 'CONSULTA_ENVIO':
+                ciudad = self._extraer_ciudad(user_message)
+                if ciudad:
+                    logger.info(f"🚚 Calculando envío a: {ciudad}")
+                    resultado_funcion = ejecutar_funcion('calcular_envio', {
+                        'ciudad': ciudad
+                    })
+                    funcion_ejecutada = 'calcular_envio'
+
+            elif intencion == 'APLICAR_CUPON':
+                codigo = self._extraer_codigo_cupon(user_message)
+                if codigo:
+                    total_carrito = contexto_enriquecido.get('carrito', {}).get('total_valor', 0)
+                    logger.info(f"🎟️ Validando cupón: {codigo}")
+                    resultado_funcion = ejecutar_funcion('validar_cupon', {
+                        'codigo_cupon': codigo,
+                        'total_compra': total_carrito or 100,
+                        'usuario_id': usuario_id
+                    })
+                    funcion_ejecutada = 'validar_cupon'
+
+            elif intencion == 'RECOMENDACION':
+                logger.info(f"💡 Generando recomendaciones personalizadas")
+                resultado_funcion = ejecutar_funcion('obtener_recomendaciones', {
+                    'usuario_id': usuario_id,
+                    'limite': 3
+                })
+                funcion_ejecutada = 'obtener_recomendaciones'
+
+            elif intencion == 'CONSULTA_PAGO':
+                total_carrito = contexto_enriquecido.get('carrito', {}).get('total_valor', 0)
+                logger.info(f"💳 Consultando métodos de pago")
+                resultado_funcion = ejecutar_funcion('metodos_pago', {
+                    'total': total_carrito or 100
+                })
+                funcion_ejecutada = 'metodos_pago'
+
+            # 4. CONSTRUCCIÓN DEL SYSTEM PROMPT AVANZADO
+            system_prompt = self._construir_system_prompt_avanzado(
+                contexto_enriquecido=contexto_enriquecido,
+                resultado_funcion=resultado_funcion,
+                intencion=intencion
+            )
+
+            # 5. OBTENER HISTORIAL
             historial = []
             try:
-                historial = ConversacionChatbot.get_conversacion(session_id, limit=10)
-                historial = list(reversed(historial))  # Orden cronológico
+                historial = ConversacionChatbot.get_conversacion(session_id, limit=6)
+                historial = list(reversed(historial))
             except Exception as e:
-                logger.warning(f"No se pudo obtener historial de conversación: {e}")
-                historial = []
+                logger.warning(f"No se pudo obtener historial: {e}")
 
-            # OBTENER PRODUCTOS REALES DE LA BASE DE DATOS
-            productos_disponibles = []
-            try:
-                # Obtener productos activos con stock
-                productos_db = Producto.query.filter(Producto.stock > 0).limit(20).all()
-                for p in productos_db:
-                    categoria_nombre = p.categoria.categoria if p.categoria else 'Sin categoría'
-                    productos_disponibles.append({
-                        'id': p.id,
-                        'nombre': p.titulo,
-                        'precio': float(p.precio),
-                        'categoria': categoria_nombre,
-                        'descripcion': p.descripcion[:100] if p.descripcion else '',
-                        'stock': p.stock
-                    })
-                logger.info(f"📦 Cargados {len(productos_disponibles)} productos de la BD")
-            except Exception as e:
-                logger.warning(f"⚠️ No se pudieron cargar productos: {e}")
-                productos_disponibles = []
-
-            # Preparar contexto
-            context = context or {}
-            productos_pagina = context.get('productos', [])
-            carrito = context.get('carrito', {})
-
-            # Construir contexto de productos
-            productos_contexto = ""
-            if productos_pagina:
-                productos_contexto = "\n\nProductos en esta página:\n"
-                for p in productos_pagina[:5]:  # Máximo 5 productos
-                    productos_contexto += f"- {p.get('nombre', 'Producto')}: ${p.get('precio', 0)}\n"
-
-            # Construir contexto de carrito
-            carrito_contexto = ""
-            if carrito and isinstance(carrito, dict):
-                total_items = carrito.get('total_items', 0)
-                if total_items > 0:
-                    carrito_contexto = f"\n\nCarrito actual: {total_items} producto(s)"
-
-            # CONSTRUIR CATÁLOGO DE PRODUCTOS PARA IA
-            catalogo_texto = ""
-            if productos_disponibles:
-                catalogo_texto = f"\n\nCATÁLOGO DE PRODUCTOS DISPONIBLES ({len(productos_disponibles)} productos):\n"
-                for p in productos_disponibles[:15]:  # Primeros 15 productos
-                    catalogo_texto += f"- {p['nombre']} (${p['precio']}) - {p['categoria']} - Stock: {p['stock']}\n"
-                catalogo_texto += "\n¡IMPORTANTE! Usa SOLO estos productos reales al responder. NO inventes productos."
-
-            # System prompt CON PRODUCTOS REALES
-            system_prompt = f"""Eres un asistente de ventas INTELIGENTE para una tienda online ecuatoriana de ecommerce.
-
-TU MISIÓN:
-- Ayudar a los clientes a encontrar y comprar productos
-- Recomendar productos basándote en el CATÁLOGO REAL disponible
-- Responder preguntas sobre productos, precios, envíos y pagos
-- Cerrar ventas de manera natural
-
-PERSONALIDAD:
-- Amable, profesional, orientado a cerrar ventas
-- Español ecuatoriano neutral pero cercano
-- Conocedor del catálogo completo de productos
-- Proactivo en recomendar productos relevantes
-
-INFORMACIÓN DE LA TIENDA:
-- Ecommerce en Ecuador
-- Envíos: A todo Ecuador en 24-48 horas
-- Envío gratis: Compras sobre $50
-- Métodos de pago: PayPal, PayU, Paymentez, Datafast, transferencia, contra entrega
-- Garantía: 30 días en todos los productos
-{catalogo_texto}
-
-CONTEXTO DE LA CONVERSACIÓN:{productos_contexto}{carrito_contexto}
-
-INSTRUCCIONES CLAVE:
-1. **BÚSQUEDA DE PRODUCTOS**: Si el usuario busca algo, sugiere productos REALES del catálogo
-   - Ejemplo: "¿Tienes laptops?" → Menciona laptops específicas con precio
-2. **RECOMENDACIONES**: Siempre sugiere productos relevantes del catálogo
-3. **PRECIOS REALES**: USA los precios exactos del catálogo, NO inventes
-4. **DISPONIBILIDAD**: Confirma stock antes de recomendar
-5. **BREVEDAD**: Máximo 3-4 oraciones, luego pregunta si necesita más info
-6. **CIERRE DE VENTA**: Siempre termina con llamado a acción (ver producto, agregar al carrito)
-7. **EMOJIS**: Usa 1-2 emojis relevantes por mensaje 😊🛒
-
-EJEMPLOS DE RESPUESTAS:
-❌ MAL: "Tenemos varios productos disponibles"
-✅ BIEN: "Tenemos la Laptop HP por $899 con 8GB RAM, perfecta para ti. ¿Te gustaría verla?"
-
-❌ MAL: "Los precios varían"
-✅ BIEN: "El Mouse Logitech está en $25 y el Teclado Mecánico en $45. ¿Cuál te interesa?"
-
-PROHIBIDO:
-- Inventar productos que no están en el catálogo
-- Dar precios incorrectos
-- Prometer lo que no podemos cumplir
-- Respuestas genéricas sin mencionar productos específicos
-"""
-
-            # Construir mensajes para la API
+            # 6. PREPARAR MENSAJES PARA DEEPSEEK
             messages = [{"role": "system", "content": system_prompt}]
 
-            # Agregar historial (últimos 5 intercambios = 10 mensajes)
-            for conv in historial[-10:]:
+            for conv in historial[-6:]:
                 messages.append({
                     "role": conv.rol,
                     "content": conv.mensaje
                 })
 
-            # Agregar mensaje actual del usuario
             messages.append({
                 "role": "user",
                 "content": user_message
             })
 
-            # Log para verificar que IA tiene el catálogo
-            logger.info(f"💬 Mensaje del usuario: '{user_message[:50]}...' | Productos en catálogo: {len(productos_disponibles)}")
-
-            # Llamar a DeepSeek
+            # 7. LLAMAR A DEEPSEEK API
+            logger.info(f"🧠 Llamando a DeepSeek con intención: {intencion}")
             result = self.call_api(
                 messages=messages,
                 temperature=0.7,
-                max_tokens=600,  # Aumentado para respuestas con productos específicos
-                use_cache=False  # No cachear conversaciones
+                max_tokens=800,
+                use_cache=False
             )
 
             if result['success']:
-                # Guardar mensaje del usuario en BD
+                # 8. GUARDAR CONVERSACIÓN
                 try:
                     conv_user = ConversacionChatbot(
                         session_id=session_id,
@@ -387,10 +375,13 @@ PROHIBIDO:
                         rol='user',
                         mensaje=user_message
                     )
-                    conv_user.set_contexto(context)
+                    conv_user.set_contexto({
+                        **(context if context else {}),
+                        'intencion': intencion,
+                        'funcion_ejecutada': funcion_ejecutada
+                    })
                     db.session.add(conv_user)
 
-                    # Guardar respuesta del asistente
                     conv_assistant = ConversacionChatbot(
                         session_id=session_id,
                         usuario_id=usuario_id,
@@ -398,37 +389,188 @@ PROHIBIDO:
                         mensaje=result['response']
                     )
                     db.session.add(conv_assistant)
-
                     db.session.commit()
                 except Exception as e:
-                    logger.warning(f"No se pudo guardar conversación en BD: {e}")
-                    # Continuar sin guardar (fallback graceful)
+                    logger.warning(f"No se pudo guardar conversación: {e}")
                     db.session.rollback()
 
+                logger.info(f"✅ Respuesta generada exitosamente")
                 return {
                     'success': True,
                     'response': result['response'],
-                    'error': None
+                    'error': None,
+                    'intencion': intencion,
+                    'funcion_ejecutada': funcion_ejecutada
                 }
             else:
                 logger.error(f"Error en chatbot: {result['error']}")
                 return {
                     'success': False,
-                    'response': "Lo siento, estoy teniendo problemas técnicos. Por favor intenta de nuevo en un momento.",
+                    'response': "Lo siento, estoy teniendo problemas técnicos. ¿Puedes intentar de nuevo?",
                     'error': result['error']
                 }
 
         except Exception as e:
-            logger.exception(f"Error en chatbot_response: {e}")
+            logger.exception(f"💥 Error crítico en chatbot_response: {e}")
             return {
                 'success': False,
                 'response': "Lo siento, ocurrió un error inesperado. Por favor intenta de nuevo.",
                 'error': str(e)
             }
 
-    # ==========================================
-    # FUNCIONALIDAD 2: RECOMENDACIONES
-    # ==========================================
+    def _detectar_intencion(self, mensaje: str) -> str:
+        """Detecta la intención del usuario basándose en palabras clave"""
+        mensaje_lower = mensaje.lower()
+
+        patrones = {
+            'RASTREAR_PEDIDO': ['pedido', 'orden', 'envío', 'tracking', 'dónde está', 'cuándo llega'],
+            'RECLAMO': ['reclamo', 'devolver', 'defectuoso', 'problema', 'no llegó', 'malo', 'queja'],
+            'CONSULTA_ENVIO': ['cuesta envío', 'envío a', 'cuánto cuesta enviar', 'demora'],
+            'APLICAR_CUPON': ['cupón', 'código', 'descuento', 'promoción', 'promo'],
+            'CONSULTA_PAGO': ['pago', 'pagar', 'tarjeta', 'efectivo', 'paypal', 'transferencia'],
+            'RECOMENDACION': ['recomienda', 'sugiere', 'qué comprar', 'ayuda a elegir'],
+            'COMPARACION': ['comparar', 'diferencia', 'mejor', 'vs', 'versus'],
+            'BUSCAR_PRODUCTO': ['busco', 'quiero', 'necesito', 'tienen', 'venden', 'hay'],
+        }
+
+        for intencion, keywords in patrones.items():
+            if any(keyword in mensaje_lower for keyword in keywords):
+                return intencion
+
+        return 'CONVERSACION_GENERAL'
+
+    def _enriquecer_contexto(self, usuario_id: int, context: dict, user_message: str) -> dict:
+        """Enriquece el contexto con información del usuario"""
+        contexto = {
+            **context,
+            'usuario': None,
+            'carrito': context.get('carrito', {}),
+            'productos_disponibles': []
+        }
+
+        if usuario_id:
+            try:
+                user = User.query.get(usuario_id)
+                if user:
+                    compras = Compra.query.filter_by(id_usuario=usuario_id).count()
+                    gasto_total = db.session.query(func.sum(Compra.precio_total)).filter_by(
+                        id_usuario=usuario_id
+                    ).scalar() or 0
+
+                    contexto['usuario'] = {
+                        'id': user.id,
+                        'nombre': user.nombre,
+                        'email': user.email,
+                        'compras_totales': compras,
+                        'gasto_total': float(gasto_total),
+                        'es_cliente_frecuente': compras >= 3
+                    }
+            except Exception as e:
+                logger.warning(f"Error al cargar usuario: {e}")
+
+        try:
+            productos_db = Producto.query.filter(
+                Producto.stock > 0
+            ).order_by(Producto.ventas.desc()).limit(15).all()
+
+            for p in productos_db:
+                contexto['productos_disponibles'].append({
+                    'id': p.id,
+                    'nombre': p.titulo,
+                    'precio': float(p.get_price()),
+                    'categoria': p.categoria.categoria if p.categoria else 'Sin categoría',
+                    'stock': p.stock,
+                    'rating': p.get_average_rating()
+                })
+        except Exception as e:
+            logger.warning(f"Error al cargar productos: {e}")
+
+        return contexto
+
+    def _construir_system_prompt_avanzado(self, contexto_enriquecido: dict,
+                                          resultado_funcion: dict, intencion: str) -> str:
+        """Construye system prompt avanzado"""
+        prompt = """Eres SOFIA, un asistente de IA AVANZADO para ecommerce en Ecuador 🇪🇨
+
+🎯 CAPACIDADES:
+✅ VENDER - Recomendar productos y cerrar ventas
+✅ SOPORTAR - Rastrear pedidos, gestionar reclamos
+✅ AYUDAR - Calcular envíos, validar cupones, métodos de pago
+✅ ANALIZAR - Dar insights de productos y reviews
+
+😊 PERSONALIDAD:
+- Amable, profesional, proactiva
+- Español ecuatoriano neutral
+- 1-2 emojis por mensaje
+- Máximo 4-5 oraciones
+- Siempre termina con pregunta o CTA
+
+📋 INFO TIENDA:
+- Envíos 24-48h a todo Ecuador
+- Envío GRATIS sobre $50
+- Métodos: Tarjeta, PayPal, Transferencia, Contra entrega
+- Garantía 30 días
+"""
+
+        if contexto_enriquecido.get('usuario'):
+            usuario = contexto_enriquecido['usuario']
+            prompt += f"\n👤 CLIENTE: {usuario['nombre']}"
+            if usuario['es_cliente_frecuente']:
+                prompt += " ⭐ (VIP)"
+            prompt += f" | Compras: {usuario['compras_totales']}\n"
+
+        if contexto_enriquecido.get('carrito', {}).get('total_items', 0) > 0:
+            carrito = contexto_enriquecido['carrito']
+            prompt += f"\n🛒 CARRITO: {carrito['total_items']} items\n"
+
+        if contexto_enriquecido.get('productos_disponibles'):
+            productos = contexto_enriquecido['productos_disponibles']
+            prompt += f"\n📦 CATÁLOGO ({len(productos)} productos):\n"
+            for p in productos[:8]:
+                prompt += f"- {p['nombre']}: ${p['precio']} ({p['categoria']})\n"
+
+        if resultado_funcion:
+            prompt += f"\n🔧 RESULTADO:\n```json\n{json.dumps(resultado_funcion, indent=2, ensure_ascii=False)}\n```\n"
+            prompt += "📌 USA esta info para responder específicamente.\n"
+
+        if intencion == 'BUSCAR_PRODUCTO':
+            prompt += "\n🎯 Muestra los productos con precio, stock y características. Sugiere el mejor.\n"
+        elif intencion == 'RASTREAR_PEDIDO':
+            prompt += "\n🎯 Informa el estado claramente. Si en camino, da fecha. Si problema, ofrece solución.\n"
+        elif intencion == 'CONSULTA_ENVIO':
+            prompt += "\n🎯 Explica costo y tiempo. Menciona envío gratis >$50.\n"
+        elif intencion == 'APLICAR_CUPON':
+            prompt += "\n🎯 Si válido, celebra. Si no, explica por qué y sugiere alternativas.\n"
+
+        prompt += "\n❌ PROHIBIDO: Inventar productos, precios incorrectos, respuestas genéricas\n"
+        prompt += "✅ SIEMPRE: Productos específicos con nombre/precio, pregunta final, ser útil\n"
+
+        return prompt
+
+    def _extraer_query_busqueda(self, mensaje: str) -> str:
+        """Extrae término de búsqueda"""
+        palabras_ignorar = ['busco', 'quiero', 'necesito', 'tienen', 'venden', 'hay']
+        mensaje_lower = mensaje.lower()
+        for palabra in palabras_ignorar:
+            mensaje_lower = mensaje_lower.replace(palabra, '')
+        query = mensaje_lower.strip()
+        return query if len(query) > 2 else mensaje
+
+    def _extraer_ciudad(self, mensaje: str) -> str:
+        """Extrae ciudad del mensaje"""
+        ciudades = ['quito', 'guayaquil', 'cuenca', 'ambato', 'manta', 'portoviejo',
+                    'machala', 'loja', 'esmeraldas', 'ibarra', 'riobamba']
+        mensaje_lower = mensaje.lower()
+        for ciudad in ciudades:
+            if ciudad in mensaje_lower:
+                return ciudad.capitalize()
+        return 'Quito'
+
+    def _extraer_codigo_cupon(self, mensaje: str) -> Optional[str]:
+        """Extrae código de cupón"""
+        patron = r'\b[A-Z0-9]{4,12}\b'
+        matches = re.findall(patron, mensaje.upper())
+        return matches[0] if matches else None
 
     def obtener_recomendaciones(self, producto_id: int, usuario_id: int = None) -> dict:
         """
