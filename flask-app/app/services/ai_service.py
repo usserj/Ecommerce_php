@@ -44,7 +44,7 @@ class DeepSeekService:
         try:
             from flask import current_app
             self.api_key = current_app.config.get('DEEPSEEK_API_KEY', 'sk-5967b2b9feb7438dadd1059f600094c9')
-            self.api_url = current_app.config.get('DEEPSEEK_API_URL', 'https://api.deepseek.com/v1/chat/completions')
+            self.api_url = current_app.config.get('DEEPSEEK_API_URL', 'https://api.deepseek.com/chat/completions')  # Sin /v1
             self.model = current_app.config.get('DEEPSEEK_MODEL', 'deepseek-chat')
             self.cache_ttl = current_app.config.get('DEEPSEEK_CACHE_TTL', 3600)
             self._config_loaded = True
@@ -53,7 +53,7 @@ class DeepSeekService:
             # Fallback si no hay contexto de Flask
             logger.warning("⚠️ No hay contexto de Flask, usando configuración por defecto")
             self.api_key = "sk-5967b2b9feb7438dadd1059f600094c9"
-            self.api_url = "https://api.deepseek.com/v1/chat/completions"
+            self.api_url = "https://api.deepseek.com/chat/completions"  # Sin /v1
             self.model = "deepseek-chat"
             self.cache_ttl = 3600
             self._config_loaded = True
