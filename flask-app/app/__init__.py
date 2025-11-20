@@ -133,6 +133,10 @@ def register_blueprints(app):
     app.register_blueprint(health_bp)
     app.register_blueprint(ai_bp)
 
+    # Deshabilitar CSRF para el blueprint de AI (es una API REST)
+    from app.extensions import csrf
+    csrf.exempt(ai_bp)
+
 
 def register_error_handlers(app):
     """Register error handlers."""
