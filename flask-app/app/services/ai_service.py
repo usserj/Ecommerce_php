@@ -255,6 +255,26 @@ class DeepSeekService:
                 logger.warning(f"No se pudo obtener historial de conversación: {e}")
                 historial = []
 
+            # OBTENER PRODUCTOS REALES DE LA BASE DE DATOS
+            productos_disponibles = []
+            try:
+                # Obtener productos activos con stock
+                productos_db = Producto.query.filter(Producto.stock > 0).limit(20).all()
+                for p in productos_db:
+                    categoria_nombre = p.categoria.categoria if p.categoria else 'Sin categoría'
+                    productos_disponibles.append({
+                        'id': p.id,
+                        'nombre': p.titulo,
+                        'precio': float(p.precio),
+                        'categoria': categoria_nombre,
+                        'descripcion': p.descripcion[:100] if p.descripcion else '',
+                        'stock': p.stock
+                    })
+                logger.info(f"📦 Cargados {len(productos_disponibles)} productos de la BD")
+            except Exception as e:
+                logger.warning(f"⚠️ No se pudieron cargar productos: {e}")
+                productos_disponibles = []
+
             # Preparar contexto
             context = context or {}
             productos_pagina = context.get('productos', [])
@@ -274,39 +294,61 @@ class DeepSeekService:
                 if total_items > 0:
                     carrito_contexto = f"\n\nCarrito actual: {total_items} producto(s)"
 
-            # System prompt
-            system_prompt = f"""Eres un asistente de ventas para nuestra tienda online, un ecommerce ecuatoriano.
+            # CONSTRUIR CATÁLOGO DE PRODUCTOS PARA IA
+            catalogo_texto = ""
+            if productos_disponibles:
+                catalogo_texto = f"\n\nCATÁLOGO DE PRODUCTOS DISPONIBLES ({len(productos_disponibles)} productos):\n"
+                for p in productos_disponibles[:15]:  # Primeros 15 productos
+                    catalogo_texto += f"- {p['nombre']} (${p['precio']}) - {p['categoria']} - Stock: {p['stock']}\n"
+                catalogo_texto += "\n¡IMPORTANTE! Usa SOLO estos productos reales al responder. NO inventes productos."
+
+            # System prompt CON PRODUCTOS REALES
+            system_prompt = f"""Eres un asistente de ventas INTELIGENTE para una tienda online ecuatoriana de ecommerce.
+
+TU MISIÓN:
+- Ayudar a los clientes a encontrar y comprar productos
+- Recomendar productos basándote en el CATÁLOGO REAL disponible
+- Responder preguntas sobre productos, precios, envíos y pagos
+- Cerrar ventas de manera natural
 
 PERSONALIDAD:
 - Amable, profesional, orientado a cerrar ventas
 - Español ecuatoriano neutral pero cercano
-- Ayudas a tomar decisiones de compra inteligentes
-- Resuelves dudas sobre productos, envíos, pagos, garantías
+- Conocedor del catálogo completo de productos
+- Proactivo en recomendar productos relevantes
 
 INFORMACIÓN DE LA TIENDA:
 - Ecommerce en Ecuador
 - Envíos: A todo Ecuador en 24-48 horas
 - Envío gratis: Compras sobre $50
-- Métodos de pago: PayPal, PayU, Paymentez, Datafast, transferencia bancaria, contra entrega
+- Métodos de pago: PayPal, PayU, Paymentez, Datafast, transferencia, contra entrega
 - Garantía: 30 días en todos los productos
-- País: Ecuador
+{catalogo_texto}
 
-CONTEXTO ACTUAL:{productos_contexto}{carrito_contexto}
+CONTEXTO DE LA CONVERSACIÓN:{productos_contexto}{carrito_contexto}
 
-INSTRUCCIONES:
-1. Sé breve y directo (máximo 3-4 oraciones por respuesta)
-2. Si preguntan por producto específico, menciona precio y características clave
-3. Siempre intenta cerrar venta o sugerir siguiente paso
-4. Si no sabes algo específico de contacto, invita a revisar la sección de contacto del sitio
-5. Usa emojis ocasionalmente para ser más cercano 😊
-6. Si preguntan por el carrito y está vacío, sugiere explorar productos
+INSTRUCCIONES CLAVE:
+1. **BÚSQUEDA DE PRODUCTOS**: Si el usuario busca algo, sugiere productos REALES del catálogo
+   - Ejemplo: "¿Tienes laptops?" → Menciona laptops específicas con precio
+2. **RECOMENDACIONES**: Siempre sugiere productos relevantes del catálogo
+3. **PRECIOS REALES**: USA los precios exactos del catálogo, NO inventes
+4. **DISPONIBILIDAD**: Confirma stock antes de recomendar
+5. **BREVEDAD**: Máximo 3-4 oraciones, luego pregunta si necesita más info
+6. **CIERRE DE VENTA**: Siempre termina con llamado a acción (ver producto, agregar al carrito)
+7. **EMOJIS**: Usa 1-2 emojis relevantes por mensaje 😊🛒
+
+EJEMPLOS DE RESPUESTAS:
+❌ MAL: "Tenemos varios productos disponibles"
+✅ BIEN: "Tenemos la Laptop HP por $899 con 8GB RAM, perfecta para ti. ¿Te gustaría verla?"
+
+❌ MAL: "Los precios varían"
+✅ BIEN: "El Mouse Logitech está en $25 y el Teclado Mecánico en $45. ¿Cuál te interesa?"
 
 PROHIBIDO:
-- Inventar precios, stock o información de productos
-- Prometer envíos inmediatos sin confirmación
-- Dar información técnica incorrecta
-- Ser repetitivo o genérico
-- Inventar datos de contacto (email, teléfono) que no conoces
+- Inventar productos que no están en el catálogo
+- Dar precios incorrectos
+- Prometer lo que no podemos cumplir
+- Respuestas genéricas sin mencionar productos específicos
 """
 
             # Construir mensajes para la API
@@ -325,11 +367,14 @@ PROHIBIDO:
                 "content": user_message
             })
 
+            # Log para verificar que IA tiene el catálogo
+            logger.info(f"💬 Mensaje del usuario: '{user_message[:50]}...' | Productos en catálogo: {len(productos_disponibles)}")
+
             # Llamar a DeepSeek
             result = self.call_api(
                 messages=messages,
                 temperature=0.7,
-                max_tokens=300,
+                max_tokens=600,  # Aumentado para respuestas con productos específicos
                 use_cache=False  # No cachear conversaciones
             )
 
