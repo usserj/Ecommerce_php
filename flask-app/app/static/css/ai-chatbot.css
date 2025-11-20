@@ -266,6 +266,37 @@
     padding: 0 4px;
 }
 
+/* Estilos para contenido formateado en mensajes del bot */
+.bot-message .message-content strong {
+    font-weight: 600;
+    color: var(--chatbot-primary);
+}
+
+.bot-message .message-content em {
+    font-style: italic;
+    opacity: 0.9;
+}
+
+.bot-message .message-content .chatbot-list {
+    margin: 8px 0;
+    padding-left: 20px;
+    list-style: none;
+}
+
+.bot-message .message-content .chatbot-list li {
+    position: relative;
+    margin: 4px 0;
+    padding-left: 8px;
+}
+
+.bot-message .message-content .chatbot-list li::before {
+    content: "•";
+    position: absolute;
+    left: -12px;
+    color: var(--chatbot-primary);
+    font-weight: bold;
+}
+
 /* ============================================
    INDICADOR DE ESCRITURA
    ============================================ */

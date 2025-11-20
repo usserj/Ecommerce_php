@@ -542,8 +542,31 @@ class DeepSeekService:
         elif intencion == 'APLICAR_CUPON':
             prompt += "\n🎯 Si válido, celebra. Si no, explica por qué y sugiere alternativas.\n"
 
-        prompt += "\n❌ PROHIBIDO: Inventar productos, precios incorrectos, respuestas genéricas\n"
-        prompt += "✅ SIEMPRE: Productos específicos con nombre/precio, pregunta final, ser útil\n"
+        prompt += """
+FORMATO DE RESPUESTA:
+- Usa **negritas** para nombres de productos o información importante
+- Usa listas con guion (-) para múltiples items
+- Mantén párrafos cortos y claros
+- Usa emojis con moderación (1-2 por mensaje)
+- Separa secciones con saltos de línea para mejor lectura
+
+EJEMPLO BUENO:
+"¡Perfecto! Te recomiendo la **Laptop HP i5 8GB** por $899.
+
+Características principales:
+- Ideal para trabajo y estudio
+- 8GB RAM y 256GB SSD
+- Batería de 8 horas
+- Incluye garantía de 30 días
+
+El envío a Quito es de $3.50 (gratis si superas $50). ¿Te gustaría agregarla al carrito?"
+
+PROHIBIDO:
+- Inventar productos que no están en el catálogo
+- Dar precios incorrectos
+- Usar secciones TODO EN MAYÚSCULAS con etiquetas
+- Respuestas genéricas sin productos específicos
+"""
 
         return prompt
 

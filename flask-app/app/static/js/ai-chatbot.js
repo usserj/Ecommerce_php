@@ -292,9 +292,14 @@ class AIChatbot {
         const messagesContainer = document.getElementById('chatbot-messages');
         const messageClass = sender === 'user' ? 'user-message' : 'bot-message';
 
+        // Para mensajes del bot, usar formatMarkdown; para usuario, usar escapeHTML
+        const formattedText = sender === 'bot'
+            ? this.formatMarkdown(text)
+            : this.escapeHTML(text);
+
         const messageHTML = `
             <div class="chatbot-message ${messageClass}">
-                <div class="message-content">${this.escapeHTML(text)}</div>
+                <div class="message-content">${formattedText}</div>
                 <div class="message-time">${this.getTime()}</div>
             </div>
         `;
@@ -428,6 +433,64 @@ class AIChatbot {
         const now = new Date();
         return now.getHours().toString().padStart(2, '0') + ':' +
                now.getMinutes().toString().padStart(2, '0');
+    }
+
+    formatMarkdown(text) {
+        /**
+         * Convierte Markdown simple a HTML para mejor presentación
+         * Soporta: negritas, listas, saltos de línea
+         */
+
+        // Primero escapar HTML para seguridad
+        let html = this.escapeHTML(text);
+
+        // Convertir **texto** a <strong>texto</strong>
+        html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
+        // Convertir *texto* a <em>texto</em> (solo si no está precedido/seguido de *)
+        html = html.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
+
+        // Convertir listas - item → <li>item</li>
+        // Primero detectar bloques de lista
+        const lines = html.split('\n');
+        let inList = false;
+        let result = [];
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+
+            // Detectar item de lista (- texto, • texto, ✅ texto, ❌ texto)
+            if (line.match(/^[-•✅❌]\s+/)) {
+                if (!inList) {
+                    result.push('<ul class="chatbot-list">');
+                    inList = true;
+                }
+                // Remover el guion/emoji inicial y crear <li>
+                const content = line.replace(/^[-•✅❌]\s+/, '');
+                result.push(`<li>${content}</li>`);
+            } else {
+                // No es item de lista
+                if (inList) {
+                    result.push('</ul>');
+                    inList = false;
+                }
+                if (line) {
+                    result.push(line);
+                }
+            }
+        }
+
+        // Cerrar lista si quedó abierta
+        if (inList) {
+            result.push('</ul>');
+        }
+
+        html = result.join('\n');
+
+        // Convertir saltos de línea a <br>
+        html = html.replace(/\n/g, '<br>');
+
+        return html;
     }
 
     escapeHTML(text) {
