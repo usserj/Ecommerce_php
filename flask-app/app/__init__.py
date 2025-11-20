@@ -131,11 +131,7 @@ def register_blueprints(app):
     app.register_blueprint(profile_bp, url_prefix='/perfil')
     app.register_blueprint(admin_bp, url_prefix='/admin')
     app.register_blueprint(health_bp)
-    app.register_blueprint(ai_bp)
-
-    # Deshabilitar CSRF para el blueprint de AI (es una API REST)
-    from app.extensions import csrf
-    csrf.exempt(ai_bp)
+    app.register_blueprint(ai_bp)  # CSRF exemption via @csrf.exempt en cada ruta POST
 
 
 def register_error_handlers(app):

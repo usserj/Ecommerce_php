@@ -13,9 +13,8 @@ from flask import Blueprint
 
 ai_bp = Blueprint('ai', __name__, url_prefix='/api/ai')
 
-# IMPORTANTE: Deshabilitar CSRF para este blueprint (es una API REST)
-# El decorador se aplicará después de registrar el blueprint
-ai_bp._is_api = True
+# IMPORTANTE: CSRF deshabilitado en rutas individuales con @csrf.exempt
+# Ver app/blueprints/ai/routes.py para los decoradores
 
 # Configurar CORS para el blueprint
 @ai_bp.after_request

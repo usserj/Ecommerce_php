@@ -9,7 +9,7 @@ from app.services.ai_service import ai_service
 from app.models.product import Producto
 from app.models.comment import Comentario
 from app.models.analisis_review import AnalisisReview
-from app.extensions import db
+from app.extensions import db, csrf
 import uuid
 import logging
 from datetime import datetime
@@ -25,6 +25,7 @@ def get_or_create_session_id():
 
 
 @ai_bp.route('/chat', methods=['POST'])
+@csrf.exempt
 def chat():
     """
     Endpoint para chatbot de ventas
@@ -207,6 +208,7 @@ def recomendaciones(producto_id):
 
 
 @ai_bp.route('/generar-descripcion', methods=['POST'])
+@csrf.exempt
 def generar_descripcion():
     """
     Endpoint para generar descripción de producto con IA
@@ -295,6 +297,7 @@ def generar_descripcion():
 
 
 @ai_bp.route('/analizar-reviews', methods=['POST'])
+@csrf.exempt
 def analizar_reviews_endpoint():
     """
     Endpoint para análisis de reviews de un producto
@@ -395,6 +398,7 @@ def obtener_analisis_reviews(producto_id):
 
 
 @ai_bp.route('/busqueda-inteligente', methods=['POST'])
+@csrf.exempt
 def busqueda_inteligente_endpoint():
     """
     Endpoint para búsqueda inteligente (usado internamente por /buscar)
