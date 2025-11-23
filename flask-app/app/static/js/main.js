@@ -505,8 +505,22 @@
      * Check if user is logged in
      */
     function isUserLoggedIn() {
-        // Check for user-specific elements or data attributes
-        return document.querySelector('[data-user-logged-in]') !== null;
+        // Method 1: Check for data-user-logged-in attribute in body
+        if (document.body.hasAttribute('data-user-logged-in')) {
+            return true;
+        }
+
+        // Method 2: Check for user dropdown menu (only visible when logged in)
+        if (document.getElementById('userDropdown')) {
+            return true;
+        }
+
+        // Method 3: Check for any element with data-user-logged-in
+        if (document.querySelector('[data-user-logged-in]')) {
+            return true;
+        }
+
+        return false;
     }
 
     /**
