@@ -76,8 +76,31 @@ def add_to_cart():
             logger.error(f"Product not found or inactive: producto_id={producto_id}")
             return jsonify({'success': False, 'message': 'Producto no disponible'}), 404
 
+        # Validate stock availability for physical products
+        if not producto.is_virtual():
+            # Check if requested cantidad is available
+            if not producto.tiene_stock(cantidad):
+                logger.warning(f"Insufficient stock: producto_id={producto_id}, requested={cantidad}, available={producto.stock}")
+                return jsonify({
+                    'success': False,
+                    'message': f'Stock insuficiente. Solo quedan {producto.stock} unidades disponibles'
+                }), 400
+
+            # Check current cantidad in cart
+            cart = session.get('cart', [])
+            cantidad_en_carrito = sum(item['cantidad'] for item in cart if item['id'] == producto_id)
+            cantidad_total = cantidad_en_carrito + cantidad
+
+            if not producto.tiene_stock(cantidad_total):
+                logger.warning(f"Total cart cantidad exceeds stock: producto_id={producto_id}, in_cart={cantidad_en_carrito}, requested={cantidad}, available={producto.stock}")
+                return jsonify({
+                    'success': False,
+                    'message': f'Stock insuficiente. Ya tienes {cantidad_en_carrito} en el carrito. Solo hay {producto.stock} disponibles'
+                }), 400
+        else:
+            cart = session.get('cart', [])
+
         # Get or create cart
-        cart = session.get('cart', [])
 
         # Check if product already in cart
         found = False
@@ -114,6 +137,15 @@ def update_cart():
         data = request.get_json()
         producto_id = int(data.get('producto_id'))
         cantidad = int(data.get('cantidad', 1))
+
+        # Validate stock before updating
+        producto = Producto.query.get(producto_id)
+        if producto and not producto.is_virtual():
+            if cantidad > 0 and not producto.tiene_stock(cantidad):
+                return jsonify({
+                    'success': False,
+                    'message': f'Stock insuficiente. Solo quedan {producto.stock} unidades disponibles'
+                }), 400
 
         cart = session.get('cart', [])
 

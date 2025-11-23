@@ -36,57 +36,28 @@ class Compra(db.Model):
     pago = db.Column(db.String(255), nullable=False)  # Payment amount/details
     fecha = db.Column(db.DateTime, default=datetime.utcnow, index=True)
 
-    # TEMPORARY: Commented out until migration is run
-    # Uncomment these after running: python run_migration.py
-    # precio_total = db.Column(db.Numeric(10, 2))  # Total price including shipping
-    # estado = db.Column(db.String(20), default=ESTADO_PENDIENTE, index=True)
-    # tracking = db.Column(db.String(100))
-    # fecha_estado = db.Column(db.DateTime, default=datetime.utcnow)
+    # Columnas de tracking y estado
+    precio_total = db.Column(db.Numeric(10, 2))  # Total price including shipping
+    estado = db.Column(db.String(20), default=ESTADO_PENDIENTE, index=True)
+    tracking = db.Column(db.String(100))
+    fecha_estado = db.Column(db.DateTime, default=datetime.utcnow)
 
     def __repr__(self):
         return f'<Compra {self.id} - User {self.id_usuario}>'
 
-    # Fallback properties for columns that may not exist in DB yet
-    @property
-    def estado(self):
-        """Get order status with fallback."""
-        # Try to get from database column if it exists
-        try:
-            return self.__dict__.get('estado', self.ESTADO_ENTREGADO)
-        except:
-            # If column doesn't exist, assume delivered for old orders
-            return self.ESTADO_ENTREGADO
-
-    @estado.setter
-    def estado(self, value):
-        """Set order status."""
-        self.__dict__['estado'] = value
-
-    @property
-    def tracking(self):
-        """Get tracking number with fallback."""
-        return self.__dict__.get('tracking', None)
-
-    @tracking.setter
-    def tracking(self, value):
-        """Set tracking number."""
-        self.__dict__['tracking'] = value
-
-    @property
-    def fecha_estado(self):
-        """Get status update date with fallback."""
-        return self.__dict__.get('fecha_estado', self.fecha)
-
-    @fecha_estado.setter
-    def fecha_estado(self, value):
-        """Set status update date."""
-        self.__dict__['fecha_estado'] = value
+    # Transiciones de estado válidas
+    TRANSICIONES_VALIDAS = {
+        ESTADO_PENDIENTE: [ESTADO_PROCESANDO, ESTADO_CANCELADO],
+        ESTADO_PROCESANDO: [ESTADO_ENVIADO, ESTADO_CANCELADO],
+        ESTADO_ENVIADO: [ESTADO_ENTREGADO],
+        ESTADO_ENTREGADO: [],  # Estado final
+        ESTADO_CANCELADO: []   # Estado final
+    }
 
     def get_total(self):
         """Get total amount paid including shipping."""
         try:
-            # Try precio_total first if it exists
-            if hasattr(self, 'precio_total') and self.precio_total:
+            if self.precio_total:
                 return float(self.precio_total)
             # Fallback: calculate from pago + envio
             total = float(self.pago) + float(self.envio or 0)
@@ -102,13 +73,57 @@ class Compra(db.Model):
             'envio': self.envio
         }
 
-    def cambiar_estado(self, nuevo_estado):
-        """Cambiar el estado del pedido."""
+    def cambiar_estado(self, nuevo_estado, razon=None):
+        """Cambiar el estado del pedido con validación de transiciones."""
         if nuevo_estado not in self.ESTADOS_VALIDOS:
             raise ValueError(f"Estado inválido: {nuevo_estado}")
 
+        # Validar transición de estado
+        transiciones_permitidas = self.TRANSICIONES_VALIDAS.get(self.estado, [])
+        if nuevo_estado not in transiciones_permitidas:
+            raise ValueError(
+                f"Transición de estado inválida: {self.estado} → {nuevo_estado}. "
+                f"Transiciones permitidas desde {self.estado}: {', '.join(transiciones_permitidas) if transiciones_permitidas else 'ninguna'}"
+            )
+
+        estado_anterior = self.estado
         self.estado = nuevo_estado
         self.fecha_estado = datetime.utcnow()
+
+        # Si se cancela una orden, restaurar el stock
+        if nuevo_estado == self.ESTADO_CANCELADO and estado_anterior != self.ESTADO_CANCELADO:
+            self.restaurar_stock(razon or f"Orden cancelada desde estado {estado_anterior}")
+
+        db.session.commit()
+
+    def restaurar_stock(self, razon="Orden cancelada"):
+        """Restaurar stock cuando se cancela una orden."""
+        from app.models.product import Producto
+
+        producto = Producto.query.get(self.id_producto)
+        if not producto or producto.is_virtual():
+            return  # No restaurar stock de productos virtuales
+
+        stock_anterior = producto.stock
+        producto.stock += self.cantidad
+        stock_nuevo = producto.stock
+
+        # Registrar movimiento de stock
+        try:
+            from app.models.stock_movement import StockMovement
+            movimiento = StockMovement.registrar_cancelacion(
+                producto_id=self.id_producto,
+                orden_id=self.id,
+                cantidad=self.cantidad,
+                stock_anterior=stock_anterior,
+                stock_nuevo=stock_nuevo,
+                razon=razon
+            )
+            db.session.add(movimiento)
+        except ImportError:
+            # Si el modelo StockMovement no existe aún, solo actualizar stock
+            pass
+
         db.session.commit()
 
     def es_pendiente(self):

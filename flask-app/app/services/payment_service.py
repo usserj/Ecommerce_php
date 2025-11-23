@@ -277,9 +277,25 @@ def create_order_from_cart(user_id, cart_items, direccion, pais, metodo, payment
                 should_decrement_stock = estado in ['procesando', 'entregado', 'enviado', 'completado']
 
                 if should_decrement_stock:
+                    stock_anterior = producto.stock
                     if not producto.decrementar_stock(item['cantidad']):
                         db.session.rollback()
                         return False, f"Error al decrementar stock del producto '{producto.titulo}'", None
+
+                    # Registrar movimiento de stock para auditoría
+                    try:
+                        from app.models.stock_movement import StockMovement
+                        movimiento = StockMovement.registrar_venta(
+                            producto_id=producto.id,
+                            orden_id=None,  # Se asignará después del commit
+                            cantidad=item['cantidad'],
+                            stock_anterior=stock_anterior,
+                            stock_nuevo=producto.stock,
+                            razon=f"Venta por {metodo}"
+                        )
+                        db.session.add(movimiento)
+                    except ImportError:
+                        pass  # Si el modelo no existe aún, continuar
 
                 # Calculate item price and proportional discount
                 item_total = float(producto.get_price() * item['cantidad'])
@@ -318,8 +334,9 @@ def create_order_from_cart(user_id, cart_items, direccion, pais, metodo, payment
                 created_orders.append(compra)
 
                 # Update product sales counter only if paid
-                if estado == 'procesando':
-                    producto.increment_sales()
+                # NOTE: NO incrementar aquí, se hace en webhooks
+                # if estado == 'procesando':
+                #     producto.increment_sales()
 
         # Increment coupon usage if applied and payment is processing
         if cupon_aplicado and estado == 'procesando':
@@ -680,8 +697,24 @@ def process_paypal_ipn(ipn_data):
                     producto = Producto.query.with_for_update().get(order.id_producto)
                     if producto and not producto.is_virtual():
                         if producto.tiene_stock(order.cantidad):
+                            stock_anterior = producto.stock
                             producto.decrementar_stock(order.cantidad)
                             producto.increment_sales()
+
+                            # Registrar movimiento de stock
+                            try:
+                                from app.models.stock_movement import StockMovement
+                                movimiento = StockMovement.registrar_venta(
+                                    producto_id=producto.id,
+                                    orden_id=order.id,
+                                    cantidad=order.cantidad,
+                                    stock_anterior=stock_anterior,
+                                    stock_nuevo=producto.stock,
+                                    razon=f'Pago confirmado por webhook'
+                                )
+                                db.session.add(movimiento)
+                            except ImportError:
+                                pass
                         else:
                             # Stock is not available, cancel order
                             order.estado = 'cancelado'
@@ -787,8 +820,24 @@ def process_payu_confirmation(data):
                     producto = Producto.query.with_for_update().get(order.id_producto)
                     if producto and not producto.is_virtual():
                         if producto.tiene_stock(order.cantidad):
+                            stock_anterior = producto.stock
                             producto.decrementar_stock(order.cantidad)
                             producto.increment_sales()
+
+                            # Registrar movimiento de stock
+                            try:
+                                from app.models.stock_movement import StockMovement
+                                movimiento = StockMovement.registrar_venta(
+                                    producto_id=producto.id,
+                                    orden_id=order.id,
+                                    cantidad=order.cantidad,
+                                    stock_anterior=stock_anterior,
+                                    stock_nuevo=producto.stock,
+                                    razon=f'Pago confirmado por webhook'
+                                )
+                                db.session.add(movimiento)
+                            except ImportError:
+                                pass
                         else:
                             # Stock is not available, cancel order
                             order.estado = 'cancelado'
@@ -860,8 +909,24 @@ def process_paymentez_webhook(data):
                     producto = Producto.query.with_for_update().get(order.id_producto)
                     if producto and not producto.is_virtual():
                         if producto.tiene_stock(order.cantidad):
+                            stock_anterior = producto.stock
                             producto.decrementar_stock(order.cantidad)
                             producto.increment_sales()
+
+                            # Registrar movimiento de stock
+                            try:
+                                from app.models.stock_movement import StockMovement
+                                movimiento = StockMovement.registrar_venta(
+                                    producto_id=producto.id,
+                                    orden_id=order.id,
+                                    cantidad=order.cantidad,
+                                    stock_anterior=stock_anterior,
+                                    stock_nuevo=producto.stock,
+                                    razon=f'Pago confirmado por webhook'
+                                )
+                                db.session.add(movimiento)
+                            except ImportError:
+                                pass
                         else:
                             # Stock is not available, cancel order
                             order.estado = 'cancelado'
@@ -930,8 +995,24 @@ def process_datafast_callback(data):
                     producto = Producto.query.with_for_update().get(order.id_producto)
                     if producto and not producto.is_virtual():
                         if producto.tiene_stock(order.cantidad):
+                            stock_anterior = producto.stock
                             producto.decrementar_stock(order.cantidad)
                             producto.increment_sales()
+
+                            # Registrar movimiento de stock
+                            try:
+                                from app.models.stock_movement import StockMovement
+                                movimiento = StockMovement.registrar_venta(
+                                    producto_id=producto.id,
+                                    orden_id=order.id,
+                                    cantidad=order.cantidad,
+                                    stock_anterior=stock_anterior,
+                                    stock_nuevo=producto.stock,
+                                    razon=f'Pago confirmado por webhook'
+                                )
+                                db.session.add(movimiento)
+                            except ImportError:
+                                pass
                         else:
                             # Stock is not available, cancel order
                             order.estado = 'cancelado'
