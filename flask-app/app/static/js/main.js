@@ -272,6 +272,19 @@
         });
     }
 
+    /**
+     * Add to wishlist buttons (product listing and detail pages)
+     */
+    function initAddToWishlistButtons() {
+        const addToWishlistButtons = document.querySelectorAll('.add-to-wishlist');
+        addToWishlistButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const productId = this.dataset.productId;
+                toggleWishlist(productId, this);
+            });
+        });
+    }
+
     // ===========================
     // Comment/Review Functions
     // ===========================
@@ -670,6 +683,9 @@
 
         // Initialize add to cart button
         initAddToCartButton();
+
+        // Initialize add to wishlist buttons
+        initAddToWishlistButtons();
 
         // Initialize comment form
         initCommentForm();

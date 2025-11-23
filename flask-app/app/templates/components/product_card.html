@@ -53,7 +53,7 @@
             {% elif producto.stock_bajo() %}
                 <span class="badge bg-warning text-dark w-100"><i class="fas fa-exclamation-triangle"></i> Últimas {{ producto.stock }} unidades</span>
             {% else %}
-                <span class="badge bg-success w-100"><i class="fas fa-check-circle"></i> Disponible</span>
+                <span class="badge bg-success w-100"><i class="fas fa-check-circle"></i> En Stock ({{ producto.stock }} disponibles)</span>
             {% endif %}
         </div>
 

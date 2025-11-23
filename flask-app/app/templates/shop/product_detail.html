@@ -222,7 +222,8 @@
             <h5 class="mb-0"><i class="fas fa-comment-dots"></i> Dejar tu Reseña</h5>
         </div>
         <div class="card-body">
-            <form method="POST" action="{{ url_for('shop.add_comment', ruta=producto.ruta) }}">
+            <form id="commentForm" method="POST" action="{{ url_for('shop.add_comment', ruta=producto.ruta) }}" data-product-id="{{ producto.id }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="mb-3">
                     <label for="calificacion" class="form-label">Calificación</label>
                     <div class="rating-input">
