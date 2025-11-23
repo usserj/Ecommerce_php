@@ -56,6 +56,58 @@ def index(ruta=None):
                          sort_by=sort_by)
 
 
+@shop_bp.route('/categoria/<cat_ruta>/subcategoria/<subcat_ruta>')
+def subcategory(cat_ruta, subcat_ruta):
+    """Products filtered by subcategory."""
+    page = request.args.get('page', 1, type=int)
+    sort_by = request.args.get('sort', 'reciente')
+    per_page = 12
+
+    # Find category first
+    categoria = Categoria.query.filter_by(ruta=cat_ruta, estado=1).first_or_404()
+
+    # Find subcategory
+    subcategoria = Subcategoria.query.filter_by(
+        ruta=subcat_ruta,
+        id_categoria=categoria.id,
+        estado=1
+    ).first_or_404()
+
+    # Filter products by subcategory
+    query = Producto.query.filter_by(
+        id_subcategoria=subcategoria.id,
+        estado=1
+    )
+
+    # Sorting
+    if sort_by == 'vendidos':
+        query = query.order_by(Producto.ventas.desc())
+    elif sort_by == 'precio_asc':
+        query = query.order_by(Producto.precio.asc())
+    elif sort_by == 'precio_desc':
+        query = query.order_by(Producto.precio.desc())
+    else:  # reciente (default)
+        query = query.order_by(Producto.fecha.desc())
+
+    # Pagination
+    productos = query.paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+
+    # Get subcategory banners
+    banners = Banner.get_banners_for_subcategory(subcat_ruta)
+
+    categorias = Categoria.query.filter_by(estado=1).all()
+
+    return render_template('shop/products.html',
+                         productos=productos,
+                         categorias=categorias,
+                         categoria_actual=categoria,
+                         subcategoria_actual=subcategoria,
+                         banners=banners,
+                         sort_by=sort_by)
+
+
 @shop_bp.route('/producto/<ruta>')
 def product_detail(ruta):
     """Product detail page."""

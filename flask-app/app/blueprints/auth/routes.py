@@ -163,8 +163,11 @@ def reset_password(token):
             flash('Por favor complete todos los campos.', 'error')
             return render_template('auth/reset_password.html', token=token)
 
-        if len(password) < 6:
-            flash('La contraseña debe tener al menos 6 caracteres.', 'error')
+        # Validate password strength (same as registration)
+        from app.utils.validators import validate_password_strength
+        is_valid, message = validate_password_strength(password)
+        if not is_valid:
+            flash(message, 'error')
             return render_template('auth/reset_password.html', token=token)
 
         if password != password_confirm:
