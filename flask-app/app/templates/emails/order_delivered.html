@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Pedido Entregado</title>
+</head>
+<body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px">
+    <div style="background:#28a745;color:white;padding:20px;text-align:center">
+        <h1>✅ ¡Pedido Entregado!</h1>
+    </div>
+
+    <div style="padding:30px;background:#f8f9fa">
+        <h2>Hola {{ user.nombre }},</h2>
+        <p>¡Tu pedido ha sido entregado exitosamente!</p>
+
+        <div style="background:white;padding:20px;margin:20px 0;border:1px solid #ddd">
+            <h3>Detalles del Pedido</h3>
+            <p><strong>Orden ID:</strong> #{{ order.id }}</p>
+            <p><strong>Producto:</strong> {{ order.producto.titulo }}</p>
+            <p><strong>Cantidad:</strong> {{ order.cantidad }}</p>
+            <p><strong>Total:</strong> ${{ "%.2f"|format(order.pago|float) }}</p>
+        </div>
+
+        <p style="background:#d1ecf1;padding:15px;border-left:4px solid #17a2b8">
+            <strong>¿Quedaste satisfecho con tu compra?</strong><br>
+            Nos encantaría conocer tu opinión. Deja una reseña y ayuda a otros compradores.
+        </p>
+
+        <div style="text-align:center;margin:30px 0">
+            <a href="{{ url_for('shop.product_detail', ruta=order.producto.ruta, _external=True) }}"
+               style="background:#28a745;color:white;padding:12px 30px;text-decoration:none;border-radius:5px;display:inline-block;margin-right:10px">
+                Dejar Reseña
+            </a>
+            <a href="{{ url_for('profile.orders', _external=True) }}"
+               style="background:#6c757d;color:white;padding:12px 30px;text-decoration:none;border-radius:5px;display:inline-block">
+                Ver Mis Pedidos
+            </a>
+        </div>
+
+        <p style="text-align:center;color:#6c757d;font-size:14px">
+            Gracias por confiar en nosotros. ¡Esperamos verte pronto!
+        </p>
+    </div>
+
+    <div style="background:#212529;color:white;padding:15px;text-align:center;font-size:12px">
+        &copy; 2025 Tienda Virtual<br>
+        <a href="{{ url_for('main.index', _external=True) }}" style="color:#28a745">www.tiendavirtual.com</a>
+    </div>
+</body>
+</html>

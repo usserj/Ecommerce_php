@@ -347,6 +347,30 @@ def create_order_from_cart(user_id, cart_items, direccion, pais, metodo, payment
             Notificacion.increment_new_sales()
 
         db.session.commit()
+
+        # Send email notifications after successful order creation
+        try:
+            from app.services.email_service import (
+                send_order_confirmation_email,
+                send_new_order_admin_email
+            )
+
+            # Send confirmation email to user for each order
+            for order in created_orders:
+                send_order_confirmation_email(user, order)
+
+            # Send notification email to admin (only once per checkout, not per order)
+            if created_orders:
+                # Get admin email from config
+                config = Comercio.get_config()
+                admin_email = current_app.config.get('ADMIN_EMAIL', config.email if hasattr(config, 'email') else None)
+                if admin_email:
+                    send_new_order_admin_email(created_orders[0], admin_email)
+
+        except Exception as email_error:
+            # Log email error but don't fail the order creation
+            current_app.logger.error(f"Error sending order emails: {email_error}")
+
         return True, "Órdenes creadas exitosamente", created_orders
 
     except Exception as e:
@@ -734,6 +758,16 @@ def process_paypal_ipn(ipn_data):
                     Notificacion.increment_new_sales()
 
             db.session.commit()
+
+            # Send confirmation emails
+            try:
+                from app.services.email_service import send_order_confirmation_email
+                for order in orders:
+                    if order.estado == 'procesando':
+                        send_order_confirmation_email(order.usuario, order)
+            except Exception as e:
+                current_app.logger.error(f"Error sending confirmation email: {e}")
+
             return True, f"Payment completed for {len(orders)} orders"
 
         elif payment_status in ['Pending', 'Processing']:
@@ -856,6 +890,16 @@ def process_payu_confirmation(data):
                     Notificacion.increment_new_sales()
 
             db.session.commit()
+
+            # Send confirmation emails
+            try:
+                from app.services.email_service import send_order_confirmation_email
+                for order in orders:
+                    if order.estado == 'procesando':
+                        send_order_confirmation_email(order.usuario, order)
+            except Exception as e:
+                current_app.logger.error(f"Error sending confirmation email: {e}")
+
             return True, f"Payment approved for {len(orders)} orders"
 
         elif state_pol == '7':  # Pending
@@ -945,6 +989,16 @@ def process_paymentez_webhook(data):
                     Notificacion.increment_new_sales()
 
             db.session.commit()
+
+            # Send confirmation emails
+            try:
+                from app.services.email_service import send_order_confirmation_email
+                for order in orders:
+                    if order.estado == 'procesando':
+                        send_order_confirmation_email(order.usuario, order)
+            except Exception as e:
+                current_app.logger.error(f"Error sending confirmation email: {e}")
+
             return True, "Payment successful"
 
         elif status == 'pending':
@@ -1031,6 +1085,16 @@ def process_datafast_callback(data):
                     Notificacion.increment_new_sales()
 
             db.session.commit()
+
+            # Send confirmation emails
+            try:
+                from app.services.email_service import send_order_confirmation_email
+                for order in orders:
+                    if order.estado == 'procesando':
+                        send_order_confirmation_email(order.usuario, order)
+            except Exception as e:
+                current_app.logger.error(f"Error sending confirmation email: {e}")
+
             return True, "Payment approved"
 
         else:

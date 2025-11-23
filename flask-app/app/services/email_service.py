@@ -101,3 +101,57 @@ def send_order_confirmation_email(user, order):
         user=user,
         order=order
     )
+
+
+def send_order_shipped_email(user, order):
+    """Send order shipped notification email."""
+    send_email(
+        subject=f'Pedido #{order.id} Enviado - Tienda Virtual',
+        recipient=user.email,
+        template='order_shipped',
+        user=user,
+        order=order
+    )
+
+
+def send_order_delivered_email(user, order):
+    """Send order delivered notification email."""
+    send_email(
+        subject=f'Pedido #{order.id} Entregado - Tienda Virtual',
+        recipient=user.email,
+        template='order_delivered',
+        user=user,
+        order=order
+    )
+
+
+def send_order_cancelled_email(user, order, reason=None):
+    """Send order cancelled notification email."""
+    send_email(
+        subject=f'Pedido #{order.id} Cancelado - Tienda Virtual',
+        recipient=user.email,
+        template='order_cancelled',
+        user=user,
+        order=order,
+        reason=reason
+    )
+
+
+def send_new_order_admin_email(order, admin_email=None):
+    """Send new order notification to admin."""
+    if not admin_email:
+        admin_email = current_app.config.get('MAIL_DEFAULT_SENDER') or current_app.config.get('MAIL_USERNAME')
+
+    if not admin_email:
+        logger.warning("Admin email no configurado. No se puede notificar nueva orden.")
+        return False
+
+    admin_url = url_for('admin.index', _external=True)
+
+    send_email(
+        subject=f'🛒 Nueva Orden #{order.id} - Tienda Virtual',
+        recipient=admin_email,
+        template='new_order_admin',
+        order=order,
+        admin_url=admin_url
+    )

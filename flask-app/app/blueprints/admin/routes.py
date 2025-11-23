@@ -935,24 +935,43 @@ def update_order_status(id):
     """Update order status."""
     try:
         order = Compra.query.get_or_404(id)
+        estado_anterior = order.estado
         estado = request.form.get('estado')
         tracking = request.form.get('tracking', '')
-        
+
         if estado:
             order.estado = estado
             if tracking:
                 order.tracking = tracking
             order.fecha_estado = datetime.now()
             db.session.commit()
-            
+
+            # Send email notifications based on status change
+            from app.services.email_service import (
+                send_order_shipped_email,
+                send_order_delivered_email,
+                send_order_cancelled_email
+            )
+
+            try:
+                if estado == 'enviado' and estado_anterior != 'enviado':
+                    send_order_shipped_email(order.usuario, order)
+                elif estado == 'entregado' and estado_anterior != 'entregado':
+                    send_order_delivered_email(order.usuario, order)
+                elif estado == 'cancelado' and estado_anterior != 'cancelado':
+                    send_order_cancelled_email(order.usuario, order)
+            except Exception as email_error:
+                # Log email error but don't fail the status update
+                print(f"Error sending email notification: {email_error}")
+
             flash('Estado de orden actualizado correctamente!', 'success')
         else:
             flash('Debe seleccionar un estado.', 'error')
-            
+
     except Exception as e:
         db.session.rollback()
         flash(f'Error al actualizar estado: {e}', 'error')
-    
+
     return redirect(url_for('admin.orders'))
 
 

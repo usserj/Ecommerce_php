@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Nueva Orden Recibida</title>
+</head>
+<body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px">
+    <div style="background:#007bff;color:white;padding:20px;text-align:center">
+        <h1>🛒 Nueva Orden Recibida</h1>
+    </div>
+
+    <div style="padding:30px;background:#f8f9fa">
+        <h2>¡Tienes un nuevo pedido!</h2>
+        <p>Se ha recibido una nueva orden en la tienda.</p>
+
+        <div style="background:white;padding:20px;margin:20px 0;border:1px solid #ddd">
+            <h3>Detalles del Pedido</h3>
+            <p><strong>Orden ID:</strong> #{{ order.id }}</p>
+            <p><strong>Cliente:</strong> {{ order.usuario.nombre }}</p>
+            <p><strong>Email:</strong> {{ order.usuario.email }}</p>
+            <p><strong>Producto:</strong> {{ order.producto.titulo }}</p>
+            <p><strong>Cantidad:</strong> {{ order.cantidad }}</p>
+            <p><strong>Total:</strong> ${{ "%.2f"|format(order.pago|float) }}</p>
+            <p><strong>Método de Pago:</strong> {{ order.metodo }}</p>
+            <p><strong>Dirección de Envío:</strong> {{ order.direccion }}</p>
+            <p><strong>País:</strong> {{ order.pais }}</p>
+            <p><strong>Estado:</strong> <span style="background:#ffc107;padding:3px 8px;border-radius:3px">{{ order.estado }}</span></p>
+        </div>
+
+        <div style="text-align:center;margin:30px 0">
+            <a href="{{ admin_url }}"
+               style="background:#007bff;color:white;padding:12px 30px;text-decoration:none;border-radius:5px;display:inline-block">
+                Ver en Panel de Admin
+            </a>
+        </div>
+
+        <p style="background:#d1ecf1;padding:15px;border-left:4px solid #17a2b8;font-size:14px">
+            <strong>Acción Requerida:</strong> Procesa este pedido y actualiza el estado cuando sea enviado.
+        </p>
+    </div>
+
+    <div style="background:#212529;color:white;padding:15px;text-align:center;font-size:12px">
+        Panel de Administración - Tienda Virtual
+    </div>
+</body>
+</html>
