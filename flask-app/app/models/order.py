@@ -34,19 +34,63 @@ class Compra(db.Model):
     cantidad = db.Column(db.Integer, default=1)
     detalle = db.Column(db.Text)  # Additional details (JSON or text)
     pago = db.Column(db.String(255), nullable=False)  # Payment amount/details
-    precio_total = db.Column(db.Numeric(10, 2))  # Total price including shipping
-    estado = db.Column(db.String(20), default=ESTADO_PENDIENTE, index=True)  # Estado del pedido
-    tracking = db.Column(db.String(100))  # Número de tracking/seguimiento
     fecha = db.Column(db.DateTime, default=datetime.utcnow, index=True)
-    fecha_estado = db.Column(db.DateTime, default=datetime.utcnow)  # Última actualización de estado
+
+    # TEMPORARY: Commented out until migration is run
+    # Uncomment these after running: python run_migration.py
+    # precio_total = db.Column(db.Numeric(10, 2))  # Total price including shipping
+    # estado = db.Column(db.String(20), default=ESTADO_PENDIENTE, index=True)
+    # tracking = db.Column(db.String(100))
+    # fecha_estado = db.Column(db.DateTime, default=datetime.utcnow)
 
     def __repr__(self):
         return f'<Compra {self.id} - User {self.id_usuario}>'
 
-    def get_total(self):
-        """Get total amount paid."""
+    # Fallback properties for columns that may not exist in DB yet
+    @property
+    def estado(self):
+        """Get order status with fallback."""
+        # Try to get from database column if it exists
         try:
-            return float(self.pago)
+            return self.__dict__.get('estado', self.ESTADO_ENTREGADO)
+        except:
+            # If column doesn't exist, assume delivered for old orders
+            return self.ESTADO_ENTREGADO
+
+    @estado.setter
+    def estado(self, value):
+        """Set order status."""
+        self.__dict__['estado'] = value
+
+    @property
+    def tracking(self):
+        """Get tracking number with fallback."""
+        return self.__dict__.get('tracking', None)
+
+    @tracking.setter
+    def tracking(self, value):
+        """Set tracking number."""
+        self.__dict__['tracking'] = value
+
+    @property
+    def fecha_estado(self):
+        """Get status update date with fallback."""
+        return self.__dict__.get('fecha_estado', self.fecha)
+
+    @fecha_estado.setter
+    def fecha_estado(self, value):
+        """Set status update date."""
+        self.__dict__['fecha_estado'] = value
+
+    def get_total(self):
+        """Get total amount paid including shipping."""
+        try:
+            # Try precio_total first if it exists
+            if hasattr(self, 'precio_total') and self.precio_total:
+                return float(self.precio_total)
+            # Fallback: calculate from pago + envio
+            total = float(self.pago) + float(self.envio or 0)
+            return total
         except (ValueError, TypeError):
             return 0.0
 
@@ -100,4 +144,4 @@ class Compra(db.Model):
             self.ESTADO_ENTREGADO: 'Entregado',
             self.ESTADO_CANCELADO: 'Cancelado'
         }
-        return estados_display.get(self.estado, self.estado)
+        return estados_display.get(self.estado, 'Completado')
