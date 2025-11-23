@@ -30,7 +30,7 @@ def run_migration():
             user, password, host, database = match.groups()
 
             # Read SQL file
-            with open('migrations/add_precio_total_tracking.sql', 'r') as f:
+            with open('migrations/002_orden_estados_stock_audit.sql', 'r') as f:
                 sql_content = f.read()
 
             # Connect to database

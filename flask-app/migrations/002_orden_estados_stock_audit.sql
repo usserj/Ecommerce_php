@@ -3,7 +3,7 @@
 -- Description: Fix crítico - Agregar columnas de estado y sistema de auditoría
 -- Ejecutar con: mysql -u root -p ecommerce_db < migrations/002_orden_estados_stock_audit.sql
 
-USE ecommerce_db;
+-- USE ecommerce_db; -- Database selection handled by connection
 
 -- ============================================================================
 -- PARTE 1: AGREGAR COLUMNAS A TABLA COMPRAS
@@ -121,11 +121,11 @@ GROUP BY estado
 ORDER BY cantidad DESC;
 
 -- Verificar tablas creadas
-SELECT
-    TABLE_NAME,
-    TABLE_ROWS
-FROM information_schema.TABLES
-WHERE TABLE_SCHEMA = 'ecommerce_db'
-    AND TABLE_NAME IN ('stock_movements', 'stock_reservations');
+-- SELECT
+--     TABLE_NAME,
+--     TABLE_ROWS
+-- FROM information_schema.TABLES
+-- WHERE TABLE_SCHEMA = DATABASE()
+--     AND TABLE_NAME IN ('stock_movements', 'stock_reservations');
 
 SELECT '✅ Migración completada exitosamente' AS resultado;

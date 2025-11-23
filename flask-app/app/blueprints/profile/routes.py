@@ -191,11 +191,9 @@ def toggle_wishlist():
             })
         else:
             # Add to wishlist
-            from datetime import datetime
             nuevo_deseo = Deseo(
                 id_usuario=current_user.id,
-                id_producto=producto_id,
-                fecha=datetime.now()
+                id_producto=producto_id
             )
             db.session.add(nuevo_deseo)
             db.session.commit()

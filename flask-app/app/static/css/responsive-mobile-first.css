@@ -287,6 +287,13 @@ select.form-control {
     z-index: 999;
     border-top-left-radius: 20px;
     border-top-right-radius: 20px;
+    max-height: 50vh; /* No cubrir más del 50% de la pantalla */
+    overflow-y: auto; /* Scroll si es necesario */
+}
+
+/* Agregar padding al body cuando hay cart summary fijo */
+body.has-cart-summary {
+    padding-bottom: 150px; /* Espacio para el cart summary */
 }
 
 .cart-total {
@@ -413,7 +420,7 @@ img {
 
 .toast {
     position: fixed;
-    bottom: 80px;
+    bottom: 170px;
     left: 50%;
     transform: translateX(-50%);
     background: #333;
@@ -428,11 +435,11 @@ img {
 
 @keyframes slideUp {
     from {
-        bottom: 0;
+        bottom: 80px;
         opacity: 0;
     }
     to {
-        bottom: 80px;
+        bottom: 170px;
         opacity: 1;
     }
 }
