@@ -99,16 +99,27 @@ def process():
         flash('Su carrito está vacío.', 'warning')
         return redirect(url_for('shop.index'))
 
-    # Validate stock before processing payment
+    # Validate stock before processing payment WITH ROW LOCKING to prevent race conditions
     stock_errors = []
-    for item in cart_items:
-        producto = Producto.query.get(item['id'])
-        if producto:
-            if not producto.is_virtual() and not producto.tiene_stock(item['cantidad']):
-                if producto.agotado():
-                    stock_errors.append(f"{producto.titulo} está agotado.")
-                else:
-                    stock_errors.append(f"{producto.titulo} solo tiene {producto.stock} unidades disponibles.")
+    try:
+        for item in cart_items:
+            # Use with_for_update() to lock row during stock validation
+            # This prevents two users from buying the last item simultaneously
+            producto = Producto.query.with_for_update().get(item['id'])
+            if producto:
+                if not producto.is_virtual() and not producto.tiene_stock(item['cantidad']):
+                    if producto.agotado():
+                        stock_errors.append(f"{producto.titulo} está agotado.")
+                    else:
+                        stock_errors.append(f"{producto.titulo} solo tiene {producto.stock} unidades disponibles.")
+
+        # Commit to release locks
+        db.session.commit()
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al validar inventario: {str(e)}', 'error')
+        return redirect(url_for('cart.index'))
 
     if stock_errors:
         for error in stock_errors:
@@ -118,6 +129,30 @@ def process():
     # Save checkout data in session for PayPal callback
     session['checkout_direccion'] = direccion
     session['checkout_pais'] = pais
+
+    # Re-validate coupon if applied (user might have removed items from cart)
+    cupon_info = session.get('applied_coupon', None)
+    if cupon_info:
+        # Calculate current subtotal
+        from app.models.comercio import Comercio
+        config = Comercio.get_config()
+
+        subtotal = 0
+        for item in cart_items:
+            producto = Producto.query.get(item['id'])
+            if producto:
+                subtotal += producto.get_price() * item['cantidad']
+
+        # Get coupon and re-validate
+        cupon = Cupon.query.get(cupon_info.get('id'))
+        if cupon:
+            is_valid, message = cupon.is_valid(subtotal)
+            if not is_valid:
+                # Coupon no longer valid, remove it
+                session.pop('applied_coupon', None)
+                session.modified = True
+                flash(f'Cupón removido: {message}', 'warning')
+                return redirect(url_for('checkout.index'))
 
     # Prepare order data
     order_data = {

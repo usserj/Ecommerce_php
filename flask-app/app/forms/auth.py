@@ -1,7 +1,8 @@
 """Authentication forms."""
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, BooleanField, SubmitField
-from wtforms.validators import DataRequired, Email, EqualTo, Length, Regexp
+from wtforms.validators import DataRequired, Email, EqualTo, Length, Regexp, ValidationError
+from app.utils.validators import validate_password_strength
 
 
 class LoginForm(FlaskForm):
@@ -26,7 +27,7 @@ class RegisterForm(FlaskForm):
     nombre = StringField('Nombre', validators=[
         DataRequired(message='El nombre es requerido'),
         Length(min=2, max=100, message='El nombre debe tener entre 2 y 100 caracteres'),
-        Regexp('^[a-zA-ZñÑáéíóúÁÉÍÓÚ ]+$', message='El nombre solo puede contener letras')
+        Regexp('^[a-zA-ZñÑáéíóúÁÉÍÓÚ ]+$', message='El nombre solo puede contener letras y espacios')
     ])
 
     email = StringField('Email', validators=[
@@ -36,8 +37,7 @@ class RegisterForm(FlaskForm):
 
     password = PasswordField('Contraseña', validators=[
         DataRequired(message='La contraseña es requerida'),
-        Length(min=6, message='La contraseña debe tener al menos 6 caracteres'),
-        Regexp('^[a-zA-Z0-9]+$', message='La contraseña solo puede contener letras y números')
+        Length(min=8, max=128, message='La contraseña debe tener entre 8 y 128 caracteres')
     ])
 
     password2 = PasswordField('Confirmar Contraseña', validators=[
@@ -46,6 +46,12 @@ class RegisterForm(FlaskForm):
     ])
 
     submit = SubmitField('Registrarse')
+
+    def validate_password(self, field):
+        """Custom password strength validation."""
+        is_valid, message = validate_password_strength(field.data)
+        if not is_valid:
+            raise ValidationError(message)
 
 
 class ForgotPasswordForm(FlaskForm):
