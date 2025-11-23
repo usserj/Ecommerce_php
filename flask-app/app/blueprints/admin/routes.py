@@ -95,8 +95,19 @@ def logout():
 @admin_bp.route('/')
 @admin_required
 def dashboard():
-    """Admin dashboard."""
-    # Get statistics
+    """Admin dashboard with enhanced KPIs."""
+    from datetime import timedelta
+    from sqlalchemy import func, cast, Date
+
+    # Date ranges
+    today = datetime.now().date()
+    now = datetime.now()
+    week_ago = today - timedelta(days=6)
+    month_start = today.replace(day=1)
+    last_month_start = (month_start - timedelta(days=1)).replace(day=1)
+    last_month_end = month_start - timedelta(days=1)
+
+    # Basic statistics
     total_users = User.query.count()
     total_products = Producto.query.filter_by(estado=1).count()
     total_orders = Compra.query.count()
@@ -105,35 +116,95 @@ def dashboard():
     # Get notifications
     notifications = Notificacion.get_counters()
 
+    # === ENHANCED KPIs ===
+
+    # Revenue KPIs - Current Month
+    current_month_orders = Compra.query.filter(
+        Compra.fecha >= month_start,
+        Compra.estado != 'cancelado'
+    )
+    month_revenue = db.session.query(func.sum(Compra.pago)).filter(
+        Compra.fecha >= month_start,
+        Compra.estado != 'cancelado'
+    ).scalar() or 0
+    month_orders_count = current_month_orders.count()
+    month_avg_ticket = month_revenue / month_orders_count if month_orders_count > 0 else 0
+
+    # Revenue KPIs - Last Month (for comparison)
+    last_month_revenue = db.session.query(func.sum(Compra.pago)).filter(
+        Compra.fecha >= last_month_start,
+        Compra.fecha < month_start,
+        Compra.estado != 'cancelado'
+    ).scalar() or 0
+
+    # Calculate growth percentage
+    revenue_growth = 0
+    if last_month_revenue > 0:
+        revenue_growth = ((month_revenue - last_month_revenue) / last_month_revenue) * 100
+
+    # Orders by status
+    orders_by_status = {
+        'pendiente': Compra.query.filter_by(estado='pendiente').count(),
+        'procesando': Compra.query.filter_by(estado='procesando').count(),
+        'enviado': Compra.query.filter_by(estado='enviado').count(),
+        'entregado': Compra.query.filter_by(estado='entregado').count(),
+        'cancelado': Compra.query.filter_by(estado='cancelado').count()
+    }
+
+    # Low stock alert (products with stock < 10)
+    low_stock_products = Producto.query.filter(
+        Producto.stock < 10,
+        Producto.stock > 0,
+        Producto.estado == 1
+    ).order_by(Producto.stock.asc()).limit(10).all()
+
+    out_of_stock_count = Producto.query.filter_by(stock=0, estado=1).count()
+
     # Recent orders
     recent_orders = Compra.query.order_by(Compra.fecha.desc()).limit(10).all()
 
-    # Top products
-    top_products = Producto.query.filter_by(estado=1).order_by(Producto.ventas.desc()).limit(5).all()
+    # Top products by revenue (not just by count)
+    top_products_revenue = db.session.query(
+        Producto,
+        func.sum(Compra.pago).label('revenue'),
+        func.count(Compra.id).label('sales_count')
+    ).join(Compra, Compra.id_producto == Producto.id)\
+     .filter(Compra.estado != 'cancelado')\
+     .filter(Compra.fecha >= month_start)\
+     .group_by(Producto.id)\
+     .order_by(func.sum(Compra.pago).desc())\
+     .limit(5).all()
 
     # Chart data - Sales by day (last 7 days)
-    from datetime import timedelta
-    from sqlalchemy import func, cast, Date
-    today = datetime.now().date()
-    week_ago = today - timedelta(days=6)
-    
     sales_by_day = db.session.query(
         cast(Compra.fecha, Date).label('date'),
         func.count(Compra.id).label('count'),
         func.sum(Compra.pago).label('total')
-    ).filter(Compra.fecha >= week_ago).group_by(cast(Compra.fecha, Date)).all()
-    
+    ).filter(
+        Compra.fecha >= week_ago,
+        Compra.estado != 'cancelado'
+    ).group_by(cast(Compra.fecha, Date)).all()
+
     # Chart data - Visits by country (top 5)
     top_countries = VisitaPais.query.order_by(VisitaPais.cantidad.desc()).limit(5).all()
-    
+
     return render_template('admin/dashboard.html',
                          total_users=total_users,
                          total_products=total_products,
                          total_orders=total_orders,
                          total_visits=total_visits,
                          notifications=notifications,
+                         # New KPIs
+                         month_revenue=month_revenue,
+                         month_orders_count=month_orders_count,
+                         month_avg_ticket=month_avg_ticket,
+                         revenue_growth=revenue_growth,
+                         orders_by_status=orders_by_status,
+                         low_stock_products=low_stock_products,
+                         out_of_stock_count=out_of_stock_count,
+                         top_products_revenue=top_products_revenue,
+                         # Original data
                          recent_orders=recent_orders,
-                         top_products=top_products,
                          sales_by_day=sales_by_day,
                          top_countries=top_countries)
 
@@ -1284,6 +1355,263 @@ def export_reports():
         as_attachment=True,
         download_name=filename
     )
+
+
+# ===========================
+# INVENTORY & STOCK REPORTS
+# ===========================
+
+@admin_bp.route('/reports/inventory')
+@admin_required
+def inventory_report():
+    """Inventory report with low stock alerts."""
+    from sqlalchemy import func
+
+    # Get filter parameters
+    category_id = request.args.get('category_id', type=int, default=0)
+    stock_level = request.args.get('stock_level', default='all')  # all, low, out, normal
+
+    # Base query
+    query = Producto.query.filter_by(estado=1)
+
+    # Apply filters
+    if category_id:
+        query = query.filter_by(id_categoria=category_id)
+
+    if stock_level == 'low':
+        query = query.filter(Producto.stock > 0, Producto.stock < 10)
+    elif stock_level == 'out':
+        query = query.filter_by(stock=0)
+    elif stock_level == 'normal':
+        query = query.filter(Producto.stock >= 10)
+
+    # Order by stock ascending (show low stock first)
+    products = query.order_by(Producto.stock.asc()).all()
+
+    # Calculate statistics
+    total_products = Producto.query.filter_by(estado=1).count()
+    low_stock_count = Producto.query.filter(
+        Producto.stock > 0,
+        Producto.stock < 10,
+        Producto.estado == 1
+    ).count()
+    out_of_stock_count = Producto.query.filter_by(stock=0, estado=1).count()
+    total_stock_value = db.session.query(
+        func.sum(Producto.stock * Producto.precio)
+    ).filter_by(estado=1).scalar() or 0
+
+    # Get categories for filter
+    categories = Categoria.query.filter_by(estado=1).order_by(Categoria.titulo).all()
+
+    return render_template('admin/inventory_report.html',
+                         products=products,
+                         total_products=total_products,
+                         low_stock_count=low_stock_count,
+                         out_of_stock_count=out_of_stock_count,
+                         total_stock_value=total_stock_value,
+                         categories=categories,
+                         selected_category=category_id,
+                         selected_stock_level=stock_level)
+
+
+@admin_bp.route('/reports/stock-movements')
+@admin_required
+def stock_movements_report():
+    """Stock movements audit report."""
+    from app.models.stock_movement import StockMovement
+    from sqlalchemy import func
+    from datetime import timedelta
+
+    # Get filter parameters
+    producto_id = request.args.get('producto_id', type=int, default=0)
+    tipo = request.args.get('tipo', default='')
+    fecha_desde = request.args.get('fecha_desde', default='')
+    fecha_hasta = request.args.get('fecha_hasta', default='')
+
+    # Base query
+    query = StockMovement.query
+
+    # Apply filters
+    if producto_id:
+        query = query.filter_by(producto_id=producto_id)
+
+    if tipo:
+        query = query.filter_by(tipo=tipo)
+
+    if fecha_desde:
+        try:
+            fecha_desde_dt = datetime.strptime(fecha_desde, '%Y-%m-%d')
+            query = query.filter(StockMovement.fecha >= fecha_desde_dt)
+        except ValueError:
+            pass
+
+    if fecha_hasta:
+        try:
+            fecha_hasta_dt = datetime.strptime(fecha_hasta, '%Y-%m-%d')
+            fecha_hasta_dt = fecha_hasta_dt + timedelta(days=1)
+            query = query.filter(StockMovement.fecha < fecha_hasta_dt)
+        except ValueError:
+            pass
+
+    # Get movements with pagination
+    page = request.args.get('page', 1, type=int)
+    per_page = 50
+    movements = query.order_by(StockMovement.fecha.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+
+    # Statistics by type
+    movements_by_type = db.session.query(
+        StockMovement.tipo,
+        func.count(StockMovement.id).label('count'),
+        func.sum(StockMovement.cantidad).label('total_qty')
+    ).group_by(StockMovement.tipo).all()
+
+    # Get products for filter
+    products = Producto.query.filter_by(estado=1).order_by(Producto.titulo).limit(100).all()
+
+    return render_template('admin/stock_movements.html',
+                         movements=movements,
+                         movements_by_type=movements_by_type,
+                         products=products,
+                         selected_product=producto_id,
+                         selected_tipo=tipo,
+                         fecha_desde=fecha_desde,
+                         fecha_hasta=fecha_hasta)
+
+
+@admin_bp.route('/reports/customers')
+@admin_required
+def customers_report():
+    """Customer analysis report (RFM - Recency, Frequency, Monetary)."""
+    from sqlalchemy import func
+    from datetime import timedelta
+
+    today = datetime.now()
+    ninety_days_ago = today - timedelta(days=90)
+
+    # RFM Analysis
+    # Get customer purchase data
+    customer_data = db.session.query(
+        User.id,
+        User.nombre,
+        User.email,
+        func.max(Compra.fecha).label('last_purchase'),  # Recency
+        func.count(Compra.id).label('purchase_count'),  # Frequency
+        func.sum(Compra.pago).label('total_spent')  # Monetary
+    ).join(Compra, Compra.id_usuario == User.id)\
+     .filter(Compra.estado != 'cancelado')\
+     .group_by(User.id, User.nombre, User.email)\
+     .order_by(func.sum(Compra.pago).desc())\
+     .all()
+
+    # Calculate recency in days and segment customers
+    customers = []
+    for customer in customer_data:
+        recency_days = (today - customer.last_purchase).days if customer.last_purchase else 999
+
+        # Simple RFM segmentation
+        if recency_days <= 30 and customer.purchase_count >= 3 and customer.total_spent >= 100:
+            segment = 'VIP'
+        elif recency_days <= 60 and customer.purchase_count >= 2:
+            segment = 'Activo'
+        elif recency_days <= 90:
+            segment = 'Regular'
+        elif recency_days <= 180:
+            segment = 'En Riesgo'
+        else:
+            segment = 'Inactivo'
+
+        customers.append({
+            'id': customer.id,
+            'nombre': customer.nombre,
+            'email': customer.email,
+            'last_purchase': customer.last_purchase,
+            'recency_days': recency_days,
+            'purchase_count': customer.purchase_count,
+            'total_spent': float(customer.total_spent),
+            'avg_order_value': float(customer.total_spent) / customer.purchase_count,
+            'segment': segment
+        })
+
+    # Statistics
+    total_customers = User.query.count()
+    customers_with_purchases = len(customers)
+    conversion_rate = (customers_with_purchases / total_customers * 100) if total_customers > 0 else 0
+
+    # Segment distribution
+    segment_counts = {}
+    for customer in customers:
+        segment = customer['segment']
+        segment_counts[segment] = segment_counts.get(segment, 0) + 1
+
+    return render_template('admin/customers_report.html',
+                         customers=customers,
+                         total_customers=total_customers,
+                         customers_with_purchases=customers_with_purchases,
+                         conversion_rate=conversion_rate,
+                         segment_counts=segment_counts)
+
+
+@admin_bp.route('/reports/products-performance')
+@admin_required
+def products_performance():
+    """Product performance analysis report."""
+    from sqlalchemy import func
+    from datetime import timedelta
+
+    # Get filter parameters
+    period = request.args.get('period', default='30')  # days
+    category_id = request.args.get('category_id', type=int, default=0)
+
+    try:
+        days = int(period)
+    except ValueError:
+        days = 30
+
+    date_from = datetime.now() - timedelta(days=days)
+
+    # Base query for product performance
+    query = db.session.query(
+        Producto,
+        func.count(Compra.id).label('sales_count'),
+        func.sum(Compra.cantidad).label('units_sold'),
+        func.sum(Compra.pago).label('revenue'),
+        func.avg(Compra.pago).label('avg_price')
+    ).outerjoin(Compra, Compra.id_producto == Producto.id)\
+     .filter(Producto.estado == 1)
+
+    # Apply filters
+    if category_id:
+        query = query.filter(Producto.id_categoria == category_id)
+
+    # Filter by date for sales data
+    query = query.filter(
+        (Compra.fecha >= date_from) | (Compra.fecha == None)
+    ).filter(
+        (Compra.estado != 'cancelado') | (Compra.estado == None)
+    )
+
+    # Group and order
+    products = query.group_by(Producto.id)\
+                   .order_by(func.sum(Compra.pago).desc())\
+                   .limit(100)\
+                   .all()
+
+    # Calculate metrics
+    total_revenue = sum(p.revenue or 0 for p in products)
+    total_units_sold = sum(p.units_sold or 0 for p in products)
+
+    # Get categories for filter
+    categories = Categoria.query.filter_by(estado=1).order_by(Categoria.titulo).all()
+
+    return render_template('admin/products_performance.html',
+                         products=products,
+                         total_revenue=total_revenue,
+                         total_units_sold=total_units_sold,
+                         categories=categories,
+                         selected_period=period,
+                         selected_category=category_id)
 
 
 # ===========================
