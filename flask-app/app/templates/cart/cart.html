@@ -11,7 +11,8 @@
                     <thead><tr><th>Producto</th><th>Precio</th><th>Cantidad</th><th>Total</th><th></th></tr></thead>
                     <tbody>
                     {% for item in products %}
-                    <tr id="cart-item-{{ item.producto.id }}" data-product-id="{{ item.producto.id }}">
+                    <tr id="cart-item-{{ item.producto.id }}" data-product-id="{{ item.producto.id }}"
+                        class="{% if item.producto.agotado() or not item.producto.tiene_stock(item.cantidad) %}table-danger{% endif %}">
                         <td>
                             <div class="d-flex align-items-center">
                                 <img src="{{ url_for('static', filename=item.producto.portada or 'img/default-product.jpg') }}"
@@ -19,13 +20,25 @@
                                 <div>
                                     <h6>{{ item.producto.titulo }}</h6>
                                     <small class="text-muted">{{ item.producto.categoria.categoria }}</small>
+                                    {% if item.producto.agotado() %}
+                                    <br><span class="badge bg-danger"><i class="fas fa-times-circle"></i> Agotado</span>
+                                    {% elif not item.producto.tiene_stock(item.cantidad) %}
+                                    <br><span class="badge bg-warning"><i class="fas fa-exclamation-triangle"></i> Solo quedan {{ item.producto.stock }} unidades</span>
+                                    {% elif item.producto.stock_bajo() %}
+                                    <br><span class="badge bg-warning"><i class="fas fa-exclamation-triangle"></i> Stock bajo</span>
+                                    {% else %}
+                                    <br><span class="badge bg-success"><i class="fas fa-check-circle"></i> Disponible</span>
+                                    {% endif %}
                                 </div>
                             </div>
                         </td>
                         <td>${{ "%.2f"|format(item.precio) }}</td>
                         <td>
                             <input type="number" class="form-control update-quantity" style="width:80px"
-                                   value="{{ item.cantidad }}" min="1" data-product-id="{{ item.producto.id }}">
+                                   value="{{ item.cantidad }}" min="1"
+                                   {% if not item.producto.is_virtual() %}max="{{ item.producto.stock }}"{% endif %}
+                                   {% if item.producto.agotado() %}disabled{% endif %}
+                                   data-product-id="{{ item.producto.id }}">
                         </td>
                         <td class="fw-bold item-total">${{ "%.2f"|format(item.total) }}</td>
                         <td>
@@ -61,9 +74,28 @@
                     <strong>Total:</strong>
                     <strong class="text-primary" id="cartTotal">${{ "%.2f"|format(total) }}</strong>
                 </div>
+
+                {% set has_stock_issues = namespace(value=False) %}
+                {% for item in products %}
+                    {% if item.producto.agotado() or not item.producto.tiene_stock(item.cantidad) %}
+                        {% set has_stock_issues.value = True %}
+                    {% endif %}
+                {% endfor %}
+
+                {% if has_stock_issues.value %}
+                <div class="alert alert-warning small mb-3">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Algunos productos no tienen stock suficiente.
+                    Ajusta las cantidades o elimínalos para continuar.
+                </div>
+                <button class="btn btn-success w-100" disabled>
+                    <i class="fas fa-lock"></i> Proceder al Pago
+                </button>
+                {% else %}
                 <a href="{{ url_for('checkout.index') }}" class="btn btn-success w-100">
                     <i class="fas fa-lock"></i> Proceder al Pago
                 </a>
+                {% endif %}
             </div>
         </div>
     </div>

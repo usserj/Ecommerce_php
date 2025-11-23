@@ -1,0 +1,313 @@
+{% extends "base.html" %}
+{% block title %}Detalle del Pedido #{{ order.id }}{% endblock %}
+{% block content %}
+
+<div class="container my-5">
+    <!-- Encabezado -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Pedido #{{ order.id }}</h2>
+        <a href="{{ url_for('profile.orders') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Volver a Mis Pedidos
+        </a>
+    </div>
+
+    <!-- Información del Pedido -->
+    <div class="row">
+        <!-- Columna izquierda: Detalles del pedido -->
+        <div class="col-md-8">
+            <!-- Tracking Timeline -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-shipping-fast"></i> Estado del Pedido</h5>
+                </div>
+                <div class="card-body">
+                    {% if order.tracking %}
+                    <div class="alert alert-info">
+                        <strong>Código de Tracking:</strong> <code>{{ order.tracking }}</code>
+                    </div>
+                    {% endif %}
+
+                    <!-- Timeline de Estados -->
+                    <div class="tracking-timeline">
+                        <div class="timeline-step {% if order.estado in ['pendiente', 'procesando', 'enviado', 'entregado'] %}active{% endif %}">
+                            <div class="timeline-icon">
+                                <i class="fas fa-shopping-cart"></i>
+                            </div>
+                            <div class="timeline-content">
+                                <h6>Pedido Realizado</h6>
+                                <p class="text-muted small">{{ order.fecha.strftime('%d/%m/%Y %H:%M') }}</p>
+                            </div>
+                        </div>
+
+                        <div class="timeline-step {% if order.estado in ['procesando', 'enviado', 'entregado'] %}active{% endif %}">
+                            <div class="timeline-icon">
+                                <i class="fas fa-box"></i>
+                            </div>
+                            <div class="timeline-content">
+                                <h6>Procesando</h6>
+                                <p class="text-muted small">
+                                    {% if order.estado in ['procesando', 'enviado', 'entregado'] %}
+                                        {{ order.fecha_estado.strftime('%d/%m/%Y %H:%M') if order.fecha_estado else 'En proceso' }}
+                                    {% else %}
+                                        Pendiente
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="timeline-step {% if order.estado in ['enviado', 'entregado'] %}active{% endif %}">
+                            <div class="timeline-icon">
+                                <i class="fas fa-truck"></i>
+                            </div>
+                            <div class="timeline-content">
+                                <h6>En Camino</h6>
+                                <p class="text-muted small">
+                                    {% if order.estado in ['enviado', 'entregado'] %}
+                                        {{ order.fecha_estado.strftime('%d/%m/%Y %H:%M') if order.fecha_estado else 'En tránsito' }}
+                                    {% else %}
+                                        Pendiente
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="timeline-step {% if order.estado == 'entregado' %}active{% endif %}">
+                            <div class="timeline-icon">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                            <div class="timeline-content">
+                                <h6>Entregado</h6>
+                                <p class="text-muted small">
+                                    {% if order.estado == 'entregado' %}
+                                        {{ order.fecha_estado.strftime('%d/%m/%Y %H:%M') if order.fecha_estado else 'Entregado' }}
+                                    {% else %}
+                                        Pendiente
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Estado Cancelado (si aplica) -->
+                    {% if order.estado == 'cancelado' %}
+                    <div class="alert alert-danger mt-3">
+                        <i class="fas fa-times-circle"></i> <strong>Pedido Cancelado</strong>
+                        <p class="mb-0 small">Fecha: {{ order.fecha_estado.strftime('%d/%m/%Y %H:%M') if order.fecha_estado else 'No disponible' }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Detalles del Producto -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-box-open"></i> Detalles del Producto</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            {% if order.producto.imagen_principal %}
+                            <img src="{{ url_for('static', filename=order.producto.imagen_principal) }}"
+                                 class="img-fluid rounded"
+                                 alt="{{ order.producto.titulo }}">
+                            {% else %}
+                            <div class="bg-light rounded d-flex align-items-center justify-content-center"
+                                 style="height: 150px;">
+                                <i class="fas fa-image fa-3x text-muted"></i>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-9">
+                            <h5>{{ order.producto.titulo }}</h5>
+                            <p class="text-muted">{{ order.producto.descripcion[:200] if order.producto.descripcion else 'Sin descripción' }}</p>
+                            <div class="row mt-3">
+                                <div class="col-sm-6">
+                                    <strong>Cantidad:</strong> {{ order.cantidad }}
+                                </div>
+                                <div class="col-sm-6">
+                                    <strong>Precio Unitario:</strong> ${{ "%.2f"|format(order.producto.get_price()) }}
+                                </div>
+                                <div class="col-sm-6 mt-2">
+                                    <strong>Subtotal:</strong> ${{ "%.2f"|format(order.producto.get_price() * order.cantidad) }}
+                                </div>
+                                <div class="col-sm-6 mt-2">
+                                    <strong>Envío:</strong> ${{ "%.2f"|format(order.envio) if order.envio else '0.00' }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Columna derecha: Resumen y datos -->
+        <div class="col-md-4">
+            <!-- Resumen de Pago -->
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-dollar-sign"></i> Resumen de Pago</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm table-borderless">
+                        <tr>
+                            <td>Subtotal:</td>
+                            <td class="text-end">${{ "%.2f"|format(precio_total - (order.envio or 0)) }}</td>
+                        </tr>
+                        <tr>
+                            <td>Envío:</td>
+                            <td class="text-end">${{ "%.2f"|format(order.envio or 0) }}</td>
+                        </tr>
+                        <tr class="border-top">
+                            <td><strong>Total:</strong></td>
+                            <td class="text-end"><strong>${{ "%.2f"|format(precio_total) }}</strong></td>
+                        </tr>
+                    </table>
+                    <hr>
+                    <p class="mb-1"><strong>Método de Pago:</strong></p>
+                    <span class="badge bg-info">{{ order.metodo }}</span>
+                </div>
+            </div>
+
+            <!-- Información de Envío -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-map-marker-alt"></i> Dirección de Envío</h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-1"><strong>Nombre:</strong> {{ current_user.nombre }}</p>
+                    <p class="mb-1"><strong>Email:</strong> {{ order.email }}</p>
+                    <p class="mb-1"><strong>Dirección:</strong><br>{{ order.direccion }}</p>
+                    <p class="mb-0"><strong>País:</strong> {{ order.pais }}</p>
+                </div>
+            </div>
+
+            <!-- Estado Actual -->
+            <div class="card">
+                <div class="card-body text-center">
+                    <h6>Estado Actual</h6>
+                    {% if order.estado == 'pendiente' %}
+                    <span class="badge bg-warning fs-6">{{ order.get_estado_display() }}</span>
+                    {% elif order.estado == 'procesando' %}
+                    <span class="badge bg-info fs-6">{{ order.get_estado_display() }}</span>
+                    {% elif order.estado == 'enviado' %}
+                    <span class="badge bg-primary fs-6">{{ order.get_estado_display() }}</span>
+                    {% elif order.estado == 'entregado' %}
+                    <span class="badge bg-success fs-6">{{ order.get_estado_display() }}</span>
+                    {% elif order.estado == 'cancelado' %}
+                    <span class="badge bg-danger fs-6">{{ order.get_estado_display() }}</span>
+                    {% else %}
+                    <span class="badge bg-secondary fs-6">{{ order.get_estado_display() }}</span>
+                    {% endif %}
+
+                    {% if order.puede_cancelar() %}
+                    <hr>
+                    <p class="small text-muted">¿Deseas cancelar este pedido?</p>
+                    <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#cancelModal">
+                        Cancelar Pedido
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Cancelación -->
+{% if order.puede_cancelar() %}
+<div class="modal fade" id="cancelModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Cancelar Pedido</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Estás seguro de que deseas cancelar este pedido?</p>
+                <p class="text-muted small">Esta acción no se puede deshacer.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No, mantener pedido</button>
+                <form method="POST" action="{{ url_for('profile.cancel_order', id=order.id) }}" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">Sí, cancelar pedido</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<style>
+/* Timeline de Tracking */
+.tracking-timeline {
+    position: relative;
+    padding: 20px 0;
+}
+
+.timeline-step {
+    position: relative;
+    padding-left: 60px;
+    padding-bottom: 30px;
+    opacity: 0.4;
+}
+
+.timeline-step.active {
+    opacity: 1;
+}
+
+.timeline-step:last-child {
+    padding-bottom: 0;
+}
+
+.timeline-step::before {
+    content: '';
+    position: absolute;
+    left: 19px;
+    top: 40px;
+    bottom: -10px;
+    width: 2px;
+    background: #dee2e6;
+}
+
+.timeline-step.active::before {
+    background: #0d6efd;
+}
+
+.timeline-step:last-child::before {
+    display: none;
+}
+
+.timeline-icon {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #f8f9fa;
+    border: 2px solid #dee2e6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6c757d;
+    font-size: 16px;
+}
+
+.timeline-step.active .timeline-icon {
+    background: #0d6efd;
+    border-color: #0d6efd;
+    color: white;
+}
+
+.timeline-content h6 {
+    margin-bottom: 4px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.timeline-content p {
+    margin-bottom: 0;
+    font-size: 12px;
+}
+</style>
+
+{% endblock %}

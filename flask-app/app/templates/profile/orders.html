@@ -5,7 +5,19 @@
 {% if orders.items %}
 <div class="table-responsive">
     <table class="table table-hover">
-        <thead><tr><th>ID</th><th>Producto</th><th>Cantidad</th><th>Total</th><th>Método</th><th>Fecha</th><th>Estado</th></tr></thead>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Producto</th>
+                <th>Cantidad</th>
+                <th>Total</th>
+                <th>Método</th>
+                <th>Fecha</th>
+                <th>Estado</th>
+                <th>Tracking</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
         <tbody>
         {% for order in orders.items %}
         <tr>
@@ -15,12 +27,68 @@
             <td>${{ "%.2f"|format(order.pago|float) }}</td>
             <td><span class="badge bg-info">{{ order.metodo }}</span></td>
             <td>{{ order.fecha.strftime('%d/%m/%Y %H:%M') }}</td>
-            <td><span class="badge bg-success">Completado</span></td>
+            <td>
+                {% if order.estado == 'pendiente' %}
+                <span class="badge bg-warning">{{ order.get_estado_display() }}</span>
+                {% elif order.estado == 'procesando' %}
+                <span class="badge bg-info">{{ order.get_estado_display() }}</span>
+                {% elif order.estado == 'enviado' %}
+                <span class="badge bg-primary">{{ order.get_estado_display() }}</span>
+                {% elif order.estado == 'entregado' %}
+                <span class="badge bg-success">{{ order.get_estado_display() }}</span>
+                {% elif order.estado == 'cancelado' %}
+                <span class="badge bg-danger">{{ order.get_estado_display() }}</span>
+                {% else %}
+                <span class="badge bg-secondary">{{ order.get_estado_display() }}</span>
+                {% endif %}
+            </td>
+            <td>
+                {% if order.tracking %}
+                <code>{{ order.tracking }}</code>
+                {% else %}
+                <small class="text-muted">Sin asignar</small>
+                {% endif %}
+            </td>
+            <td>
+                <a href="{{ url_for('profile.order_detail', id=order.id) }}"
+                   class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-eye"></i> Ver Detalle
+                </a>
+            </td>
         </tr>
         {% endfor %}
         </tbody>
     </table>
 </div>
+
+<!-- Paginación -->
+<nav aria-label="Paginación de compras">
+    <ul class="pagination justify-content-center">
+        {% if orders.has_prev %}
+        <li class="page-item">
+            <a class="page-link" href="{{ url_for('profile.orders', page=orders.prev_num) }}">Anterior</a>
+        </li>
+        {% endif %}
+
+        {% for page_num in orders.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+            {% if page_num %}
+                {% if orders.page == page_num %}
+                <li class="page-item active"><span class="page-link">{{ page_num }}</span></li>
+                {% else %}
+                <li class="page-item"><a class="page-link" href="{{ url_for('profile.orders', page=page_num) }}">{{ page_num }}</a></li>
+                {% endif %}
+            {% else %}
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+            {% endif %}
+        {% endfor %}
+
+        {% if orders.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="{{ url_for('profile.orders', page=orders.next_num) }}">Siguiente</a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
 {% else %}
 <div class="alert alert-info">No tienes compras registradas</div>
 {% endif %}

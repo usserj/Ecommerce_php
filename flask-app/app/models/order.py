@@ -34,6 +34,7 @@ class Compra(db.Model):
     cantidad = db.Column(db.Integer, default=1)
     detalle = db.Column(db.Text)  # Additional details (JSON or text)
     pago = db.Column(db.String(255), nullable=False)  # Payment amount/details
+    precio_total = db.Column(db.Numeric(10, 2))  # Total price including shipping
     estado = db.Column(db.String(20), default=ESTADO_PENDIENTE, index=True)  # Estado del pedido
     tracking = db.Column(db.String(100))  # Número de tracking/seguimiento
     fecha = db.Column(db.DateTime, default=datetime.utcnow, index=True)

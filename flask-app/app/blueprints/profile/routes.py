@@ -15,15 +15,21 @@ import os
 @login_required
 def dashboard():
     """User dashboard."""
+    from app.models.message import Mensaje
+
     # Get recent orders
     orders = current_user.get_orders()[:5]
 
     # Get wishlist count
     wishlist_count = current_user.deseos.count()
 
+    # Get unread messages count
+    user_mensajes_no_leidos = Mensaje.contar_no_leidos('user', current_user.id)
+
     return render_template('profile/dashboard.html',
                          orders=orders,
-                         wishlist_count=wishlist_count)
+                         wishlist_count=wishlist_count,
+                         user_mensajes_no_leidos=user_mensajes_no_leidos)
 
 
 @profile_bp.route('/orders')
@@ -36,6 +42,51 @@ def orders():
     ).paginate(page=page, per_page=10, error_out=False)
 
     return render_template('profile/orders.html', orders=orders)
+
+
+@profile_bp.route('/orders/<int:id>')
+@login_required
+def order_detail(id):
+    """View order details with tracking information."""
+    order = Compra.query.get_or_404(id)
+
+    # Verify user owns this order
+    if order.id_usuario != current_user.id:
+        flash('No tienes permiso para ver este pedido.', 'error')
+        return redirect(url_for('profile.orders'))
+
+    # Calculate precio_total if not available
+    precio_total = order.get_total()
+
+    return render_template('profile/order_detail.html',
+                         order=order,
+                         precio_total=precio_total)
+
+
+@profile_bp.route('/orders/<int:id>/cancel', methods=['POST'])
+@login_required
+def cancel_order(id):
+    """Cancel an order."""
+    order = Compra.query.get_or_404(id)
+
+    # Verify user owns this order
+    if order.id_usuario != current_user.id:
+        flash('No tienes permiso para cancelar este pedido.', 'error')
+        return redirect(url_for('profile.orders'))
+
+    # Check if order can be cancelled
+    if not order.puede_cancelar():
+        flash('Este pedido no puede ser cancelado en su estado actual.', 'error')
+        return redirect(url_for('profile.order_detail', id=id))
+
+    try:
+        order.cambiar_estado('cancelado')
+        flash(f'Pedido #{order.id} cancelado exitosamente.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al cancelar pedido: {e}', 'error')
+
+    return redirect(url_for('profile.order_detail', id=id))
 
 
 @profile_bp.route('/wishlist')
