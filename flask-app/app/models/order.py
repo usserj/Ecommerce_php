@@ -37,50 +37,11 @@ class Compra(db.Model):
     fecha = db.Column(db.DateTime, default=datetime.utcnow, index=True)
 
     # Columnas de tracking y estado
-    # NOTA: Estas columnas requieren migración 002_orden_estados_stock_audit.sql
-    # Temporalmente comentadas hasta que se ejecute la migración
-    # precio_total = db.Column(db.Numeric(10, 2))  # Total price including shipping
-    # estado = db.Column(db.String(20), default=ESTADO_PENDIENTE, index=True)
-    # tracking = db.Column(db.String(100))
-    # fecha_estado = db.Column(db.DateTime, default=datetime.utcnow)
-
-    # Usar campos del modelo original PHP (ya existen en BD)
-    @property
-    def precio_total(self):
-        """Calcular precio total desde pago + envio."""
-        try:
-            return float(self.pago) + float(self.envio or 0)
-        except (ValueError, TypeError):
-            return 0.0
-
-    @property
-    def estado(self):
-        """Estado basado en el campo detalle (JSON) o inferido."""
-        if self.detalle:
-            try:
-                import json
-                data = json.loads(self.detalle)
-                return data.get('estado', 'completado')
-            except:
-                pass
-        return 'completado'  # Por defecto, órdenes antiguas son completadas
-
-    @property
-    def tracking(self):
-        """Tracking desde detalle JSON."""
-        if self.detalle:
-            try:
-                import json
-                data = json.loads(self.detalle)
-                return data.get('tracking')
-            except:
-                pass
-        return None
-
-    @property
-    def fecha_estado(self):
-        """Usar fecha de compra como fecha de estado."""
-        return self.fecha
+    # NOTA: Requieren migración 002_orden_estados_stock_audit.sql
+    precio_total = db.Column(db.Numeric(10, 2))  # Total price including shipping
+    estado = db.Column(db.String(20), default=ESTADO_PENDIENTE, index=True)
+    tracking = db.Column(db.String(100))
+    fecha_estado = db.Column(db.DateTime, default=datetime.utcnow)
 
     def __repr__(self):
         return f'<Compra {self.id} - User {self.id_usuario}>'
@@ -119,33 +80,20 @@ class Compra(db.Model):
             raise ValueError(f"Estado inválido: {nuevo_estado}")
 
         # Validar transición de estado
-        estado_actual = self.estado
-        transiciones_permitidas = self.TRANSICIONES_VALIDAS.get(estado_actual, [])
+        transiciones_permitidas = self.TRANSICIONES_VALIDAS.get(self.estado, [])
         if nuevo_estado not in transiciones_permitidas:
             raise ValueError(
-                f"Transición de estado inválida: {estado_actual} → {nuevo_estado}. "
-                f"Transiciones permitidas desde {estado_actual}: {', '.join(transiciones_permitidas) if transiciones_permitidas else 'ninguna'}"
+                f"Transición de estado inválida: {self.estado} → {nuevo_estado}. "
+                f"Transiciones permitidas desde {self.estado}: {', '.join(transiciones_permitidas) if transiciones_permitidas else 'ninguna'}"
             )
 
-        # Guardar estado en detalle JSON
-        import json
-        detalle_data = {}
-        if self.detalle:
-            try:
-                detalle_data = json.loads(self.detalle)
-            except:
-                detalle_data = {}
-
-        detalle_data['estado'] = nuevo_estado
-        detalle_data['fecha_estado'] = datetime.utcnow().isoformat()
-        if razon:
-            detalle_data['razon_cambio_estado'] = razon
-
-        self.detalle = json.dumps(detalle_data)
+        estado_anterior = self.estado
+        self.estado = nuevo_estado
+        self.fecha_estado = datetime.utcnow()
 
         # Si se cancela una orden, restaurar el stock
-        if nuevo_estado == self.ESTADO_CANCELADO and estado_actual != self.ESTADO_CANCELADO:
-            self.restaurar_stock(razon or f"Orden cancelada desde estado {estado_actual}")
+        if nuevo_estado == self.ESTADO_CANCELADO and estado_anterior != self.ESTADO_CANCELADO:
+            self.restaurar_stock(razon or f"Orden cancelada desde estado {estado_anterior}")
 
         db.session.commit()
 

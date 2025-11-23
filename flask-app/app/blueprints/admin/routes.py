@@ -143,15 +143,12 @@ def dashboard():
         revenue_growth = ((month_revenue - last_month_revenue) / last_month_revenue) * 100
 
     # Orders by status
-    # NOTA: estado es property, no column - filtrar en Python
-    all_orders = Compra.query.all()
     orders_by_status = {
-        'pendiente': sum(1 for o in all_orders if o.estado == 'pendiente'),
-        'procesando': sum(1 for o in all_orders if o.estado == 'procesando'),
-        'enviado': sum(1 for o in all_orders if o.estado == 'enviado'),
-        'entregado': sum(1 for o in all_orders if o.estado == 'entregado'),
-        'cancelado': sum(1 for o in all_orders if o.estado == 'cancelado'),
-        'completado': sum(1 for o in all_orders if o.estado == 'completado')
+        'pendiente': Compra.query.filter_by(estado='pendiente').count(),
+        'procesando': Compra.query.filter_by(estado='procesando').count(),
+        'enviado': Compra.query.filter_by(estado='enviado').count(),
+        'entregado': Compra.query.filter_by(estado='entregado').count(),
+        'cancelado': Compra.query.filter_by(estado='cancelado').count()
     }
 
     # Low stock alert (products with stock < 10)
@@ -836,10 +833,8 @@ def orders():
     from sqlalchemy import func
     total_orders = Compra.query.count()
     total_revenue = db.session.query(func.sum(Compra.pago)).scalar() or 0
-    # NOTA: estado es property - filtrar en Python
-    all_orders_list = Compra.query.all()
-    pending_orders = sum(1 for o in all_orders_list if o.estado == 'pendiente')
-    completed_orders = sum(1 for o in all_orders_list if o.estado in ['completado', 'entregado'])
+    pending_orders = Compra.query.filter_by(estado='pendiente').count()
+    completed_orders = Compra.query.filter(Compra.estado.in_(['completado', 'entregado'])).count()
 
     return render_template('admin/orders.html',
                          total_orders=total_orders,
@@ -1089,9 +1084,8 @@ def reports():
     usuarios = User.query.order_by(User.nombre).all()
 
     # Initial statistics
-    # NOTA: estado es property - usar todas las compras por ahora
-    total_ventas = Compra.query.count()
-    ingresos_totales = db.session.query(func.sum(Compra.pago)).scalar() or 0
+    total_ventas = Compra.query.filter(Compra.estado != 'cancelado').count()
+    ingresos_totales = db.session.query(func.sum(Compra.pago)).filter(Compra.estado != 'cancelado').scalar() or 0
     ticket_promedio = ingresos_totales / total_ventas if total_ventas > 0 else 0
 
     return render_template('admin/reports.html',
@@ -1117,8 +1111,7 @@ def reports_data():
     metodo = request.args.get('metodo', default='')
 
     # Build query
-    # NOTA: estado es property - usar todas las compras
-    query = Compra.query
+    query = Compra.query.filter(Compra.estado != 'cancelado')
 
     # Apply filters
     if fecha_desde:
@@ -1276,8 +1269,7 @@ def export_reports():
     metodo = request.args.get('metodo', default='')
 
     # Build query
-    # NOTA: estado es property - usar todas las compras
-    query = Compra.query\
+    query = Compra.query.filter(Compra.estado != 'cancelado')\
                         .join(User, Compra.id_usuario == User.id, isouter=True)\
                         .join(Producto, Compra.id_producto == Producto.id, isouter=True)
 
