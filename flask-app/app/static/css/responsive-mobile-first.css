@@ -1,0 +1,676 @@
+/**
+ * RESPONSIVE MOBILE-FIRST CSS
+ * Optimizado para Ecuador donde 80% usa dispositivos móviles
+ *
+ * Breakpoints:
+ * - Mobile: 0-576px (default, mobile-first)
+ * - Tablet: 577px-768px
+ * - Desktop pequeño: 769px-992px
+ * - Desktop: 993px+
+ */
+
+/* ===========================
+   RESET Y BASE MOBILE-FIRST
+   =========================== */
+
+* {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent; /* Elimina el highlight azul en móviles */
+}
+
+html {
+    font-size: 16px; /* Base para rem */
+    -webkit-text-size-adjust: 100%; /* Previene zoom automático en iOS */
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    padding: 0;
+    line-height: 1.6;
+    overflow-x: hidden; /* Previene scroll horizontal */
+}
+
+/* ===========================
+   LAYOUT MOBILE-FIRST
+   =========================== */
+
+.container {
+    width: 100%;
+    padding: 0 15px;
+    margin: 0 auto;
+}
+
+.row {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0 -15px;
+}
+
+.col {
+    flex: 1;
+    padding: 0 15px;
+    width: 100%; /* Full width en móvil */
+}
+
+/* ===========================
+   NAVEGACIÓN MOBILE
+   =========================== */
+
+.navbar {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    background: #fff;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 10px 0;
+}
+
+.navbar-brand {
+    font-size: 1.25rem;
+    font-weight: bold;
+}
+
+.navbar-menu {
+    display: none; /* Oculto por defecto en móvil */
+}
+
+.navbar-menu.active {
+    display: flex;
+    flex-direction: column;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #fff;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    padding: 15px;
+}
+
+.navbar-toggle {
+    display: block;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 5px;
+}
+
+.nav-link {
+    display: block;
+    padding: 12px 0;
+    color: #333;
+    text-decoration: none;
+    border-bottom: 1px solid #eee;
+    font-size: 1rem;
+}
+
+.nav-link:last-child {
+    border-bottom: none;
+}
+
+.nav-link:active {
+    background: #f5f5f5;
+}
+
+/* ===========================
+   BOTONES OPTIMIZADOS PARA TÁCTIL
+   =========================== */
+
+.btn {
+    display: inline-block;
+    padding: 14px 24px; /* Área táctil más grande (min 44px altura iOS) */
+    font-size: 1rem;
+    text-align: center;
+    text-decoration: none;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-height: 44px; /* Recomendación Apple para touch targets */
+    touch-action: manipulation; /* Mejora respuesta táctil */
+}
+
+.btn:active {
+    transform: scale(0.98);
+}
+
+.btn-primary {
+    background: #007bff;
+    color: #fff;
+}
+
+.btn-primary:active {
+    background: #0056b3;
+}
+
+.btn-block {
+    width: 100%;
+    display: block;
+}
+
+/* ===========================
+   CARDS/PRODUCTOS MOBILE
+   =========================== */
+
+.product-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); /* 2 columnas en móvil */
+    gap: 15px;
+    padding: 15px;
+}
+
+.product-card {
+    background: #fff;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: transform 0.2s ease;
+}
+
+.product-card:active {
+    transform: scale(0.98);
+}
+
+.product-image {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+    display: block;
+}
+
+.product-info {
+    padding: 12px;
+}
+
+.product-title {
+    font-size: 0.95rem;
+    margin: 0 0 8px;
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2; /* Máximo 2 líneas */
+    -webkit-box-orient: vertical;
+}
+
+.product-price {
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: #007bff;
+    margin: 8px 0;
+}
+
+.product-rating {
+    font-size: 0.85rem;
+    color: #ffa500;
+}
+
+/* ===========================
+   FORMULARIOS MOBILE-FRIENDLY
+   =========================== */
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    font-size: 0.95rem;
+}
+
+.form-control {
+    width: 100%;
+    padding: 14px 16px; /* Área táctil adecuada */
+    font-size: 16px; /* Evita zoom en iOS */
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    transition: border-color 0.2s ease;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 3px rgba(0,123,255,0.1);
+}
+
+select.form-control {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 40px;
+}
+
+/* ===========================
+   FILTROS MOBILE (COLLAPSE)
+   =========================== */
+
+.filter-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px;
+    background: #f8f9fa;
+    border: none;
+    border-radius: 8px;
+    width: 100%;
+    font-size: 1rem;
+    font-weight: 500;
+    margin-bottom: 15px;
+}
+
+.filter-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+}
+
+.filter-content.active {
+    max-height: 500px;
+}
+
+/* ===========================
+   CARRITO MÓVIL (BOTTOM SHEET)
+   =========================== */
+
+.cart-summary-mobile {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #fff;
+    box-shadow: 0 -4px 12px rgba(0,0,0,0.15);
+    padding: 15px;
+    z-index: 999;
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+}
+
+.cart-total {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    font-size: 1.1rem;
+    font-weight: bold;
+}
+
+.checkout-btn-mobile {
+    width: 100%;
+    padding: 16px;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+/* ===========================
+   IMÁGENES RESPONSIVE
+   =========================== */
+
+img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+}
+
+.img-fluid {
+    width: 100%;
+    height: auto;
+}
+
+/* ===========================
+   SEARCH BAR MOBILE
+   =========================== */
+
+.search-bar {
+    position: relative;
+    width: 100%;
+    margin: 15px 0;
+}
+
+.search-input {
+    width: 100%;
+    padding: 14px 45px 14px 16px;
+    font-size: 16px;
+    border: 1px solid #ddd;
+    border-radius: 25px;
+}
+
+.search-button {
+    position: absolute;
+    right: 5px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #007bff;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+}
+
+/* ===========================
+   TABS MOBILE
+   =========================== */
+
+.tabs-mobile {
+    display: flex;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch; /* Smooth scrolling en iOS */
+    gap: 10px;
+    padding: 10px 0;
+    margin-bottom: 20px;
+    scrollbar-width: none; /* Firefox */
+}
+
+.tabs-mobile::-webkit-scrollbar {
+    display: none; /* Chrome, Safari */
+}
+
+.tab-item {
+    flex-shrink: 0;
+    padding: 10px 20px;
+    background: #f8f9fa;
+    border-radius: 20px;
+    white-space: nowrap;
+    font-size: 0.9rem;
+    border: none;
+    cursor: pointer;
+}
+
+.tab-item.active {
+    background: #007bff;
+    color: #fff;
+}
+
+/* ===========================
+   LOADING SPINNER MOBILE
+   =========================== */
+
+.loading-spinner {
+    display: inline-block;
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #007bff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* ===========================
+   TOAST/ALERTS MOBILE
+   =========================== */
+
+.toast {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #333;
+    color: #fff;
+    padding: 14px 24px;
+    border-radius: 25px;
+    z-index: 9999;
+    min-width: 280px;
+    text-align: center;
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from {
+        bottom: 0;
+        opacity: 0;
+    }
+    to {
+        bottom: 80px;
+        opacity: 1;
+    }
+}
+
+/* ===========================
+   UTILITY CLASSES
+   =========================== */
+
+.text-center { text-align: center; }
+.mt-1 { margin-top: 8px; }
+.mt-2 { margin-top: 16px; }
+.mt-3 { margin-top: 24px; }
+.mb-1 { margin-bottom: 8px; }
+.mb-2 { margin-bottom: 16px; }
+.mb-3 { margin-bottom: 24px; }
+.p-1 { padding: 8px; }
+.p-2 { padding: 16px; }
+.p-3 { padding: 24px; }
+.d-none { display: none; }
+.d-block { display: block; }
+.d-flex { display: flex; }
+
+/* ===========================
+   TABLET (577px - 768px)
+   =========================== */
+
+@media (min-width: 577px) {
+    .container {
+        max-width: 720px;
+    }
+
+    .product-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .product-image {
+        height: 200px;
+    }
+
+    .col-sm-6 {
+        flex: 0 0 50%;
+        max-width: 50%;
+    }
+
+    .col-sm-12 {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+}
+
+/* ===========================
+   DESKTOP PEQUEÑO (769px - 992px)
+   =========================== */
+
+@media (min-width: 769px) {
+    .container {
+        max-width: 960px;
+    }
+
+    .product-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+
+    .navbar-menu {
+        display: flex !important;
+        position: static;
+        flex-direction: row;
+        box-shadow: none;
+        padding: 0;
+    }
+
+    .navbar-toggle {
+        display: none;
+    }
+
+    .nav-link {
+        padding: 8px 16px;
+        border-bottom: none;
+    }
+
+    .cart-summary-mobile {
+        position: static;
+        box-shadow: none;
+        border-radius: 12px;
+        border: 1px solid #ddd;
+    }
+
+    .col-md-3 {
+        flex: 0 0 25%;
+        max-width: 25%;
+    }
+
+    .col-md-4 {
+        flex: 0 0 33.333%;
+        max-width: 33.333%;
+    }
+
+    .col-md-6 {
+        flex: 0 0 50%;
+        max-width: 50%;
+    }
+
+    .col-md-8 {
+        flex: 0 0 66.666%;
+        max-width: 66.666%;
+    }
+
+    .col-md-9 {
+        flex: 0 0 75%;
+        max-width: 75%;
+    }
+
+    .col-md-12 {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+}
+
+/* ===========================
+   DESKTOP (993px+)
+   =========================== */
+
+@media (min-width: 993px) {
+    .container {
+        max-width: 1200px;
+    }
+
+    .product-grid {
+        grid-template-columns: repeat(5, 1fr);
+    }
+
+    .product-image {
+        height: 240px;
+    }
+
+    .col-lg-2 {
+        flex: 0 0 16.666%;
+        max-width: 16.666%;
+    }
+
+    .col-lg-3 {
+        flex: 0 0 25%;
+        max-width: 25%;
+    }
+
+    .col-lg-4 {
+        flex: 0 0 33.333%;
+        max-width: 33.333%;
+    }
+
+    .col-lg-6 {
+        flex: 0 0 50%;
+        max-width: 50%;
+    }
+
+    .col-lg-8 {
+        flex: 0 0 66.666%;
+        max-width: 66.666%;
+    }
+
+    .col-lg-9 {
+        flex: 0 0 75%;
+        max-width: 75%;
+    }
+
+    .col-lg-10 {
+        flex: 0 0 83.333%;
+        max-width: 83.333%;
+    }
+
+    .col-lg-12 {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+}
+
+/* ===========================
+   OPTIMIZACIONES PERFORMANCE
+   =========================== */
+
+/* Usar GPU para animaciones */
+.product-card,
+.btn,
+.tab-item {
+    will-change: transform;
+}
+
+/* Reducir repaints */
+.navbar,
+.cart-summary-mobile {
+    will-change: transform, box-shadow;
+}
+
+/* ===========================
+   ACCESIBILIDAD
+   =========================== */
+
+/* Focus visible para teclado */
+*:focus-visible {
+    outline: 3px solid #007bff;
+    outline-offset: 2px;
+}
+
+/* Skip to content */
+.skip-link {
+    position: absolute;
+    top: -40px;
+    left: 0;
+    background: #007bff;
+    color: white;
+    padding: 8px;
+    text-decoration: none;
+    z-index: 100;
+}
+
+.skip-link:focus {
+    top: 0;
+}
+
+/* ===========================
+   DARK MODE (Opcional)
+   =========================== */
+
+@media (prefers-color-scheme: dark) {
+    body {
+        background: #1a1a1a;
+        color: #e0e0e0;
+    }
+
+    .product-card,
+    .navbar,
+    .cart-summary-mobile {
+        background: #2a2a2a;
+    }
+
+    .form-control {
+        background: #333;
+        color: #e0e0e0;
+        border-color: #444;
+    }
+}

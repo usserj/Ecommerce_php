@@ -1615,6 +1615,215 @@ def products_performance():
 
 
 # ===========================
+# COUPONS MANAGEMENT
+# ===========================
+
+@admin_bp.route('/cupones')
+@admin_required
+def cupones():
+    """List all coupons."""
+    cupones = Cupon.query.order_by(Cupon.fecha_fin.desc()).all()
+
+    # Statistics
+    total_cupones = Cupon.query.count()
+    activos = Cupon.query.filter_by(activo=1).count()
+    inactivos = total_cupones - activos
+
+    return render_template('admin/cupones.html',
+                         cupones=cupones,
+                         total_cupones=total_cupones,
+                         activos=activos,
+                         inactivos=inactivos)
+
+
+@admin_bp.route('/cupones/create', methods=['GET', 'POST'])
+@admin_required
+def create_cupon():
+    """Create new coupon."""
+    if request.method == 'POST':
+        try:
+            codigo = request.form.get('codigo', '').strip().upper()
+            tipo = request.form.get('tipo')
+            valor = request.form.get('valor', type=float)
+            compras_minimas = request.form.get('compras_minimas', type=float, default=0)
+            limite_uso = request.form.get('limite_uso', type=int, default=0)
+            fecha_inicio = request.form.get('fecha_inicio')
+            fecha_fin = request.form.get('fecha_fin')
+            activo = request.form.get('activo', type=int, default=1)
+
+            # Validate required fields
+            if not codigo or not tipo or not valor:
+                flash('Código, tipo y valor son obligatorios.', 'error')
+                return render_template('admin/cupon_form.html')
+
+            # Validate tipo
+            if tipo not in ['porcentaje', 'fijo']:
+                flash('Tipo de cupón inválido.', 'error')
+                return render_template('admin/cupon_form.html')
+
+            # Validate valor
+            if tipo == 'porcentaje' and (valor <= 0 or valor > 100):
+                flash('El porcentaje debe estar entre 1 y 100.', 'error')
+                return render_template('admin/cupon_form.html')
+
+            if tipo == 'fijo' and valor <= 0:
+                flash('El valor fijo debe ser mayor a 0.', 'error')
+                return render_template('admin/cupon_form.html')
+
+            # Check if code already exists
+            existing = Cupon.query.filter_by(codigo=codigo).first()
+            if existing:
+                flash(f'El cupón "{codigo}" ya existe.', 'error')
+                return render_template('admin/cupon_form.html')
+
+            # Parse dates
+            from datetime import datetime
+            fecha_inicio_dt = datetime.strptime(fecha_inicio, '%Y-%m-%d') if fecha_inicio else None
+            fecha_fin_dt = datetime.strptime(fecha_fin, '%Y-%m-%d') if fecha_fin else None
+
+            # Create coupon
+            cupon = Cupon(
+                codigo=codigo,
+                tipo=tipo,
+                valor=valor,
+                compras_minimas=compras_minimas,
+                limite_uso=limite_uso,
+                fecha_inicio=fecha_inicio_dt,
+                fecha_fin=fecha_fin_dt,
+                activo=activo
+            )
+
+            db.session.add(cupon)
+            db.session.commit()
+
+            flash(f'Cupón "{codigo}" creado exitosamente!', 'success')
+            return redirect(url_for('admin.cupones'))
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error al crear cupón: {str(e)}', 'error')
+            return render_template('admin/cupon_form.html')
+
+    return render_template('admin/cupon_form.html', cupon=None)
+
+
+@admin_bp.route('/cupones/edit/<int:id>', methods=['GET', 'POST'])
+@admin_required
+def edit_cupon(id):
+    """Edit existing coupon."""
+    cupon = Cupon.query.get_or_404(id)
+
+    if request.method == 'POST':
+        try:
+            cupon.codigo = request.form.get('codigo', '').strip().upper()
+            cupon.tipo = request.form.get('tipo')
+            cupon.valor = request.form.get('valor', type=float)
+            cupon.compras_minimas = request.form.get('compras_minimas', type=float, default=0)
+            cupon.limite_uso = request.form.get('limite_uso', type=int, default=0)
+            fecha_inicio = request.form.get('fecha_inicio')
+            fecha_fin = request.form.get('fecha_fin')
+            cupon.activo = request.form.get('activo', type=int, default=1)
+
+            # Validate
+            if not cupon.codigo or not cupon.tipo or not cupon.valor:
+                flash('Código, tipo y valor son obligatorios.', 'error')
+                return render_template('admin/cupon_form.html', cupon=cupon)
+
+            # Parse dates
+            from datetime import datetime
+            cupon.fecha_inicio = datetime.strptime(fecha_inicio, '%Y-%m-%d') if fecha_inicio else None
+            cupon.fecha_fin = datetime.strptime(fecha_fin, '%Y-%m-%d') if fecha_fin else None
+
+            db.session.commit()
+
+            flash(f'Cupón "{cupon.codigo}" actualizado exitosamente!', 'success')
+            return redirect(url_for('admin.cupones'))
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error al actualizar cupón: {str(e)}', 'error')
+
+    return render_template('admin/cupon_form.html', cupon=cupon)
+
+
+@admin_bp.route('/cupones/toggle/<int:id>', methods=['POST'])
+@admin_required
+def toggle_cupon(id):
+    """Toggle coupon active status."""
+    try:
+        cupon = Cupon.query.get_or_404(id)
+        cupon.activo = 0 if cupon.activo else 1
+        db.session.commit()
+
+        estado = "activado" if cupon.activo else "desactivado"
+        flash(f'Cupón "{cupon.codigo}" {estado} exitosamente!', 'success')
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al cambiar estado: {str(e)}', 'error')
+
+    return redirect(url_for('admin.cupones'))
+
+
+@admin_bp.route('/cupones/delete/<int:id>', methods=['POST'])
+@admin_required
+def delete_cupon(id):
+    """Delete coupon."""
+    try:
+        cupon = Cupon.query.get_or_404(id)
+        codigo = cupon.codigo
+
+        db.session.delete(cupon)
+        db.session.commit()
+
+        flash(f'Cupón "{codigo}" eliminado exitosamente!', 'success')
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al eliminar cupón: {str(e)}', 'error')
+
+    return redirect(url_for('admin.cupones'))
+
+
+@admin_bp.route('/cupones/stats/<int:id>')
+@admin_required
+def cupon_stats(id):
+    """View coupon usage statistics."""
+    cupon = Cupon.query.get_or_404(id)
+
+    # Get orders that used this coupon
+    from sqlalchemy import func
+    from datetime import datetime, timedelta
+    import json
+
+    # Find orders with this coupon in detalle field
+    orders_with_coupon = []
+    all_orders = Compra.query.filter(
+        Compra.detalle.like(f'%{cupon.codigo}%'),
+        Compra.estado != 'cancelado'
+    ).all()
+
+    total_used = len(all_orders)
+    total_discount = 0
+
+    for order in all_orders:
+        try:
+            detalle = json.loads(order.detalle) if order.detalle else {}
+            cupon_data = detalle.get('cupon', {})
+            if cupon_data.get('codigo') == cupon.codigo:
+                total_discount += cupon_data.get('descuento', 0)
+                orders_with_coupon.append(order)
+        except:
+            pass
+
+    return render_template('admin/cupon_stats.html',
+                         cupon=cupon,
+                         orders=orders_with_coupon,
+                         total_used=total_used,
+                         total_discount=total_discount)
+
+
+# ===========================
 # SEO HEADERS MANAGEMENT
 # ===========================
 

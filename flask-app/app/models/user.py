@@ -193,6 +193,10 @@ class User(UserMixin, db.Model):
         """Get user's wishlist."""
         return self.deseos.all()
 
+    def is_in_wishlist(self, producto_id):
+        """Check if product is in user's wishlist."""
+        return self.deseos.filter_by(id_producto=producto_id).first() is not None
+
     def add_to_wishlist(self, producto_id):
         """Add product to wishlist."""
         from app.models.wishlist import Deseo
