@@ -134,10 +134,19 @@ def product_detail(ruta):
 
 @shop_bp.route('/buscar')
 def search():
-    """Search products with AI-powered intelligent search."""
+    """Search products with AI-powered intelligent search and advanced filters."""
     q = request.args.get('q', '')
     page = request.args.get('page', 1, type=int)
     per_page = 12
+
+    # Advanced filters
+    precio_min = request.args.get('precio_min', type=float)
+    precio_max = request.args.get('precio_max', type=float)
+    categoria_id = request.args.get('categoria', type=int)
+    rating_min = request.args.get('rating', type=int)
+    solo_oferta = request.args.get('oferta', type=int, default=0)
+    solo_stock = request.args.get('stock', type=int, default=0)
+    ordenar = request.args.get('sort', default='relevancia')
 
     if not q:
         return redirect(url_for('shop.index'))
@@ -146,6 +155,9 @@ def search():
     intencion_usuario = None
     sugerencias_busqueda = []
     use_ai = False
+
+    # Base query
+    query = Producto.query.filter(Producto.estado == 1)
 
     # Intentar búsqueda inteligente con IA (solo para queries más específicas)
     if len(q.strip()) > 3:
@@ -161,32 +173,84 @@ def search():
 
                 # Buscar productos por IDs recomendados por IA
                 if productos_ids:
-                    productos = Producto.query.filter(
-                        Producto.id.in_(productos_ids),
-                        Producto.estado == 1
-                    ).paginate(page=page, per_page=per_page, error_out=False)
+                    query = query.filter(Producto.id.in_(productos_ids))
                     use_ai = True
         except Exception as e:
             # Si falla IA, continuar con búsqueda SQL tradicional
             print(f"Error en búsqueda con IA: {e}")
             pass
 
-    # Fallback: Búsqueda SQL tradicional si IA no se usó o no encontró nada
+    # Fallback: Búsqueda SQL tradicional si IA no se usó
     if not use_ai:
-        productos = Producto.query.filter(
+        query = query.filter(
             or_(
                 Producto.titulo.like(f'%{q}%'),
                 Producto.descripcion.like(f'%{q}%')
-            ),
-            Producto.estado == 1
-        ).paginate(page=page, per_page=per_page, error_out=False)
+            )
+        )
+
+    # Apply advanced filters
+    if precio_min is not None:
+        query = query.filter(Producto.precio >= precio_min)
+
+    if precio_max is not None:
+        query = query.filter(Producto.precio <= precio_max)
+
+    if categoria_id:
+        query = query.filter(Producto.id_categoria == categoria_id)
+
+    if rating_min:
+        # Filter products with average rating >= rating_min
+        from sqlalchemy import func
+        from app.models.comment import Comentario
+
+        subquery = db.session.query(
+            Comentario.id_producto,
+            func.avg(Comentario.calificacion).label('avg_rating')
+        ).group_by(Comentario.id_producto)\
+         .having(func.avg(Comentario.calificacion) >= rating_min)\
+         .subquery()
+
+        query = query.join(subquery, Producto.id == subquery.c.id_producto)
+
+    if solo_oferta:
+        query = query.filter(Producto.oferta > 0)
+
+    if solo_stock:
+        query = query.filter(Producto.stock > 0)
+
+    # Apply sorting
+    if ordenar == 'precio_asc':
+        query = query.order_by(Producto.precio.asc())
+    elif ordenar == 'precio_desc':
+        query = query.order_by(Producto.precio.desc())
+    elif ordenar == 'mas_vendidos':
+        query = query.order_by(Producto.ventas.desc())
+    elif ordenar == 'reciente':
+        query = query.order_by(Producto.id.desc())
+    # else: relevancia (order from AI or default)
+
+    productos = query.paginate(page=page, per_page=per_page, error_out=False)
+
+    # Get categories for filter
+    from app.models.categoria import Categoria
+    categorias = Categoria.query.filter_by(estado=1).order_by(Categoria.titulo).all()
 
     return render_template('shop/search.html',
                          productos=productos,
                          query=q,
                          intencion_usuario=intencion_usuario,
                          sugerencias_busqueda=sugerencias_busqueda,
-                         use_ai=use_ai)
+                         use_ai=use_ai,
+                         categorias=categorias,
+                         # Pass filter values back to template
+                         precio_min=precio_min,
+                         precio_max=precio_max,
+                         categoria_id=categoria_id,
+                         rating_min=rating_min,
+                         solo_oferta=solo_oferta,
+                         solo_stock=solo_stock,
+                         ordenar=ordenar)
 
 
 @shop_bp.route('/ofertas')
@@ -385,6 +449,21 @@ def delete_comment(id):
     
     db.session.delete(comentario)
     db.session.commit()
-    
+
     flash('Comentario eliminado exitosamente.', 'success')
     return redirect(url_for('shop.product_detail', ruta=producto_ruta))
+
+
+@shop_bp.route('/comment/<int:id>/vote-helpful', methods=['POST'])
+def vote_helpful(id):
+    """Vote a review as helpful."""
+    comentario = Comentario.query.get_or_404(id)
+
+    # Increment helpful votes
+    comentario.increment_helpful_votes()
+
+    return jsonify({
+        'success': True,
+        'helpful_votes': comentario.helpful_votes,
+        'message': '¡Gracias por tu feedback!'
+    })

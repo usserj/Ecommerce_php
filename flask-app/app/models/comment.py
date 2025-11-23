@@ -24,6 +24,8 @@ class Comentario(db.Model):
     respuesta_admin = db.Column(db.Text, nullable=True)  # Admin response
     fecha = db.Column(db.DateTime, default=datetime.utcnow)
     fecha_moderacion = db.Column(db.DateTime, nullable=True)  # Moderation date
+    helpful_votes = db.Column(db.Integer, default=0)  # Number of helpful votes
+    images = db.Column(db.Text, nullable=True)  # JSON list of image URLs
 
     def __repr__(self):
         return f'<Comentario {self.id} - Product {self.id_producto}>'
@@ -73,3 +75,26 @@ class Comentario(db.Model):
             self.ESTADO_RECHAZADO: 'Rechazado'
         }
         return estados.get(self.estado, self.estado)
+
+    def increment_helpful_votes(self):
+        """Increment helpful votes counter."""
+        self.helpful_votes = (self.helpful_votes or 0) + 1
+        db.session.commit()
+
+    def get_images_list(self):
+        """Get list of image URLs from JSON."""
+        if not self.images:
+            return []
+        try:
+            import json
+            return json.loads(self.images)
+        except:
+            return []
+
+    def add_image(self, image_url):
+        """Add image URL to review."""
+        import json
+        images = self.get_images_list()
+        images.append(image_url)
+        self.images = json.dumps(images)
+        db.session.commit()
