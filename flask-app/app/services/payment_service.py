@@ -272,10 +272,14 @@ def create_order_from_cart(user_id, cart_items, direccion, pais, metodo, payment
             producto = Producto.query.with_for_update().get(item['id'])
 
             if producto:
-                # Decrement stock immediately (reserve inventory)
-                if not producto.decrementar_stock(item['cantidad']):
-                    db.session.rollback()
-                    return False, f"Error al decrementar stock del producto '{producto.titulo}'", None
+                # Decrement stock ONLY if payment is confirmed (procesando, entregado, enviado)
+                # Do NOT decrement for 'pendiente' status (waiting for payment confirmation)
+                should_decrement_stock = estado in ['procesando', 'entregado', 'enviado', 'completado']
+
+                if should_decrement_stock:
+                    if not producto.decrementar_stock(item['cantidad']):
+                        db.session.rollback()
+                        return False, f"Error al decrementar stock del producto '{producto.titulo}'", None
 
                 # Calculate item price and proportional discount
                 item_total = float(producto.get_price() * item['cantidad'])
@@ -672,12 +676,29 @@ def process_paypal_ipn(ipn_data):
         if payment_status == 'Completed':
             for order in orders:
                 if order.estado != 'procesando':
+                    # Decrement stock when payment is confirmed
+                    producto = Producto.query.with_for_update().get(order.id_producto)
+                    if producto and not producto.is_virtual():
+                        if producto.tiene_stock(order.cantidad):
+                            producto.decrementar_stock(order.cantidad)
+                            producto.increment_sales()
+                        else:
+                            # Stock is not available, cancel order
+                            order.estado = 'cancelado'
+                            detalle = json.loads(order.detalle) if order.detalle else {}
+                            detalle['cancel_reason'] = f'Stock insuficiente al confirmar pago. Solo quedan {producto.stock} unidades.'
+                            order.detalle = json.dumps(detalle)
+                            continue
+
                     order.estado = 'procesando'
                     # Update detalle with transaction ID
                     detalle = json.loads(order.detalle) if order.detalle else {}
                     detalle['txn_id'] = txn_id
                     detalle['payment_status'] = payment_status
                     order.detalle = json.dumps(detalle)
+
+                    # Increment notifications
+                    Notificacion.increment_new_sales()
 
             db.session.commit()
             return True, f"Payment completed for {len(orders)} orders"
@@ -762,11 +783,28 @@ def process_payu_confirmation(data):
         if state_pol == '4':  # Approved
             for order in orders:
                 if order.estado != 'procesando':
+                    # Decrement stock when payment is confirmed
+                    producto = Producto.query.with_for_update().get(order.id_producto)
+                    if producto and not producto.is_virtual():
+                        if producto.tiene_stock(order.cantidad):
+                            producto.decrementar_stock(order.cantidad)
+                            producto.increment_sales()
+                        else:
+                            # Stock is not available, cancel order
+                            order.estado = 'cancelado'
+                            detalle = json.loads(order.detalle) if order.detalle else {}
+                            detalle['cancel_reason'] = f'Stock insuficiente al confirmar pago. Solo quedan {producto.stock} unidades.'
+                            order.detalle = json.dumps(detalle)
+                            continue
+
                     order.estado = 'procesando'
                     detalle = json.loads(order.detalle) if order.detalle else {}
                     detalle['transaction_id'] = transaction_id
                     detalle['payu_state'] = state_pol
                     order.detalle = json.dumps(detalle)
+
+                    # Increment notifications
+                    Notificacion.increment_new_sales()
 
             db.session.commit()
             return True, f"Payment approved for {len(orders)} orders"
@@ -818,11 +856,28 @@ def process_paymentez_webhook(data):
         if status == 'success':
             for order in orders:
                 if order.estado != 'procesando':
+                    # Decrement stock when payment is confirmed
+                    producto = Producto.query.with_for_update().get(order.id_producto)
+                    if producto and not producto.is_virtual():
+                        if producto.tiene_stock(order.cantidad):
+                            producto.decrementar_stock(order.cantidad)
+                            producto.increment_sales()
+                        else:
+                            # Stock is not available, cancel order
+                            order.estado = 'cancelado'
+                            detalle = json.loads(order.detalle) if order.detalle else {}
+                            detalle['cancel_reason'] = f'Stock insuficiente al confirmar pago. Solo quedan {producto.stock} unidades.'
+                            order.detalle = json.dumps(detalle)
+                            continue
+
                     order.estado = 'procesando'
                     detalle = json.loads(order.detalle) if order.detalle else {}
                     detalle['transaction_id'] = transaction_id
                     detalle['paymentez_status'] = status
                     order.detalle = json.dumps(detalle)
+
+                    # Increment notifications
+                    Notificacion.increment_new_sales()
 
             db.session.commit()
             return True, "Payment successful"
@@ -871,11 +926,28 @@ def process_datafast_callback(data):
         if response_code == '00':
             for order in orders:
                 if order.estado != 'procesando':
+                    # Decrement stock when payment is confirmed
+                    producto = Producto.query.with_for_update().get(order.id_producto)
+                    if producto and not producto.is_virtual():
+                        if producto.tiene_stock(order.cantidad):
+                            producto.decrementar_stock(order.cantidad)
+                            producto.increment_sales()
+                        else:
+                            # Stock is not available, cancel order
+                            order.estado = 'cancelado'
+                            detalle = json.loads(order.detalle) if order.detalle else {}
+                            detalle['cancel_reason'] = f'Stock insuficiente al confirmar pago. Solo quedan {producto.stock} unidades.'
+                            order.detalle = json.dumps(detalle)
+                            continue
+
                     order.estado = 'procesando'
                     detalle = json.loads(order.detalle) if order.detalle else {}
                     detalle['transaction_id'] = transaction_id
                     detalle['datafast_response'] = response_code
                     order.detalle = json.dumps(detalle)
+
+                    # Increment notifications
+                    Notificacion.increment_new_sales()
 
             db.session.commit()
             return True, "Payment approved"
