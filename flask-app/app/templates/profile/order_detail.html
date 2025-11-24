@@ -29,81 +29,69 @@
 
                     <!-- Timeline de Estados -->
                     <div class="tracking-timeline">
-                        <div class="timeline-step {% if order.estado in ['pendiente', 'procesando', 'enviado', 'entregado'] %}active completed{% endif %}">
+                        <!-- Paso 1: Pedido Realizado (siempre completado) -->
+                        <div class="timeline-step completed">
                             <div class="timeline-icon">
-                                <i class="fas fa-shopping-cart"></i>
+                                <i class="fas fa-check"></i>
                             </div>
                             <div class="timeline-content">
-                                <h6>Pedido Realizado: <span class="text-success">Completado</span></h6>
+                                <h6>Pedido Realizado</h6>
                                 <p class="text-muted small">{{ order.fecha.strftime('%d/%m/%Y %H:%M') }}</p>
                             </div>
                         </div>
 
-                        <div class="timeline-step {% if order.estado in ['procesando', 'enviado', 'entregado'] %}active{% endif %} {% if order.estado in ['enviado', 'entregado'] %}completed{% endif %}">
+                        <!-- Paso 2: Procesando -->
+                        <div class="timeline-step {% if order.estado in ['procesando', 'enviado', 'entregado'] %}completed{% elif order.estado == 'pendiente' %}active{% endif %}">
                             <div class="timeline-icon">
-                                <i class="fas fa-box"></i>
+                                <i class="fas {% if order.estado in ['procesando', 'enviado', 'entregado'] %}fa-check{% elif order.estado == 'pendiente' %}fa-clock{% else %}fa-box{% endif %}"></i>
                             </div>
                             <div class="timeline-content">
-                                <h6>Procesando:
-                                    {% if order.estado in ['enviado', 'entregado'] %}
-                                        <span class="text-success">Completado</span>
-                                    {% elif order.estado == 'procesando' %}
-                                        <span class="text-warning">En Progreso</span>
-                                    {% else %}
-                                        <span class="text-muted">Pendiente</span>
-                                    {% endif %}
-                                </h6>
+                                <h6>{% if order.estado == 'pendiente' %}Esperando Pago{% else %}Procesando{% endif %}</h6>
                                 <p class="text-muted small">
                                     {% if order.estado in ['procesando', 'enviado', 'entregado'] %}
-                                        {{ order.fecha_estado.strftime('%d/%m/%Y %H:%M') if order.fecha_estado else 'En proceso' }}
+                                        Completado
+                                    {% elif order.estado == 'pendiente' %}
+                                        Confirmando pago...
                                     {% else %}
-                                        Esperando confirmación de pago
+                                        Pendiente
                                     {% endif %}
                                 </p>
                             </div>
                         </div>
 
-                        <div class="timeline-step {% if order.estado in ['enviado', 'entregado'] %}active{% endif %} {% if order.estado == 'entregado' %}completed{% endif %}">
+                        <!-- Paso 3: En Camino -->
+                        <div class="timeline-step {% if order.estado in ['enviado', 'entregado'] %}completed{% elif order.estado == 'procesando' %}active{% endif %}">
                             <div class="timeline-icon">
-                                <i class="fas fa-truck"></i>
+                                <i class="fas {% if order.estado in ['enviado', 'entregado'] %}fa-check{% elif order.estado == 'procesando' %}fa-clock{% else %}fa-truck{% endif %}"></i>
                             </div>
                             <div class="timeline-content">
-                                <h6>En Camino:
-                                    {% if order.estado == 'entregado' %}
-                                        <span class="text-success">Completado</span>
-                                    {% elif order.estado == 'enviado' %}
-                                        <span class="text-warning">En Progreso</span>
-                                    {% else %}
-                                        <span class="text-muted">Pendiente</span>
-                                    {% endif %}
-                                </h6>
+                                <h6>{% if order.estado == 'procesando' %}Preparando Envío{% else %}En Camino{% endif %}</h6>
                                 <p class="text-muted small">
                                     {% if order.estado in ['enviado', 'entregado'] %}
-                                        {{ order.fecha_estado.strftime('%d/%m/%Y %H:%M') if order.fecha_estado else 'En tránsito' }}
+                                        Completado
+                                    {% elif order.estado == 'procesando' %}
+                                        Preparando para enviar...
                                     {% else %}
-                                        Esperando envío
+                                        Pendiente
                                     {% endif %}
                                 </p>
                             </div>
                         </div>
 
-                        <div class="timeline-step {% if order.estado == 'entregado' %}active completed{% endif %}">
+                        <!-- Paso 4: Entregado -->
+                        <div class="timeline-step {% if order.estado == 'entregado' %}completed{% elif order.estado == 'enviado' %}active{% endif %}">
                             <div class="timeline-icon">
-                                <i class="fas fa-check-circle"></i>
+                                <i class="fas {% if order.estado == 'entregado' %}fa-check{% elif order.estado == 'enviado' %}fa-clock{% else %}fa-home{% endif %}"></i>
                             </div>
                             <div class="timeline-content">
-                                <h6>Entregado:
-                                    {% if order.estado == 'entregado' %}
-                                        <span class="text-success">Completado</span>
-                                    {% else %}
-                                        <span class="text-muted">Pendiente</span>
-                                    {% endif %}
-                                </h6>
+                                <h6>{% if order.estado == 'enviado' %}En Ruta de Entrega{% else %}Entregado{% endif %}</h6>
                                 <p class="text-muted small">
                                     {% if order.estado == 'entregado' %}
-                                        {{ order.fecha_estado.strftime('%d/%m/%Y %H:%M') if order.fecha_estado else 'Entregado' }}
+                                        {{ order.fecha_estado.strftime('%d/%m/%Y %H:%M') if order.fecha_estado else 'Completado' }}
+                                    {% elif order.estado == 'enviado' %}
+                                        Llegará pronto...
                                     {% else %}
-                                        En espera
+                                        Pendiente
                                     {% endif %}
                                 </p>
                             </div>
@@ -328,6 +316,30 @@
 
 .timeline-step.completed::before {
     background: #198754;
+}
+
+/* Animación para paso activo (delivery app style) */
+.timeline-step.active .timeline-icon {
+    background: #ffc107;
+    border-color: #ffc107;
+    color: white;
+    animation: pulse 2s infinite;
+}
+
+.timeline-step.active::before {
+    background: #ffc107;
+}
+
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(255, 193, 7, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(255, 193, 7, 0);
+    }
 }
 
 .timeline-content h6 {

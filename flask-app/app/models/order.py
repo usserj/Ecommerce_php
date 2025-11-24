@@ -91,14 +91,17 @@ class Compra(db.Model):
         self.estado = nuevo_estado
         self.fecha_estado = datetime.utcnow()
 
-        # Si se cancela una orden, restaurar el stock
+        # Si se cancela una orden, restaurar el stock SOLO si venía de un estado que decrementó stock
         if nuevo_estado == self.ESTADO_CANCELADO and estado_anterior != self.ESTADO_CANCELADO:
-            self.restaurar_stock(razon or f"Orden cancelada desde estado {estado_anterior}")
+            # Solo restaurar stock si venía de procesando, enviado, o entregado
+            estados_con_stock_decrementado = [self.ESTADO_PROCESANDO, self.ESTADO_ENVIADO, self.ESTADO_ENTREGADO]
+            if estado_anterior in estados_con_stock_decrementado:
+                self.restaurar_stock(razon or f"Orden cancelada desde estado {estado_anterior}")
 
         db.session.commit()
 
     def restaurar_stock(self, razon="Orden cancelada"):
-        """Restaurar stock cuando se cancela una orden."""
+        """Restaurar stock cuando se cancela una orden que ya había decrementado stock."""
         from app.models.product import Producto
 
         producto = Producto.query.get(self.id_producto)

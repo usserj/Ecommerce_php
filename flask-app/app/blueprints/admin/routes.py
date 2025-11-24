@@ -1005,7 +1005,7 @@ def orders_ajax():
 @admin_bp.route('/orders/update-status/<int:id>', methods=['POST'])
 @admin_required
 def update_order_status(id):
-    """Update order status."""
+    """Update order status with stock management."""
     try:
         order = Compra.query.get_or_404(id)
         estado_anterior = order.estado
@@ -1013,11 +1013,47 @@ def update_order_status(id):
         tracking = request.form.get('tracking', '')
 
         if estado:
-            order.estado = estado
+            # Stock management: decrement stock when changing from pendiente to procesando/enviado/entregado
+            estados_requieren_stock = ['procesando', 'enviado', 'entregado']
+            if estado_anterior == 'pendiente' and estado in estados_requieren_stock:
+                # Decrement stock for the first time
+                producto = Producto.query.with_for_update().get(order.id_producto)
+                if producto:
+                    if not producto.tiene_stock(order.cantidad):
+                        flash(f'Error: Stock insuficiente. Solo quedan {producto.stock} unidades de {producto.titulo}', 'error')
+                        return redirect(url_for('admin.orders'))
+
+                    stock_anterior = producto.stock
+                    if producto.decrementar_stock(order.cantidad):
+                        # Registrar movimiento de stock
+                        try:
+                            from app.models.stock_movement import StockMovement
+                            movimiento = StockMovement.registrar_venta(
+                                producto_id=producto.id,
+                                orden_id=order.id,
+                                cantidad=order.cantidad,
+                                stock_anterior=stock_anterior,
+                                stock_nuevo=producto.stock,
+                                razon=f"Orden cambiada de {estado_anterior} a {estado}"
+                            )
+                            db.session.add(movimiento)
+                        except ImportError:
+                            pass  # Si el modelo no existe, continuar
+                    else:
+                        flash(f'Error al decrementar stock de {producto.titulo}', 'error')
+                        return redirect(url_for('admin.orders'))
+
+            # Use model method to change status (handles stock restoration on cancel)
+            try:
+                order.cambiar_estado(estado, razon=f"Actualizado manualmente por admin")
+            except ValueError as ve:
+                flash(f'Error de transición de estado: {str(ve)}', 'error')
+                return redirect(url_for('admin.orders'))
+
+            # Update tracking if provided
             if tracking:
                 order.tracking = tracking
-            order.fecha_estado = datetime.now()
-            db.session.commit()
+                db.session.commit()
 
             # Send email notifications based on status change
             from app.services.email_service import (
@@ -1035,14 +1071,15 @@ def update_order_status(id):
                     send_order_cancelled_email(order.usuario, order)
             except Exception as email_error:
                 # Log email error but don't fail the status update
-                print(f"Error sending email notification: {email_error}")
+                current_app.logger.error(f"Error sending email notification: {email_error}")
 
-            flash('Estado de orden actualizado correctamente!', 'success')
+            flash('Estado de orden actualizado correctamente! Stock actualizado.', 'success')
         else:
             flash('Debe seleccionar un estado.', 'error')
 
     except Exception as e:
         db.session.rollback()
+        current_app.logger.error(f"Error updating order status: {e}")
         flash(f'Error al actualizar estado: {e}', 'error')
 
     return redirect(url_for('admin.orders'))

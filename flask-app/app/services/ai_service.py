@@ -430,7 +430,7 @@ class DeepSeekService:
             'CONSULTA_PAGO': ['pago', 'pagar', 'tarjeta', 'efectivo', 'paypal', 'transferencia'],
             'RECOMENDACION': ['recomienda', 'sugiere', 'qué comprar', 'ayuda a elegir'],
             'COMPARACION': ['comparar', 'diferencia', 'mejor', 'vs', 'versus'],
-            'BUSCAR_PRODUCTO': ['busco', 'quiero', 'necesito', 'tienen', 'venden', 'hay'],
+            'BUSCAR_PRODUCTO': ['busco', 'quiero', 'necesito', 'tienen', 'venden', 'hay', 'precio de', 'cuesta', 'cuánto', 'stock', 'disponible', 'unidades', 'descripción'],
         }
 
         for intencion, keywords in patrones.items():
@@ -505,6 +505,13 @@ class DeepSeekService:
 - Máximo 4-5 oraciones
 - Siempre termina con pregunta o CTA
 
+⚠️ REGLA DE ORO - DATOS REALES:
+- SIEMPRE usa los datos de la base de datos proporcionados
+- NUNCA inventes precios, stock, o productos que no existen
+- Si no encuentras un producto, dilo claramente y sugiere alternativas del catálogo
+- Los precios y stock cambian en tiempo real, usa SOLO los datos actuales
+- Supera las expectativas con información precisa y actualizada
+
 📋 INFO TIENDA:
 - Envíos 24-48h a todo Ecuador
 - Envío GRATIS sobre $50
@@ -525,16 +532,22 @@ class DeepSeekService:
 
         if contexto_enriquecido.get('productos_disponibles'):
             productos = contexto_enriquecido['productos_disponibles']
-            prompt += f"\n📦 CATÁLOGO ({len(productos)} productos):\n"
+            prompt += f"\n📦 CATÁLOGO ACTUALIZADO ({len(productos)} productos disponibles):\n"
             for p in productos[:8]:
-                prompt += f"- {p['nombre']}: ${p['precio']} ({p['categoria']})\n"
+                prompt += f"- {p['nombre']}: ${p['precio']} | Stock: {p['stock']} unidades | {p['categoria']}\n"
+            prompt += "\n⚠️ IMPORTANTE: Estos datos son en TIEMPO REAL de la base de datos.\n"
 
         if resultado_funcion:
-            prompt += f"\n🔧 RESULTADO:\n```json\n{json.dumps(resultado_funcion, indent=2, ensure_ascii=False)}\n```\n"
-            prompt += "📌 USA esta info para responder específicamente.\n"
+            prompt += f"\n🔧 DATOS DE LA BASE DE DATOS:\n```json\n{json.dumps(resultado_funcion, indent=2, ensure_ascii=False)}\n```\n"
+            prompt += "📌 USA ÚNICAMENTE estos datos REALES para responder. NO inventes información.\n"
 
         if intencion == 'BUSCAR_PRODUCTO':
-            prompt += "\n🎯 Muestra los productos con precio, stock y características. Sugiere el mejor.\n"
+            prompt += "\n🎯 RESPONDE CON DATOS REALES:\n"
+            prompt += "- Muestra precio exacto de la BD\n"
+            prompt += "- Indica stock disponible\n"
+            prompt += "- Menciona categoría\n"
+            prompt += "- Si no hay stock, dilo claramente\n"
+            prompt += "- Sugiere el producto con mejor rating/precio\n"
         elif intencion == 'RASTREAR_PEDIDO':
             prompt += "\n🎯 Informa el estado claramente. Si en camino, da fecha. Si problema, ofrece solución.\n"
         elif intencion == 'CONSULTA_ENVIO':
