@@ -42,6 +42,7 @@ SINONIMOS = {
     'tablet': ['tableta', 'ipad'],
     'ssd': ['disco duro', 'almacenamiento', 'storage'],
     'ram': ['memoria', 'memoria ram'],
+    'tv': ['televisor', 'televisión', 'smart tv', 'television', 'tele', 'pantalla grande'],
     'gaming': ['gamer', 'juegos', 'videojuegos', 'para jugar'],
     'trabajo': ['oficina', 'productividad', 'trabajar'],
     'estudiante': ['estudio', 'escuela', 'universidad'],

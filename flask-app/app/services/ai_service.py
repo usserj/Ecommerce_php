@@ -522,11 +522,14 @@ class DeepSeekService:
 ⚠️ REGLA DE ORO - DATOS REALES:
 - SIEMPRE usa los datos de la base de datos proporcionados
 - NUNCA inventes precios, stock, o productos que no existen
-- Si el usuario pregunta con sinónimos (ej: "portátil" por "laptop"), RAZONA y encuentra el producto correcto
+- 🚨 CRÍTICO: NUNCA digas "no tenemos X" sin haber verificado los datos
+- 🚨 Si la búsqueda no encuentra nada, PREGUNTA al usuario por más detalles ("¿Puedes ser más específico? ¿Qué marca o características buscas?")
+- Si el usuario pregunta con sinónimos (ej: "portátil" por "laptop", "tv" por "televisor"), RAZONA y encuentra el producto correcto
 - Si pregunta "algo para trabajar", RAZONA qué productos son apropiados (laptops, escritorios)
 - Si pregunta "tengo $X, qué me alcanza?", RAZONA y filtra por presupuesto
 - Los precios y stock cambian en tiempo real, usa SOLO los datos actuales
 - Supera las expectativas con información precisa, razonada e inteligente
+- 🚨 MUY IMPORTANTE: Si NO ves productos en la lista pero el usuario insiste que existen, RECONÓCELO y pide disculpas
 
 📋 INFO TIENDA:
 - Envíos 24-48h a todo Ecuador
@@ -554,6 +557,12 @@ class DeepSeekService:
             prompt += "\n```\n"
             prompt += "⚠️ ESTOS SON LOS PRODUCTOS REALES DE LA BD. USA ESTOS DATOS PARA RESPONDER.\n"
             prompt += "💡 RAZONA: Si el usuario pregunta de forma indirecta, conecta su pregunta con estos productos.\n"
+        else:
+            # NO se encontraron productos en la búsqueda
+            prompt += "\n⚠️ ATENCIÓN: La búsqueda automática NO encontró productos con las palabras clave extraídas.\n"
+            prompt += "🚨 IMPORTANTE: Esto NO significa que no existan. Puede ser un problema de sinónimos o búsqueda.\n"
+            prompt += "📌 RESPUESTA CORRECTA: Pide al usuario más detalles (marca, características, categoría específica).\n"
+            prompt += "❌ PROHIBIDO: Decir 'no tenemos X' o 'no está disponible' sin verificar el catálogo general.\n"
 
         if contexto_enriquecido.get('productos_disponibles'):
             productos = contexto_enriquecido['productos_disponibles']
