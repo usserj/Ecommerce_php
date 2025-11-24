@@ -6,6 +6,7 @@ Compara modelos SQLAlchemy con estructura real de MySQL y genera migraciones.
 
 import pymysql
 import sys
+import re
 from sqlalchemy import inspect, create_engine
 from sqlalchemy.dialects import mysql
 from app import create_app
@@ -48,7 +49,6 @@ def get_db_connection(app):
     db_uri = app.config['SQLALCHEMY_DATABASE_URI']
 
     # Parsear URI
-    import re
     match = re.match(r'mysql\+pymysql://([^:]+):([^@]*)@([^/]+)/(.+)', db_uri)
     if not match:
         print_error("No se pudo parsear la URI de la base de datos")
@@ -105,7 +105,6 @@ def get_sqlalchemy_type_as_mysql(column_type):
         return 'int(11)'
     elif 'VARCHAR' in type_str:
         # Extraer longitud
-        import re
         match = re.search(r'VARCHAR\((\d+)\)', type_str)
         if match:
             return f"varchar({match.group(1)})"
