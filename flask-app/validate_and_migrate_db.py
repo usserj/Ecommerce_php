@@ -160,7 +160,7 @@ def compare_tables_and_columns(app, connection):
         'compras': 'app.models.order.Compra',
         'comentarios': 'app.models.comment.Comentario',
         'deseos': 'app.models.wishlist.Deseo',
-        'cupones': 'app.models.cupon.Cupon',
+        'cupones': 'app.models.coupon.Cupon',  # Corregido: coupon no cupon
         'stock_movements': 'app.models.stock_movement.StockMovement',
         'addresses': 'app.models.address.Address',
     }
