@@ -31,33 +31,68 @@ logger = logging.getLogger(__name__)
 # 1. VENDER - Recomendaciones y guía de compra
 # ============================================================================
 
+# Diccionario de sinónimos para búsqueda semántica
+SINONIMOS = {
+    'laptop': ['portátil', 'computadora portátil', 'notebook', 'computador'],
+    'mouse': ['ratón', 'mouse inalámbrico', 'mouse gaming'],
+    'teclado': ['keyboard', 'teclado mecánico', 'teclado gamer'],
+    'celular': ['móvil', 'smartphone', 'teléfono', 'phone'],
+    'auriculares': ['audífonos', 'headset', 'headphones', 'cascos'],
+    'monitor': ['pantalla', 'display', 'screen'],
+    'tablet': ['tableta', 'ipad'],
+    'ssd': ['disco duro', 'almacenamiento', 'storage'],
+    'ram': ['memoria', 'memoria ram'],
+    'gaming': ['gamer', 'juegos', 'videojuegos', 'para jugar'],
+    'trabajo': ['oficina', 'productividad', 'trabajar'],
+    'estudiante': ['estudio', 'escuela', 'universidad'],
+    'barato': ['económico', 'bajo precio', 'accesible', 'low cost'],
+    'rápido': ['veloz', 'potente', 'alto rendimiento', 'performance']
+}
+
+def expandir_query_con_sinonimos(query: str) -> List[str]:
+    """Expande query con sinónimos para búsqueda semántica"""
+    query_lower = query.lower()
+    terminos = [query_lower]
+
+    # Buscar sinónimos
+    for palabra_clave, sinonimos in SINONIMOS.items():
+        if palabra_clave in query_lower or any(sin in query_lower for sin in sinonimos):
+            terminos.append(palabra_clave)
+            terminos.extend(sinonimos)
+
+    return list(set(terminos))  # Eliminar duplicados
+
 def buscar_productos(query: str, categoria: str = None, precio_max: float = None,
                      precio_min: float = None, limit: int = 10) -> List[Dict]:
     """
-    Busca productos en el catálogo basándose en criterios
+    Busca productos INTELIGENTEMENTE usando sinónimos y búsqueda semántica
 
     Args:
-        query: Término de búsqueda (ej: "laptop", "mouse")
+        query: Término de búsqueda (ej: "laptop", "portátil", "algo para trabajar")
         categoria: Categoría específica
         precio_max: Precio máximo
         precio_min: Precio mínimo
         limit: Cantidad máxima de resultados
 
     Returns:
-        Lista de productos encontrados con detalles
+        Lista de productos encontrados con TODOS los detalles
     """
     try:
         # Base query
-        query_db = Producto.query.filter(Producto.estado == 1, Producto.stock > 0)
+        query_db = Producto.query.filter(Producto.estado == 1)
 
-        # Búsqueda por texto
+        # BÚSQUEDA SEMÁNTICA con sinónimos
         if query:
-            query_db = query_db.filter(
-                or_(
-                    Producto.titulo.ilike(f'%{query}%'),
-                    Producto.descripcion.ilike(f'%{query}%')
-                )
-            )
+            terminos_busqueda = expandir_query_con_sinonimos(query)
+
+            # Construir condiciones OR para cada término
+            condiciones = []
+            for termino in terminos_busqueda:
+                condiciones.append(Producto.titulo.ilike(f'%{termino}%'))
+                condiciones.append(Producto.descripcion.ilike(f'%{termino}%'))
+
+            if condiciones:
+                query_db = query_db.filter(or_(*condiciones))
 
         # Filtro por categoría
         if categoria:
@@ -71,29 +106,39 @@ def buscar_productos(query: str, categoria: str = None, precio_max: float = None
         if precio_max:
             query_db = query_db.filter(Producto.precio <= precio_max)
 
-        # Ordenar por relevancia (ventas + vistas)
+        # Ordenar por relevancia: stock disponible primero, luego ventas
         productos = query_db.order_by(
-            (Producto.ventas * 2 + Producto.vistas).desc()
-        ).limit(limit).all()
+            Producto.stock.desc(),  # Primero con stock
+            (Producto.ventas * 2 + Producto.vistas).desc()  # Luego popularidad
+        ).limit(limit * 2).all()  # Buscar más para filtrar inteligente
 
-        # Formatear resultados
+        # Formatear resultados CON TODOS LOS DATOS para que la IA razone
         resultados = []
         for p in productos:
+            # Incluir descripción completa para razonamiento
+            descripcion = p.descripcion[:300] if p.descripcion else "Sin descripción"
+
             resultados.append({
                 'id': p.id,
                 'nombre': p.titulo,
+                'descripcion': descripcion,
                 'precio': float(p.get_price()),
                 'precio_original': float(p.precio) if p.is_on_offer() else None,
                 'descuento': p.descuentoOferta if p.is_on_offer() else 0,
                 'categoria': p.categoria.categoria if p.categoria else 'Sin categoría',
                 'stock': p.stock,
+                'disponible': p.stock > 0,
                 'rating': p.get_average_rating(),
                 'num_reviews': p.get_comments_count(),
+                'ventas': p.ventas,
                 'url': f'/tienda/producto/{p.ruta}',
                 'en_oferta': p.is_on_offer()
             })
 
-        logger.info(f"✅ Búsqueda '{query}': {len(resultados)} productos encontrados")
+        # Limitar al número solicitado
+        resultados = resultados[:limit]
+
+        logger.info(f"✅ Búsqueda semántica '{query}': {len(resultados)} productos (expandido a {len(expandir_query_con_sinonimos(query))} términos)")
         return resultados
 
     except Exception as e:

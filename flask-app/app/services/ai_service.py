@@ -267,21 +267,32 @@ class DeepSeekService:
                 user_message=user_message
             )
 
-            # 3. EJECUCIÓN DE FUNCIONES (si aplica)
+            # 3. BÚSQUEDA INTELIGENTE DE PRODUCTOS (SIEMPRE)
+            # Buscar productos mencionados en CUALQUIER mensaje para que la IA razone
+            productos_encontrados = []
+            palabras_clave = self._extraer_palabras_clave(user_message)
+            if palabras_clave:
+                logger.info(f"🔍 Búsqueda inteligente: '{palabras_clave}'")
+                productos_encontrados = ejecutar_funcion('buscar_productos', {
+                    'query': palabras_clave,
+                    'limit': 8
+                })
+
+            # 4. EJECUCIÓN DE FUNCIONES ESPECÍFICAS (si aplica)
             resultado_funcion = None
             funcion_ejecutada = None
 
-            if intencion == 'BUSCAR_PRODUCTO':
+            if intencion == 'BUSCAR_PRODUCTO' and not productos_encontrados:
+                # Si no encontró nada en búsqueda inteligente, intentar búsqueda específica
                 query = self._extraer_query_busqueda(user_message)
                 if query:
-                    logger.info(f"🔍 Buscando productos: '{query}'")
-                    resultado_funcion = ejecutar_funcion('buscar_productos', {
+                    logger.info(f"🔍 Búsqueda específica: '{query}'")
+                    productos_encontrados = ejecutar_funcion('buscar_productos', {
                         'query': query,
-                        'limit': 5
+                        'limit': 8
                     })
-                    funcion_ejecutada = 'buscar_productos'
 
-            elif intencion == 'RASTREAR_PEDIDO':
+            if intencion == 'RASTREAR_PEDIDO':
                 if usuario_id:
                     logger.info(f"📦 Rastreando pedido para usuario {usuario_id}")
                     resultado_funcion = ejecutar_funcion('rastrear_pedido', {
@@ -328,14 +339,15 @@ class DeepSeekService:
                 })
                 funcion_ejecutada = 'metodos_pago'
 
-            # 4. CONSTRUCCIÓN DEL SYSTEM PROMPT AVANZADO
+            # 5. CONSTRUCCIÓN DEL SYSTEM PROMPT AVANZADO
             system_prompt = self._construir_system_prompt_avanzado(
                 contexto_enriquecido=contexto_enriquecido,
                 resultado_funcion=resultado_funcion,
+                productos_encontrados=productos_encontrados,
                 intencion=intencion
             )
 
-            # 5. OBTENER HISTORIAL
+            # 6. OBTENER HISTORIAL
             historial = []
             try:
                 historial = ConversacionChatbot.get_conversacion(session_id, limit=6)
@@ -343,7 +355,7 @@ class DeepSeekService:
             except Exception as e:
                 logger.warning(f"No se pudo obtener historial: {e}")
 
-            # 6. PREPARAR MENSAJES PARA DEEPSEEK
+            # 7. PREPARAR MENSAJES PARA DEEPSEEK
             messages = [{"role": "system", "content": system_prompt}]
 
             for conv in historial[-6:]:
@@ -357,7 +369,7 @@ class DeepSeekService:
                 "content": user_message
             })
 
-            # 7. LLAMAR A DEEPSEEK API
+            # 8. LLAMAR A DEEPSEEK API
             logger.info(f"🧠 Llamando a DeepSeek con intención: {intencion}")
             result = self.call_api(
                 messages=messages,
@@ -488,8 +500,9 @@ class DeepSeekService:
         return contexto
 
     def _construir_system_prompt_avanzado(self, contexto_enriquecido: dict,
-                                          resultado_funcion: dict, intencion: str) -> str:
-        """Construye system prompt avanzado"""
+                                          resultado_funcion: dict, productos_encontrados: list,
+                                          intencion: str) -> str:
+        """Construye system prompt avanzado con RAZONAMIENTO sobre datos reales"""
         prompt = """Eres SOFIA, un asistente de IA AVANZADO para ecommerce en Ecuador 🇪🇨
 
 🎯 CAPACIDADES:
@@ -497,6 +510,7 @@ class DeepSeekService:
 ✅ SOPORTAR - Rastrear pedidos, gestionar reclamos
 ✅ AYUDAR - Calcular envíos, validar cupones, métodos de pago
 ✅ ANALIZAR - Dar insights de productos y reviews
+✅ RAZONAR - Usar inteligencia para interpretar preguntas y conectar con datos reales
 
 😊 PERSONALIDAD:
 - Amable, profesional, proactiva
@@ -508,9 +522,11 @@ class DeepSeekService:
 ⚠️ REGLA DE ORO - DATOS REALES:
 - SIEMPRE usa los datos de la base de datos proporcionados
 - NUNCA inventes precios, stock, o productos que no existen
-- Si no encuentras un producto, dilo claramente y sugiere alternativas del catálogo
+- Si el usuario pregunta con sinónimos (ej: "portátil" por "laptop"), RAZONA y encuentra el producto correcto
+- Si pregunta "algo para trabajar", RAZONA qué productos son apropiados (laptops, escritorios)
+- Si pregunta "tengo $X, qué me alcanza?", RAZONA y filtra por presupuesto
 - Los precios y stock cambian en tiempo real, usa SOLO los datos actuales
-- Supera las expectativas con información precisa y actualizada
+- Supera las expectativas con información precisa, razonada e inteligente
 
 📋 INFO TIENDA:
 - Envíos 24-48h a todo Ecuador
@@ -530,24 +546,37 @@ class DeepSeekService:
             carrito = contexto_enriquecido['carrito']
             prompt += f"\n🛒 CARRITO: {carrito['total_items']} items\n"
 
+        # PRODUCTOS ENCONTRADOS (búsqueda inteligente)
+        if productos_encontrados and len(productos_encontrados) > 0:
+            prompt += f"\n🔍 PRODUCTOS ENCONTRADOS ({len(productos_encontrados)} resultados relevantes):\n"
+            prompt += "```json\n"
+            prompt += json.dumps(productos_encontrados, indent=2, ensure_ascii=False)
+            prompt += "\n```\n"
+            prompt += "⚠️ ESTOS SON LOS PRODUCTOS REALES DE LA BD. USA ESTOS DATOS PARA RESPONDER.\n"
+            prompt += "💡 RAZONA: Si el usuario pregunta de forma indirecta, conecta su pregunta con estos productos.\n"
+
         if contexto_enriquecido.get('productos_disponibles'):
             productos = contexto_enriquecido['productos_disponibles']
-            prompt += f"\n📦 CATÁLOGO ACTUALIZADO ({len(productos)} productos disponibles):\n"
-            for p in productos[:8]:
-                prompt += f"- {p['nombre']}: ${p['precio']} | Stock: {p['stock']} unidades | {p['categoria']}\n"
-            prompt += "\n⚠️ IMPORTANTE: Estos datos son en TIEMPO REAL de la base de datos.\n"
+            prompt += f"\n📦 CATÁLOGO GENERAL ({len(productos)} productos más populares):\n"
+            for p in productos[:6]:
+                prompt += f"- {p['nombre']}: ${p['precio']} | Stock: {p['stock']} | {p['categoria']}\n"
 
         if resultado_funcion:
-            prompt += f"\n🔧 DATOS DE LA BASE DE DATOS:\n```json\n{json.dumps(resultado_funcion, indent=2, ensure_ascii=False)}\n```\n"
-            prompt += "📌 USA ÚNICAMENTE estos datos REALES para responder. NO inventes información.\n"
+            prompt += f"\n🔧 DATOS ADICIONALES:\n```json\n{json.dumps(resultado_funcion, indent=2, ensure_ascii=False)}\n```\n"
+
+        # Instrucciones según intención
+        if productos_encontrados and len(productos_encontrados) > 0:
+            prompt += "\n🎯 INSTRUCCIONES PARA RESPONDER:\n"
+            prompt += "- Analiza los productos encontrados y RAZONA cuál es el mejor para el usuario\n"
+            prompt += "- Si pregunta precio, usa el precio EXACTO de la BD\n"
+            prompt += "- Si pregunta stock, usa el stock EXACTO de la BD\n"
+            prompt += "- Si pregunta descripción, usa la descripción REAL del producto\n"
+            prompt += "- Si hay múltiples opciones, compara y sugiere la mejor\n"
+            prompt += "- Si no hay stock, dilo claramente y sugiere alternativas\n"
+            prompt += "- RAZONA sobre las especificaciones y características para dar la mejor recomendación\n"
 
         if intencion == 'BUSCAR_PRODUCTO':
-            prompt += "\n🎯 RESPONDE CON DATOS REALES:\n"
-            prompt += "- Muestra precio exacto de la BD\n"
-            prompt += "- Indica stock disponible\n"
-            prompt += "- Menciona categoría\n"
-            prompt += "- Si no hay stock, dilo claramente\n"
-            prompt += "- Sugiere el producto con mejor rating/precio\n"
+            prompt += "\n🎯 El usuario está buscando productos. Razona y recomienda el mejor.\n"
         elif intencion == 'RASTREAR_PEDIDO':
             prompt += "\n🎯 Informa el estado claramente. Si en camino, da fecha. Si problema, ofrece solución.\n"
         elif intencion == 'CONSULTA_ENVIO':
@@ -607,6 +636,45 @@ PROHIBIDO:
         patron = r'\b[A-Z0-9]{4,12}\b'
         matches = re.findall(patron, mensaje.upper())
         return matches[0] if matches else None
+
+    def _extraer_palabras_clave(self, mensaje: str) -> str:
+        """
+        Extrae palabras clave del mensaje para búsqueda inteligente
+        Filtra palabras comunes y extrae términos relevantes
+        """
+        # Palabras a ignorar (stopwords en español)
+        stopwords = {
+            'el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas',
+            'de', 'del', 'al', 'a', 'en', 'con', 'por', 'para',
+            'que', 'es', 'son', 'está', 'están', 'hay', 'tiene', 'tienen',
+            'me', 'te', 'se', 'le', 'lo', 'mi', 'tu', 'su',
+            'y', 'o', 'pero', 'si', 'no', 'ni',
+            'busco', 'quiero', 'necesito', 'venden', 'cuánto', 'cuesta',
+            'precio', 'cuál', 'qué', 'cómo', 'dónde', 'cuándo',
+            'puede', 'puedo', 'podría', 'podrías', 'algo', 'algún', 'alguna',
+            'este', 'esta', 'ese', 'esa', 'aquel', 'aquella',
+            'muy', 'más', 'menos', 'mucho', 'poco', 'bastante',
+            'hola', 'gracias', 'por', 'favor'
+        }
+
+        # Convertir a minúsculas y dividir en palabras
+        palabras = mensaje.lower().split()
+
+        # Filtrar stopwords y palabras cortas
+        palabras_clave = [
+            p for p in palabras
+            if len(p) > 2 and p not in stopwords and not p.isdigit()
+        ]
+
+        # Unir palabras clave
+        query = ' '.join(palabras_clave)
+
+        # Si la query está vacía o muy corta, retornar el mensaje original
+        if not query or len(query) < 3:
+            return mensaje
+
+        logger.debug(f"Palabras clave extraídas: '{query}' de '{mensaje}'")
+        return query
 
     def obtener_recomendaciones(self, producto_id: int, usuario_id: int = None) -> dict:
         """
