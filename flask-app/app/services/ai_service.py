@@ -267,30 +267,13 @@ class DeepSeekService:
                 user_message=user_message
             )
 
-            # 3. BÚSQUEDA INTELIGENTE DE PRODUCTOS (SIEMPRE)
-            # Buscar productos mencionados en CUALQUIER mensaje para que la IA razone
-            productos_encontrados = []
-            palabras_clave = self._extraer_palabras_clave(user_message)
-            if palabras_clave:
-                logger.info(f"🔍 Búsqueda inteligente: '{palabras_clave}'")
-                productos_encontrados = ejecutar_funcion('buscar_productos', {
-                    'query': palabras_clave,
-                    'limit': 8
-                })
+            # 3. OBTENER CATÁLOGO COMPLETO PARA QUE LA IA RAZONE
+            # En lugar de buscar con palabras clave, damos TODO a la IA
+            catalogo_completo = self._obtener_catalogo_para_ia(limit=50)
 
             # 4. EJECUCIÓN DE FUNCIONES ESPECÍFICAS (si aplica)
             resultado_funcion = None
             funcion_ejecutada = None
-
-            if intencion == 'BUSCAR_PRODUCTO' and not productos_encontrados:
-                # Si no encontró nada en búsqueda inteligente, intentar búsqueda específica
-                query = self._extraer_query_busqueda(user_message)
-                if query:
-                    logger.info(f"🔍 Búsqueda específica: '{query}'")
-                    productos_encontrados = ejecutar_funcion('buscar_productos', {
-                        'query': query,
-                        'limit': 8
-                    })
 
             if intencion == 'RASTREAR_PEDIDO':
                 if usuario_id:
@@ -343,7 +326,8 @@ class DeepSeekService:
             system_prompt = self._construir_system_prompt_avanzado(
                 contexto_enriquecido=contexto_enriquecido,
                 resultado_funcion=resultado_funcion,
-                productos_encontrados=productos_encontrados,
+                catalogo_completo=catalogo_completo,
+                user_message=user_message,
                 intencion=intencion
             )
 
@@ -451,6 +435,39 @@ class DeepSeekService:
 
         return 'CONVERSACION_GENERAL'
 
+    def _obtener_catalogo_para_ia(self, limit: int = 50) -> list:
+        """
+        Obtiene el catálogo COMPLETO de productos para que la IA razone
+        NO hace búsqueda por palabras clave - retorna TODO
+        La IA decidirá qué es relevante
+        """
+        try:
+            productos = Producto.query.filter(
+                Producto.estado == 1
+            ).order_by(
+                Producto.stock.desc(),  # Primero con stock
+                Producto.ventas.desc()  # Luego más vendidos
+            ).limit(limit).all()
+
+            catalogo = []
+            for p in productos:
+                catalogo.append({
+                    'id': p.id,
+                    'nombre': p.titulo,
+                    'descripcion': p.descripcion[:200] if p.descripcion else '',
+                    'precio': float(p.get_price()),
+                    'stock': p.stock,
+                    'categoria': p.categoria.categoria if p.categoria else 'Sin categoría',
+                    'disponible': p.stock > 0
+                })
+
+            logger.info(f"📦 Catálogo completo: {len(catalogo)} productos para razonamiento IA")
+            return catalogo
+
+        except Exception as e:
+            logger.error(f"Error obteniendo catálogo: {e}")
+            return []
+
     def _enriquecer_contexto(self, usuario_id: int, context: dict, user_message: str) -> dict:
         """Enriquece el contexto con información del usuario"""
         contexto = {
@@ -500,9 +517,9 @@ class DeepSeekService:
         return contexto
 
     def _construir_system_prompt_avanzado(self, contexto_enriquecido: dict,
-                                          resultado_funcion: dict, productos_encontrados: list,
-                                          intencion: str) -> str:
-        """Construye system prompt avanzado con RAZONAMIENTO sobre datos reales"""
+                                          resultado_funcion: dict, catalogo_completo: list,
+                                          user_message: str, intencion: str) -> str:
+        """Construye system prompt avanzado con RAZONAMIENTO sobre CATÁLOGO COMPLETO"""
         prompt = """Eres SOFIA, un asistente de IA AVANZADO para ecommerce en Ecuador 🇪🇨
 
 🎯 CAPACIDADES:
@@ -510,7 +527,7 @@ class DeepSeekService:
 ✅ SOPORTAR - Rastrear pedidos, gestionar reclamos
 ✅ AYUDAR - Calcular envíos, validar cupones, métodos de pago
 ✅ ANALIZAR - Dar insights de productos y reviews
-✅ RAZONAR - Usar inteligencia para interpretar preguntas y conectar con datos reales
+✅ RAZONAR - Analizar TODO el catálogo y encontrar productos relevantes
 
 😊 PERSONALIDAD:
 - Amable, profesional, proactiva
@@ -519,17 +536,16 @@ class DeepSeekService:
 - Máximo 4-5 oraciones
 - Siempre termina con pregunta o CTA
 
-⚠️ REGLA DE ORO - DATOS REALES:
-- SIEMPRE usa los datos de la base de datos proporcionados
-- NUNCA inventes precios, stock, o productos que no existen
-- 🚨 CRÍTICO: NUNCA digas "no tenemos X" sin haber verificado los datos
-- 🚨 Si la búsqueda no encuentra nada, PREGUNTA al usuario por más detalles ("¿Puedes ser más específico? ¿Qué marca o características buscas?")
-- Si el usuario pregunta con sinónimos (ej: "portátil" por "laptop", "tv" por "televisor"), RAZONA y encuentra el producto correcto
-- Si pregunta "algo para trabajar", RAZONA qué productos son apropiados (laptops, escritorios)
-- Si pregunta "tengo $X, qué me alcanza?", RAZONA y filtra por presupuesto
-- Los precios y stock cambian en tiempo real, usa SOLO los datos actuales
-- Supera las expectativas con información precisa, razonada e inteligente
-- 🚨 MUY IMPORTANTE: Si NO ves productos en la lista pero el usuario insiste que existen, RECONÓCELO y pide disculpas
+⚠️ REGLA DE ORO - RAZONAMIENTO AUTOMÁTICO:
+- Te proporcionamos el catálogo COMPLETO de productos
+- TÚ DEBES RAZONAR cuáles son relevantes para la pregunta del usuario
+- Si usuario dice "tv", busca en el catálogo "televisor", "televisión", "smart tv", etc.
+- Si usuario dice "portátil", busca "laptop", "notebook", "computadora portátil"
+- Si usuario dice "para trabajar", razona qué productos sirven para trabajar
+- NUNCA digas "no tenemos X" - primero analiza TODO el catálogo
+- Si NO encuentras nada relevante, sugiere alternativas del catálogo
+- Los precios y stock son en TIEMPO REAL
+- Supera expectativas con razonamiento inteligente y datos precisos
 
 📋 INFO TIENDA:
 - Envíos 24-48h a todo Ecuador
@@ -549,43 +565,30 @@ class DeepSeekService:
             carrito = contexto_enriquecido['carrito']
             prompt += f"\n🛒 CARRITO: {carrito['total_items']} items\n"
 
-        # PRODUCTOS ENCONTRADOS (búsqueda inteligente)
-        if productos_encontrados and len(productos_encontrados) > 0:
-            prompt += f"\n🔍 PRODUCTOS ENCONTRADOS ({len(productos_encontrados)} resultados relevantes):\n"
+        # CATÁLOGO COMPLETO - LA IA RAZONA SOBRE TODO
+        if catalogo_completo and len(catalogo_completo) > 0:
+            prompt += f"\n📦 CATÁLOGO COMPLETO ({len(catalogo_completo)} productos disponibles):\n"
             prompt += "```json\n"
-            prompt += json.dumps(productos_encontrados, indent=2, ensure_ascii=False)
+            prompt += json.dumps(catalogo_completo, indent=2, ensure_ascii=False)
             prompt += "\n```\n"
-            prompt += "⚠️ ESTOS SON LOS PRODUCTOS REALES DE LA BD. USA ESTOS DATOS PARA RESPONDER.\n"
-            prompt += "💡 RAZONA: Si el usuario pregunta de forma indirecta, conecta su pregunta con estos productos.\n"
+            prompt += f"\n🧠 PREGUNTA DEL USUARIO: \"{user_message}\"\n"
+            prompt += "\n🎯 TU TAREA:\n"
+            prompt += "1. ANALIZA el catálogo completo arriba\n"
+            prompt += "2. IDENTIFICA cuáles productos son relevantes para la pregunta\n"
+            prompt += "3. Si usuario dice 'tv' → busca 'televisor', 'televisión', 'smart tv' en el catálogo\n"
+            prompt += "4. Si usuario dice 'portátil' → busca 'laptop', 'notebook' en el catálogo\n"
+            prompt += "5. Si usuario dice 'para trabajar' → razona qué productos sirven\n"
+            prompt += "6. USA precios y stock EXACTOS del catálogo\n"
+            prompt += "7. Si NO encuentras nada relevante, sugiere alternativas del catálogo\n"
+            prompt += "8. NUNCA digas 'no tenemos' sin analizar todo el catálogo primero\n"
         else:
-            # NO se encontraron productos en la búsqueda
-            prompt += "\n⚠️ ATENCIÓN: La búsqueda automática NO encontró productos con las palabras clave extraídas.\n"
-            prompt += "🚨 IMPORTANTE: Esto NO significa que no existan. Puede ser un problema de sinónimos o búsqueda.\n"
-            prompt += "📌 RESPUESTA CORRECTA: Pide al usuario más detalles (marca, características, categoría específica).\n"
-            prompt += "❌ PROHIBIDO: Decir 'no tenemos X' o 'no está disponible' sin verificar el catálogo general.\n"
-
-        if contexto_enriquecido.get('productos_disponibles'):
-            productos = contexto_enriquecido['productos_disponibles']
-            prompt += f"\n📦 CATÁLOGO GENERAL ({len(productos)} productos más populares):\n"
-            for p in productos[:6]:
-                prompt += f"- {p['nombre']}: ${p['precio']} | Stock: {p['stock']} | {p['categoria']}\n"
+            prompt += "\n⚠️ Catálogo vacío - solicita al usuario que especifique qué busca\n"
 
         if resultado_funcion:
             prompt += f"\n🔧 DATOS ADICIONALES:\n```json\n{json.dumps(resultado_funcion, indent=2, ensure_ascii=False)}\n```\n"
 
-        # Instrucciones según intención
-        if productos_encontrados and len(productos_encontrados) > 0:
-            prompt += "\n🎯 INSTRUCCIONES PARA RESPONDER:\n"
-            prompt += "- Analiza los productos encontrados y RAZONA cuál es el mejor para el usuario\n"
-            prompt += "- Si pregunta precio, usa el precio EXACTO de la BD\n"
-            prompt += "- Si pregunta stock, usa el stock EXACTO de la BD\n"
-            prompt += "- Si pregunta descripción, usa la descripción REAL del producto\n"
-            prompt += "- Si hay múltiples opciones, compara y sugiere la mejor\n"
-            prompt += "- Si no hay stock, dilo claramente y sugiere alternativas\n"
-            prompt += "- RAZONA sobre las especificaciones y características para dar la mejor recomendación\n"
-
         if intencion == 'BUSCAR_PRODUCTO':
-            prompt += "\n🎯 El usuario está buscando productos. Razona y recomienda el mejor.\n"
+            prompt += "\n💡 El usuario está buscando productos. Analiza el catálogo y recomienda el mejor.\n"
         elif intencion == 'RASTREAR_PEDIDO':
             prompt += "\n🎯 Informa el estado claramente. Si en camino, da fecha. Si problema, ofrece solución.\n"
         elif intencion == 'CONSULTA_ENVIO':
