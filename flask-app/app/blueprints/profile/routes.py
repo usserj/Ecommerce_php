@@ -204,9 +204,11 @@ def toggle_wishlist():
             })
 
     except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error toggling wishlist: {e}")
         return jsonify({
             'success': False,
-            'message': f'Error: {str(e)}'
+            'message': 'Error al guardar favoritos. Intente nuevamente.'
         }), 500
 
 

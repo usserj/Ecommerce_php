@@ -27,10 +27,10 @@
                             <option value="">-- Seleccionar --</option>
                             {% for producto in productos %}
                             <option value="{{ producto.id }}"
-                                    data-nombre="{{ producto.nombre }}"
-                                    data-categoria="{{ producto.categoria.nombre if producto.categoria else '' }}"
+                                    data-nombre="{{ producto.titulo }}"
+                                    data-categoria="{{ producto.categoria.categoria if producto.categoria else '' }}"
                                     data-precio="{{ producto.precio }}">
-                                {{ producto.nombre }} - ${{ producto.precio }}
+                                {{ producto.titulo }} - ${{ producto.precio }}
                             </option>
                             {% endfor %}
                         </select>

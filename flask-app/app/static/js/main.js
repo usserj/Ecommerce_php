@@ -182,7 +182,7 @@
         const icon = button.querySelector('i');
         const isInWishlist = icon.classList.contains('fas');
 
-        fetch('/profile/wishlist/toggle', {
+        fetch('/perfil/wishlist/toggle', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

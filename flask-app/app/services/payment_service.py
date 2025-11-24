@@ -213,6 +213,16 @@ def create_order_from_cart(user_id, cart_items, direccion, pais, metodo, payment
     """
     from app.models.user import User
     from app.models.coupon import Cupon
+
+    # IDEMPOTENCY CHECK: Prevent duplicate orders with same payment_id
+    existing_orders = Compra.query.filter(
+        Compra.detalle.like(f'%"payment_id": "{payment_id}"%')
+    ).all()
+
+    if existing_orders:
+        current_app.logger.warning(f"Order with payment_id {payment_id} already exists. Returning existing orders.")
+        return True, "Órdenes ya existen (idempotencia)", existing_orders
+
     user = User.query.get(user_id)
 
     if not user:

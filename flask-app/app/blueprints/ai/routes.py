@@ -291,7 +291,7 @@ Descripción:"""
         )
 
         if ai_result['success']:
-            descripcion = ai_result['content'].strip()
+            descripcion = ai_result['response'].strip()
             return jsonify({
                 'success': True,
                 'descripcion': descripcion,

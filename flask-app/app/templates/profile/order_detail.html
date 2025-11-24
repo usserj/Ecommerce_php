@@ -29,59 +29,81 @@
 
                     <!-- Timeline de Estados -->
                     <div class="tracking-timeline">
-                        <div class="timeline-step {% if order.estado in ['pendiente', 'procesando', 'enviado', 'entregado'] %}active{% endif %}">
+                        <div class="timeline-step {% if order.estado in ['pendiente', 'procesando', 'enviado', 'entregado'] %}active completed{% endif %}">
                             <div class="timeline-icon">
                                 <i class="fas fa-shopping-cart"></i>
                             </div>
                             <div class="timeline-content">
-                                <h6>Pedido Realizado</h6>
+                                <h6>Pedido Realizado: <span class="text-success">Completado</span></h6>
                                 <p class="text-muted small">{{ order.fecha.strftime('%d/%m/%Y %H:%M') }}</p>
                             </div>
                         </div>
 
-                        <div class="timeline-step {% if order.estado in ['procesando', 'enviado', 'entregado'] %}active{% endif %}">
+                        <div class="timeline-step {% if order.estado in ['procesando', 'enviado', 'entregado'] %}active{% endif %} {% if order.estado in ['enviado', 'entregado'] %}completed{% endif %}">
                             <div class="timeline-icon">
                                 <i class="fas fa-box"></i>
                             </div>
                             <div class="timeline-content">
-                                <h6>Procesando</h6>
+                                <h6>Procesando:
+                                    {% if order.estado in ['enviado', 'entregado'] %}
+                                        <span class="text-success">Completado</span>
+                                    {% elif order.estado == 'procesando' %}
+                                        <span class="text-warning">En Progreso</span>
+                                    {% else %}
+                                        <span class="text-muted">Pendiente</span>
+                                    {% endif %}
+                                </h6>
                                 <p class="text-muted small">
                                     {% if order.estado in ['procesando', 'enviado', 'entregado'] %}
                                         {{ order.fecha_estado.strftime('%d/%m/%Y %H:%M') if order.fecha_estado else 'En proceso' }}
                                     {% else %}
-                                        Pendiente
+                                        Esperando confirmación de pago
                                     {% endif %}
                                 </p>
                             </div>
                         </div>
 
-                        <div class="timeline-step {% if order.estado in ['enviado', 'entregado'] %}active{% endif %}">
+                        <div class="timeline-step {% if order.estado in ['enviado', 'entregado'] %}active{% endif %} {% if order.estado == 'entregado' %}completed{% endif %}">
                             <div class="timeline-icon">
                                 <i class="fas fa-truck"></i>
                             </div>
                             <div class="timeline-content">
-                                <h6>En Camino</h6>
+                                <h6>En Camino:
+                                    {% if order.estado == 'entregado' %}
+                                        <span class="text-success">Completado</span>
+                                    {% elif order.estado == 'enviado' %}
+                                        <span class="text-warning">En Progreso</span>
+                                    {% else %}
+                                        <span class="text-muted">Pendiente</span>
+                                    {% endif %}
+                                </h6>
                                 <p class="text-muted small">
                                     {% if order.estado in ['enviado', 'entregado'] %}
                                         {{ order.fecha_estado.strftime('%d/%m/%Y %H:%M') if order.fecha_estado else 'En tránsito' }}
                                     {% else %}
-                                        Pendiente
+                                        Esperando envío
                                     {% endif %}
                                 </p>
                             </div>
                         </div>
 
-                        <div class="timeline-step {% if order.estado == 'entregado' %}active{% endif %}">
+                        <div class="timeline-step {% if order.estado == 'entregado' %}active completed{% endif %}">
                             <div class="timeline-icon">
                                 <i class="fas fa-check-circle"></i>
                             </div>
                             <div class="timeline-content">
-                                <h6>Entregado</h6>
+                                <h6>Entregado:
+                                    {% if order.estado == 'entregado' %}
+                                        <span class="text-success">Completado</span>
+                                    {% else %}
+                                        <span class="text-muted">Pendiente</span>
+                                    {% endif %}
+                                </h6>
                                 <p class="text-muted small">
                                     {% if order.estado == 'entregado' %}
                                         {{ order.fecha_estado.strftime('%d/%m/%Y %H:%M') if order.fecha_estado else 'Entregado' }}
                                     {% else %}
-                                        Pendiente
+                                        En espera
                                     {% endif %}
                                 </p>
                             </div>
@@ -296,6 +318,16 @@
     background: #0d6efd;
     border-color: #0d6efd;
     color: white;
+}
+
+.timeline-step.completed .timeline-icon {
+    background: #198754;
+    border-color: #198754;
+    color: white;
+}
+
+.timeline-step.completed::before {
+    background: #198754;
 }
 
 .timeline-content h6 {
