@@ -43,8 +43,39 @@ def run_migration():
 
             print(f"✅ Conectado a base de datos: {database}\n")
 
-            # Split SQL by semicolons and execute each statement
-            statements = [s.strip() for s in sql_content.split(';') if s.strip() and not s.strip().startswith('--')]
+            # Limpiar comentarios de línea
+            lines = sql_content.split('\n')
+            cleaned_lines = []
+            for line in lines:
+                # Remover comentarios -- pero preservar líneas con código
+                if line.strip().startswith('--'):
+                    continue
+                cleaned_lines.append(line)
+
+            sql_cleaned = '\n'.join(cleaned_lines)
+
+            # Split por ; pero solo fuera de paréntesis
+            statements = []
+            current_statement = []
+            paren_depth = 0
+
+            for char in sql_cleaned:
+                current_statement.append(char)
+                if char == '(':
+                    paren_depth += 1
+                elif char == ')':
+                    paren_depth -= 1
+                elif char == ';' and paren_depth == 0:
+                    stmt = ''.join(current_statement).strip()
+                    if stmt and not stmt.startswith('--'):
+                        statements.append(stmt)
+                    current_statement = []
+
+            # Agregar última sentencia si existe
+            if current_statement:
+                stmt = ''.join(current_statement).strip()
+                if stmt and not stmt.startswith('--'):
+                    statements.append(stmt)
 
             print(f"📝 Ejecutando {len(statements)} declaraciones SQL...\n")
             print("=" * 80)
@@ -54,12 +85,12 @@ def run_migration():
 
             with connection.cursor() as cursor:
                 for i, statement in enumerate(statements, 1):
-                    # Skip USE statements
-                    if statement.upper().startswith('USE'):
+                    # Skip vacíos
+                    if not statement or statement.isspace():
                         continue
 
                     # Skip SELECT verification queries (execute but don't count)
-                    if statement.upper().startswith('SELECT'):
+                    if statement.strip().upper().startswith('SELECT'):
                         try:
                             cursor.execute(statement)
                             results = cursor.fetchall()
