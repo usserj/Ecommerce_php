@@ -213,7 +213,7 @@ def generar_descripcion():
     """
     Endpoint para generar descripción de producto con IA
 
-    Request JSON:
+    Request JSON (Formato 1 - completo):
     {
         "nombre": "Laptop HP",
         "categoria": "Electrónica",
@@ -223,76 +223,95 @@ def generar_descripcion():
         "keywords": "laptop ecuador"  # Opcional
     }
 
+    Request JSON (Formato 2 - desde templates):
+    {
+        "nombre_producto": "Laptop HP",
+        "caracteristicas": "Intel i5...",
+        "keywords": "laptop ecuador",
+        "tono": "profesional"
+    }
+
     Response JSON:
     {
         "success": true,
-        "data": {
-            "descripcion_corta": "...",
-            "descripcion_larga": "...",
-            "beneficios": [...],
-            "call_to_action": "..."
-        }
+        "descripcion": "..."  # o "data": {...}
     }
     """
     try:
         data = request.get_json()
 
-        # Validar campos requeridos
-        required_fields = ['nombre', 'categoria', 'precio', 'caracteristicas']
-        for field in required_fields:
-            if field not in data or not data[field]:
-                return jsonify({
-                    'success': False,
-                    'error': f'Campo requerido: {field}'
-                }), 400
-
-        # Obtener datos
-        nombre = data['nombre'].strip()
-        categoria = data['categoria'].strip()
-        precio = float(data['precio'])
-        caracteristicas = data['caracteristicas'].strip()
-        publico = data.get('publico', '').strip()
-        keywords = data.get('keywords', '').strip()
-
-        # Validaciones
-        if precio <= 0:
+        if not data:
             return jsonify({
                 'success': False,
-                'error': 'Precio debe ser mayor a 0'
+                'error': 'No se recibieron datos'
             }), 400
 
-        # Llamar al servicio de IA
-        result = ai_service.generar_descripcion_producto(
-            nombre=nombre,
-            categoria=categoria,
-            precio=precio,
-            caracteristicas=caracteristicas,
-            publico=publico,
-            keywords=keywords
-        )
+        # Soportar ambos formatos
+        nombre = data.get('nombre') or data.get('nombre_producto', '')
+        nombre = nombre.strip() if nombre else ''
 
-        if result['success']:
-            return jsonify({
-                'success': True,
-                'data': result['data']
-            })
-        else:
-            logger.error(f"Error al generar descripción: {result.get('error')}")
+        if not nombre:
             return jsonify({
                 'success': False,
-                'error': result.get('error', 'Error al generar descripción')
+                'error': 'Nombre del producto es requerido'
+            }), 400
+
+        caracteristicas = data.get('caracteristicas', '').strip()
+        keywords = data.get('keywords', '').strip()
+        tono = data.get('tono', 'profesional').strip()
+
+        # Si no tiene caracteristicas, usar el nombre
+        if not caracteristicas:
+            caracteristicas = f"Producto de calidad: {nombre}"
+
+        # Generar descripción simple con tono
+        prompt = f"""Genera una descripción atractiva y profesional para un producto de e-commerce.
+
+Producto: {nombre}
+Características: {caracteristicas}
+Keywords: {keywords}
+Tono: {tono}
+
+Genera una descripción en español de Ecuador de aproximadamente 100-150 palabras que:
+1. Destaque las características principales
+2. Use un tono {tono}
+3. Incluya llamado a la acción
+4. Incorpore las keywords de forma natural: {keywords}
+
+Descripción:"""
+
+        # Llamar al servicio de IA directamente
+        ai_result = ai_service.call_api(
+            messages=[
+                {"role": "system", "content": "Eres un experto en copywriting para e-commerce en Ecuador."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=300,
+            temperature=0.7
+        )
+
+        if ai_result['success']:
+            descripcion = ai_result['content'].strip()
+            return jsonify({
+                'success': True,
+                'descripcion': descripcion,
+                'data': {
+                    'descripcion_corta': descripcion[:200],
+                    'descripcion_larga': descripcion
+                }
+            })
+        else:
+            logger.error(f"Error al generar descripción: {ai_result.get('error')}")
+            return jsonify({
+                'success': False,
+                'error': ai_result.get('error', 'Error al generar descripción')
             }), 500
 
-    except ValueError as e:
-        return jsonify({
-            'success': False,
-            'error': 'Precio inválido'
-        }), 400
     except Exception as e:
         logger.exception(f"Error en endpoint /generar-descripcion: {e}")
         return jsonify({
             'success': False,
-            'error': 'Error interno del servidor'
+            'error': f'Error interno del servidor: {str(e)}'
         }), 500
 
 

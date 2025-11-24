@@ -976,8 +976,10 @@ def orders_ajax():
             'entregado': 'bg-success',
             'cancelado': 'bg-danger'
         }
-        estado_class = estado_badges.get(order.estado, 'bg-secondary')
-        estado_html = f'<span class="badge {estado_class}">{order.estado.capitalize()}</span>'
+        # Manejar None y valores por defecto
+        estado_actual = order.estado if order.estado else 'completado'
+        estado_class = estado_badges.get(estado_actual, 'bg-secondary')
+        estado_html = f'<span class="badge {estado_class}">{estado_actual.capitalize()}</span>'
 
         data.append({
             'id': order.id,
@@ -4034,8 +4036,8 @@ def ia_generar_descripcion(producto_id):
     tipo = data.get('tipo', 'corta')  # corta o larga
 
     result = ai_service.generar_descripcion_producto(
-        nombre=producto.nombre,
-        categoria=producto.categoria.nombre if producto.categoria else '',
+        nombre=producto.titulo,
+        categoria=producto.categoria.categoria if producto.categoria else '',
         precio=float(producto.precio),
         tipo_descripcion=tipo
     )
