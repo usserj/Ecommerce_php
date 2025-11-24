@@ -1401,7 +1401,7 @@ def inventory_report():
     ).filter_by(estado=1).scalar() or 0
 
     # Get categories for filter
-    categories = Categoria.query.filter_by(estado=1).order_by(Categoria.titulo).all()
+    categories = Categoria.query.filter_by(estado=1).order_by(Categoria.categoria).all()
 
     return render_template('admin/inventory_report.html',
                          products=products,
@@ -1603,7 +1603,7 @@ def products_performance():
     total_units_sold = sum(p.units_sold or 0 for p in products)
 
     # Get categories for filter
-    categories = Categoria.query.filter_by(estado=1).order_by(Categoria.titulo).all()
+    categories = Categoria.query.filter_by(estado=1).order_by(Categoria.categoria).all()
 
     return render_template('admin/products_performance.html',
                          products=products,

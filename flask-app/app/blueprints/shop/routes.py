@@ -234,7 +234,7 @@ def search():
 
     # Get categories for filter
     from app.models.categoria import Categoria
-    categorias = Categoria.query.filter_by(estado=1).order_by(Categoria.titulo).all()
+    categorias = Categoria.query.filter_by(estado=1).order_by(Categoria.categoria).all()
 
     return render_template('shop/search.html',
                          productos=productos,
