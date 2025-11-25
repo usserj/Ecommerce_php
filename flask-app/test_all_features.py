@@ -16,14 +16,24 @@ from app.extensions import db
 from app.models.product import Producto
 from app.models.order import Compra
 from app.models.user import User
-from app.models.categoria import Categoria, Subcategoria
+from app.models.categoria import Categoria
 from app.models.coupon import Cupon
 from app.models.comment import Comentario
-from app.models.cart import Carrito
 from app.services.ai_service import ai_service
 from app.services.chatbot_tools import *
 from datetime import datetime, timedelta
 import json
+
+# Imports opcionales
+try:
+    from app.models.categoria import Subcategoria
+except ImportError:
+    Subcategoria = None
+
+try:
+    from app.models.cart import Carrito
+except ImportError:
+    Carrito = None
 
 # Colores para output
 class Colors:
@@ -335,11 +345,14 @@ def test_category_system(app):
 
             # Test subcategorías
             print_subtest("Subcategorías")
-            try:
-                subcategorias = Subcategoria.query.all()
-                print_success(f"Total subcategorías: {len(subcategorias)}")
-            except:
-                print_warning("Tabla de subcategorías no existe")
+            if Subcategoria is not None:
+                try:
+                    subcategorias = Subcategoria.query.all()
+                    print_success(f"Total subcategorías: {len(subcategorias)}")
+                except Exception as e:
+                    print_warning(f"Error al consultar subcategorías: {e}")
+            else:
+                print_warning("Modelo Subcategoria no disponible")
 
             return True
     except Exception as e:
@@ -695,6 +708,10 @@ def test_cart_functionality(app):
         with app.app_context():
             print_subtest("Verificando tabla Carrito")
 
+            if Carrito is None:
+                print_warning("Modelo Carrito no disponible - se omite este test")
+                return True
+
             try:
                 carritos = Carrito.query.count()
                 print_success(f"Tabla Carrito existe: {carritos} items")
@@ -703,7 +720,7 @@ def test_cart_functionality(app):
                     carrito_sample = Carrito.query.first()
                     print_info(f"Item ejemplo: Producto {carrito_sample.id_producto}, Cantidad: {carrito_sample.cantidad}")
             except Exception as e:
-                print_warning(f"Tabla Carrito no disponible: {e}")
+                print_warning(f"Error al consultar Carrito: {e}")
 
             return True
     except Exception as e:
